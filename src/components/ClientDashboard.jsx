@@ -106,15 +106,28 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
 
   return (
     <div style={{ background: theme.bg, color: theme.textMain, minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+      <style>
+        {`
+          @media (max-width: 768px) {
+            .dashboard-header { padding: 15px 20px !important; }
+            .header-title { display: none; }
+            .dashboard-container { flex-direction: column !important; padding: 20px 15px !important; gap: 20px !important; }
+            .sidebar-area { width: 100% !important; }
+            .chat-link-content { flex-direction: column; gap: 15px; text-align: center; }
+            .chat-link-content button { width: 100%; }
+          }
+        `}
+      </style>
+      
       {/* Header */}
-      <div style={{ background: theme.sidebar, borderBottom: `1px solid ${theme.border}`, padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div className="dashboard-header" style={{ background: theme.sidebar, borderBottom: `1px solid ${theme.border}`, padding: '20px 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: theme.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ArrowLeft size={20} />
             <span style={{ fontSize: '14px', fontWeight: 600 }}>На главную</span>
           </button>
-          <div style={{ width: '1px', height: '24px', background: theme.border }}></div>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: theme.accent, margin: 0 }}>ЛИЧНЫЙ КАБИНЕТ</h1>
+          <div className="header-title" style={{ width: '1px', height: '24px', background: theme.border }}></div>
+          <h1 className="header-title" style={{ fontSize: '24px', fontWeight: 800, color: theme.accent, margin: 0 }}>ЛИЧНЫЙ КАБИНЕТ</h1>
         </div>
         <button
           onClick={onLogout}
@@ -132,24 +145,24 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
           }}
         >
           <LogOut size={18} />
-          Выйти
+          <span style={{ fontSize: '14px' }}>Выйти</span>
         </button>
       </div>
 
-      <div style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto', padding: '40px 20px', gap: '40px' }}>
+      <div className="dashboard-container" style={{ display: 'flex', maxWidth: '1400px', margin: '0 auto', padding: '40px 20px', gap: '40px' }}>
         {/* Sidebar */}
-        <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div className="sidebar-area" style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Profile Card */}
           <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '20px', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-              <div style={{ width: '60px', height: '60px', background: theme.accent, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '60px', height: '60px', background: theme.accent, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <User size={30} color="#000" />
               </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: theme.textMain }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: theme.textMain, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {user?.firstName && user?.lastName ? `${user.firstName} ${user.lastName}` : user?.email?.split('@')[0]}
                 </div>
-                <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px' }}>{user?.email}</div>
+                <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
               </div>
               {!editingProfile && (
                 <button
@@ -160,7 +173,8 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     borderRadius: '8px',
                     padding: '8px',
                     cursor: 'pointer',
-                    color: theme.accent
+                    color: theme.accent,
+                    flexShrink: 0
                   }}
                 >
                   <Edit2 size={16} />
@@ -181,7 +195,9 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     borderRadius: '8px',
                     padding: '10px',
                     color: theme.textMain,
-                    outline: 'none'
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                 />
                 <input
@@ -195,7 +211,9 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     borderRadius: '8px',
                     padding: '10px',
                     color: theme.textMain,
-                    outline: 'none'
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                 />
                 <input
@@ -209,7 +227,9 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     borderRadius: '8px',
                     padding: '10px',
                     color: theme.textMain,
-                    outline: 'none'
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                 />
                 <input
@@ -223,7 +243,9 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     borderRadius: '8px',
                     padding: '10px',
                     color: theme.textMain,
-                    outline: 'none'
+                    outline: 'none',
+                    width: '100%',
+                    boxSizing: 'border-box'
                   }}
                 />
                 <div style={{ display: 'flex', gap: '8px' }}>
@@ -283,7 +305,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                 )}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: theme.textMuted }}>
                   <Mail size={16} />
-                  {user?.email}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</span>
                 </div>
               </div>
             )}
@@ -316,7 +338,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
         </div>
 
         {/* Main Content */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '20px', minWidth: 0 }}>
           {/* Orders */}
           <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '20px', padding: '24px' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
@@ -361,7 +383,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                       gap: '12px'
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                         {getStatusIcon(order.status)}
                         <div>
@@ -389,7 +411,8 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                                order.status === 'declined' ? theme.danger : 
                                theme.textMuted,
                         fontSize: '12px',
-                        fontWeight: 700
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap'
                       }}>
                         {getStatusText(order.status)}
                       </div>
@@ -419,16 +442,16 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     {order.comment && (
                       <div>
                         <div style={{ fontSize: '12px', color: theme.textMuted, marginBottom: '4px' }}>Комментарий:</div>
-                        <div style={{ fontSize: '14px', color: theme.textMain, background: `${theme.bg}`, padding: '12px', borderRadius: '8px' }}>
+                        <div style={{ fontSize: '14px', color: theme.textMain, background: `${theme.bg}`, padding: '12px', borderRadius: '8px', wordBreak: 'break-word' }}>
                           {order.comment}
                         </div>
                       </div>
                     )}
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', fontSize: '14px' }}>
                       <div>
                         <div style={{ fontSize: '12px', color: theme.textMuted }}>Контакты:</div>
-                        <div style={{ color: theme.textMain }}>{order.contact}</div>
+                        <div style={{ color: theme.textMain, wordBreak: 'break-all' }}>{order.contact}</div>
                       </div>
                       {(order.firstName || order.lastName) && (
                         <div>
@@ -446,7 +469,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
           {/* Chat Link */}
           {chat && (
             <div style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '20px', padding: '24px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div className="chat-link-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <h2 style={{ fontSize: '20px', fontWeight: 800, color: theme.accent, display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
                     <MessageSquare size={24} />
@@ -468,6 +491,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                     fontWeight: 700,
                     display: 'flex',
                     alignItems: 'center',
+                    justifyContent: 'center',
                     gap: '8px'
                   }}
                 >

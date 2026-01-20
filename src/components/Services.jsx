@@ -44,9 +44,7 @@ const Services = ({ user, setIsAuthOpen, onLogout }) => {
   const navigate = useNavigate();
   
   const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    }
+    if (onLogout) onLogout();
     navigate('/');
   };
 
@@ -142,12 +140,12 @@ const Services = ({ user, setIsAuthOpen, onLogout }) => {
                     </div>
                   </div>
 
-                  <OrderButton 
-                    user={user} 
-                    setIsOrderOpen={setIsOrderOpen} 
-                    setIsAuthOpen={setIsAuthOpen} 
-                    className="hidden md:block bg-blue-500/10 border border-blue-500/50 text-blue-400 px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 hover:text-white transition-all"
-                  />
+         <OrderButton 
+  user={user} 
+  setIsOrderOpen={setIsOrderOpen} 
+  setIsAuthOpen={setIsAuthOpen} 
+  className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
+/>
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
@@ -177,49 +175,15 @@ const Services = ({ user, setIsAuthOpen, onLogout }) => {
                   </button>
                 </div>
               </div>
-
-              <div className={`md:hidden absolute w-full bg-[#0a0a0a] border-b border-blue-500/20 transition-all duration-300 ease-in-out ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
-                <div className="px-4 pt-2 pb-6 space-y-1">
-                  <div>
-                    <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-between px-3 py-4 text-[10px] font-bold uppercase tracking-widest text-white/70 border-b border-white/5">
-                      {t('УСЛУГИ')}
-                      <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </button>
-                    <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isServicesOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
-                      {servicesList.map((sKey) => (
-                        <button 
-                          key={sKey} 
-                          onClick={() => { setSelectedService(servicesData.find(s => s.title === t(sKey))); setIsOpen(false); }}
-                          className="block w-full text-left px-6 py-3 text-[9px] uppercase tracking-widest text-white/50 hover:text-blue-400"
-                        >
-                          {t(sKey)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-between px-3 py-4 text-[10px] font-bold uppercase tracking-widest text-white/70 border-b border-white/5">
-                      {t('КОНТАКТЫ')}
-                      <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                    </button>
-                    <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
-                      {contactLinks.map((contact) => (
-                        <a key={contact.name} href={contact.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 text-[9px] uppercase tracking-widest text-white/50 hover:text-blue-400">{contact.icon}{contact.name}</a>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </nav>
 
-          <div className="relative z-10 w-full max-w-5xl mt-32 px-4 pb-32">
+          <div className="relative z-10 w-full max-w-5xl mt-32 px-4 pb-32 text-center">
             <div className="flex flex-col gap-8">
               <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10">
                 <img src={selectedService.img} alt={selectedService.title} className="w-full h-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
               </div>
-
               <div className="bg-white/[0.03] p-8 md:p-12 rounded-[2rem] border border-white/5 shadow-inner mb-12 flex flex-col items-start gap-8">
                 <div className="text-white/80 text-sm md:text-lg font-light leading-relaxed whitespace-pre-line text-left">
                   {selectedService.fullDesc}
@@ -227,69 +191,55 @@ const Services = ({ user, setIsAuthOpen, onLogout }) => {
               </div>
             </div>
           </div>
-        </div>
-      )}
 
-      {selectedService && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#0a0a0a]/95 backdrop-blur-lg border-t border-white/10 px-6 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              {user ? (
-                <>
-                  <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-blue-400">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                    <span className="text-[8px] font-bold uppercase">Кабинет</span>
-                  </button>
-                  <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    <span className="text-[8px] font-bold uppercase">{t("Выйти")}</span>
-                  </button>
-                </>
-              ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="flex flex-col items-center gap-1 text-blue-400">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                  <span className="text-[8px] font-bold uppercase">{t("Войти")}</span>
+          {/* МОБИЛЬНАЯ ПАНЕЛЬ ВНУТРИ СЕРВИСА */}
+          <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#0a0a0a]/95 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
+            <div className="grid grid-cols-5 items-center justify-items-center">
+              
+              <button onClick={closeModal} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" /></svg>
+                <span className="text-[8px] font-bold uppercase tracking-tight">{t('ГЛАВНАЯ')}</span>
+              </button>
+
+              {user && user.role !== 'admin' ? (
+                <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                  <span className="text-[8px] font-bold uppercase tracking-tight">Кабинет</span>
                 </button>
+              ) : (
+                <div className="flex flex-col items-center gap-1 text-blue-400/30 translate-y-1.5">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" /></svg>
+                  <span className="text-[8px] font-bold uppercase tracking-tight">Кабинет</span>
+                </div>
               )}
 
-              <div className="flex flex-col items-center gap-1 relative">
-                <svg className="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 11.37 7.31 16.5 3 19" /></svg>
+              <OrderButton user={user} setIsOrderOpen={setIsOrderOpen} setIsAuthOpen={setIsAuthOpen} className="text-blue-400" />
+
+              <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" /></svg>
                 <select onChange={changeLanguage} value={i18n.language} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
-                  <option value="ru">RU</option>
-                  <option value="en">EN</option>
-                  <option value="ka">KA</option>
+                  <option value="ru">RU</option><option value="en">EN</option><option value="ka">KA</option>
                 </select>
-                <span className="text-[8px] font-bold uppercase text-white/70">{i18n.language.toUpperCase()}</span>
+                <span className="text-[8px] font-bold uppercase tracking-tight">{i18n.language.toUpperCase()}</span>
               </div>
+
+              {user ? (
+                <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 translate-y-1.5">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" /></svg>
+                  <span className="text-[8px] font-bold uppercase tracking-tight">{t("Выйти")}</span>
+                </button>
+              ) : (
+                <button onClick={() => setIsAuthOpen(true)} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
+                  <span className="text-[8px] font-bold uppercase tracking-tight">{t("Войти")}</span>
+                </button>
+              )}
             </div>
-
-            <OrderButton 
-              user={user} 
-              setIsOrderOpen={setIsOrderOpen} 
-              setIsAuthOpen={setIsAuthOpen} 
-              className="bg-blue-600 text-white px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/40 active:scale-95 transition-transform"
-            />
-
-            <button onClick={closeModal} className="flex flex-col items-center gap-1 text-white/70">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
-              <span className="text-[8px] font-bold uppercase tracking-tighter">{t('ГЛАВНАЯ')}</span>
-            </button>
           </div>
         </div>
       )}
 
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .animate-fadeIn { animation: fadeIn 0.4s ease-out forwards; }
-      `}</style>
-
-      <OrderSidebar 
-        isOrderOpen={isOrderOpen} 
-        setIsOrderOpen={setIsOrderOpen} 
-        user={user} 
-        setIsAuthOpen={setIsAuthOpen}
-        brandGradient={brandGradient}
-      />
+      <OrderSidebar isOrderOpen={isOrderOpen} setIsOrderOpen={setIsOrderOpen} user={user} setIsAuthOpen={setIsAuthOpen} brandGradient={brandGradient} />
     </section>
   );
 };
