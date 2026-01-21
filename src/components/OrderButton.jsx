@@ -39,7 +39,7 @@ const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, className }) => {
 
       {/* Десктопная версия (текст кнопки) */}
       <span className="hidden md:inline">
-        {t("Заказать проект")}
+        {t("Оформить заказ")}
       </span>
     </button>
   );

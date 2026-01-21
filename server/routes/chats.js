@@ -130,5 +130,42 @@ router.put('/:chatId/read', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+// Удаление чата (только админ)
+router.delete('/:chatId', protect, admin, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    
+    // Удаляем сам чат
+    const chat = await Chat.findByIdAndDelete(chatId);
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    // Удаляем все сообщения, связанные с этим чатом
+    await Message.deleteMany({ chatId });
+
+    res.json({ message: 'Chat and messages deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Удаление отдельного сообщения (только админ)
+router.delete('/:messageId', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const message = await Message.findByIdAndDelete(req.params.messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+
+    res.json({ message: 'Message deleted' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 export default router;

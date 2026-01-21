@@ -2,17 +2,18 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Helper function to get auth token
 export const getToken = () => {
-  return localStorage.getItem('token');
+  // Используем sessionStorage вместо localStorage для временных сессий
+  return sessionStorage.getItem('token');
 };
 
 // Helper function to set auth token
 export const setToken = (token) => {
-  localStorage.setItem('token', token);
+  sessionStorage.setItem('token', token);
 };
 
 // Helper function to remove auth token
 export const removeToken = () => {
-  localStorage.removeItem('token');
+  sessionStorage.removeItem('token');
 };
 
 // Generic fetch wrapper
@@ -82,6 +83,12 @@ export const chatsAPI = {
       method: 'PUT',
     });
   },
+
+  delete: async (chatId) => {
+    return apiRequest(`/chats/${chatId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Messages API
@@ -92,16 +99,27 @@ export const messagesAPI = {
       body: JSON.stringify({ chatId, text }),
     });
   },
+
+delete: async (messageId) => {
+    return apiRequest(`/messages/${messageId}`, {
+      method: 'DELETE',
+    });
+  },
 };
 
 // Orders API
 export const ordersAPI = {
+  // Добавлен метод получения всех заказов
+  getAll: async () => {
+    return apiRequest('/orders');
+  },
   create: async (orderData) => {
     return apiRequest('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
   },
+  // Исправлено: передаем два параметра согласно роутам сервера
   updateStatus: async (chatId, orderIndex, status) => {
     return apiRequest(`/orders/${chatId}/${orderIndex}/status`, {
       method: 'PUT',
@@ -118,30 +136,41 @@ export const ordersAPI = {
 // Files API
 export const filesAPI = {
   upload: async (file, chatId, messageId = null) => {
+    // 1. Создаем FormData здесь, внутри API слоя
     const formData = new FormData();
-    formData.append('file', file);
+    
+    // Важно: убеждаемся, что передаем именно файл
+    formData.append('file', file); 
     formData.append('chatId', chatId);
+    
     if (messageId) {
       formData.append('messageId', messageId);
     }
 
     const token = getToken();
+    
+    // 2. Используем fetch напрямую, так как apiRequest принудительно ставит JSON
     const response = await fetch(`${API_URL}/files/upload`, {
       method: 'POST',
       headers: {
+        // ВАЖНО: Мы НЕ ставим 'Content-Type'. 
+        // Браузер сам добавит multipart/form-data и boundary, увидев FormData в body.
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: formData,
     });
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || 'Upload failed');
+      // Пытаемся распарсить ошибку, если сервер прислал JSON
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || 'Upload failed');
     }
 
     return response.json();
   },
+
   getFileUrl: (filename) => {
+    // Убедитесь, что путь совпадает с настройками статики на бэкенде
     return `${API_URL.replace('/api', '')}/uploads/${filename}`;
   },
 };

@@ -75,7 +75,13 @@ function App() {
       />
       <main className="flex-grow">
         <Hero />
-        <Services user={user} setIsAuthOpen={setIsAuthOpen} setIsOrderOpen={setIsOrderOpen} onLogout={handleLogout} />
+       <Services 
+  user={user} 
+  setIsAuthOpen={setIsAuthOpen} 
+  setIsOrderOpen={setIsOrderOpen} // Передаем функцию управления
+  isOrderOpen={isOrderOpen}       // Передаем текущее состояние
+  onLogout={handleLogout} 
+/>
         <Contact />
       </main>
       
