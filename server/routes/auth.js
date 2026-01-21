@@ -5,30 +5,29 @@ import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-// Generate JWT Token
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'your-secret-key', {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d'
   });
 };
 
-// Register
+// РЕГИСТРАЦИЯ
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, phone, city, firstName, lastName } = req.body;
+    const { email, login, password, phone, city, firstName, lastName } = req.body; 
 
-    if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+    if (!email || !password || !login) {
+      return res.status(400).json({ message: 'Email, login and password are required' });
     }
 
-    const userExists = await User.findOne({ email });
-
+    const userExists = await User.findOne({ $or: [{ email }, { login }] });
     if (userExists) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const user = await User.create({
       email,
+      login,
       password,
       phone: phone || '',
       city: city || '',
@@ -37,15 +36,11 @@ router.post('/register', async (req, res) => {
     });
 
     const token = generateToken(user._id);
-
     res.status(201).json({
       _id: user._id,
       email: user.email,
-      phone: user.phone,
-      city: user.city,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
+      login: user.login,
+      role: user.role, // Добавлено: передаем роль на фронтенд
       token
     });
   } catch (error) {
@@ -53,75 +48,40 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Login
+// ЛОГИН
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return res.status(400).json({ message: 'Please provide email and password' });
     }
 
     const user = await User.findOne({ email });
 
-    if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    if (user && (await user.matchPassword(password))) {
+      res.json({
+        _id: user._id,
+        email: user.email,
+        login: user.login,
+        role: user.role, // Добавлено: теперь фронтенд увидит, что это admin
+        token: generateToken(user._id)
+      });
+    } else {
+      res.status(401).json({ message: 'Invalid email or password' });
     }
-
-    const token = generateToken(user._id);
-
-    res.json({
-      _id: user._id,
-      email: user.email,
-      phone: user.phone,
-      city: user.city,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role: user.role,
-      token
-    });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 });
 
-// Get current user
+// ПОЛУЧЕНИЕ ДАННЫХ О СЕБЕ
 router.get('/me', protect, async (req, res) => {
   try {
-    res.json({
-      _id: req.user._id,
-      email: req.user.email,
-      phone: req.user.phone,
-      city: req.user.city,
-      firstName: req.user.firstName,
-      lastName: req.user.lastName,
-      role: req.user.role
-    });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Update user profile
-router.put('/profile', protect, async (req, res) => {
-  try {
-    const { phone, city, firstName, lastName } = req.body;
-    
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        phone: phone || req.user.phone,
-        city: city || req.user.city,
-        firstName: firstName || req.user.firstName,
-        lastName: lastName || req.user.lastName,
-        updatedAt: Date.now()
-      },
-      { new: true, runValidators: true }
-    ).select('-password');
-
+    const user = await User.findById(req.user._id).select('-password');
     res.json(user);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(500).json({ message: error.message });
   }
 });
 

@@ -20,7 +20,8 @@ router.post('/', protect, async (req, res) => {
     }
 
     // Check access
-    if (req.user.role !== 'admin' && chat.userId.toString() !== req.user._id.toString()) {
+    // Исправлено: добавлена проверка на существование chat.userId перед вызовом toString()
+    if (req.user.role !== 'admin' && chat.userId?.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
 

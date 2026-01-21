@@ -42,7 +42,26 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// Раздача статических файлов
+app.use('/api/files', express.static(path.join(__dirname, 'uploads')));
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Роут для пометки чата прочитанным (исправляет 404 в админке)
+app.post('/api/chats/:id/read', async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.id);
+    if (chat) {
+      chat.unread = false;
+      await chat.save();
+      io.to(`chat-${req.params.id}`).emit('chat-read', { chatId: req.params.id });
+      return res.json({ success: true });
+    }
+    res.status(404).json({ message: 'Chat not found' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);

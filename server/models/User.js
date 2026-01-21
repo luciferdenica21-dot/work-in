@@ -9,6 +9,12 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  login: { // ДОБАВЬТЕ ЭТО ПОЛЕ
+    type: String,
+    unique: true,
+    required: true,
+    trim: true
+  },
   password: {
     type: String,
     required: true,
@@ -52,8 +58,8 @@ userSchema.pre('save', async function(next) {
   next();
 });
 
-// Compare password method
-userSchema.methods.comparePassword = async function(candidatePassword) {
+// Compare password method (Исправлено на matchPassword для соответствия роутеру)
+userSchema.methods.matchPassword = async function(candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
