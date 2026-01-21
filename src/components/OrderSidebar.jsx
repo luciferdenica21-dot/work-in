@@ -202,7 +202,7 @@ const handleSubmit = async (e) => {
                     required
                     value={contact}
                     onChange={(e) => setContact(e.target.value)}
-                    placeholder={t("Телефон или Telegram")}
+                    placeholder={t("Телефон или Email")}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-4 text-white text-sm outline-none focus:border-blue-500/50 transition-all placeholder:text-white/10"
                   />
                 </div>

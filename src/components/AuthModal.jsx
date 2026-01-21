@@ -7,7 +7,8 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(''); 
+  const [login, setLogin] = useState(''); // Состояние для нового поля login
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
@@ -29,7 +30,6 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       let userData;
       
       if (isLogin) {
-        // Login
         userData = await authAPI.login(email, password);
         setToken(userData.token);
         onClose();
@@ -42,8 +42,8 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
           onAuthSuccess(userData);
         }
       } else {
-        // Register - все поля обязательны для регистрации
-        if (!email || !password || !phone || !city || !firstName || !lastName) {
+        // Проверка всех обязательных полей, включая login
+        if (!email || !login || !password || !phone || !city || !firstName || !lastName) {
           setError('Все поля обязательны для заполнения');
           setLoading(false);
           return;
@@ -51,6 +51,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         
         userData = await authAPI.register({
           email,
+          login, // Теперь login отправляется на сервер
           password,
           phone,
           city,
@@ -73,6 +74,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
 
   const resetForm = () => {
     setEmail('');
+    setLogin(''); // Сброс логина
     setPassword('');
     setPhone('');
     setCity('');
@@ -96,15 +98,31 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         
         <form onSubmit={handleAuth} className="space-y-4">
           <div className="space-y-2">
-            <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">Email *</label>
+            <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">
+              {isLogin ? t("Логин или Email") : t("Email")} *
+            </label>
             <input 
-              type="email" 
+              type={isLogin ? "text" : "email"} 
               required 
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50 transition-all"
             />
           </div>
+
+          {/* Новое поле ввода логина для регистрации */}
+          {!isLogin && (
+            <div className="space-y-2">
+              <label className="text-white/40 text-[10px] uppercase tracking-widest ml-1">{t("Логин")} *</label>
+              <input 
+                type="text" 
+                required={!isLogin}
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50 transition-all"
+              />
+            </div>
+          )}
           
           {!isLogin && (
             <>

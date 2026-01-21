@@ -110,27 +110,32 @@ const ChatWidget = ({ user }) => {
   };
 
   const handleFileUpload = async (e) => {
-  const file = e.target.files?.[0];
-  if (!file || !chatId) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  setUploading(true);
-  try {
-    // Передаем просто файл и ID чата, api.js сам все упакует
-    await filesAPI.upload(file, chatId); 
-    
-    const msgs = await chatsAPI.getMessages(chatId);
-    setMessages(msgs);
-    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
-  } catch (error) {
-    console.error('Error uploading file:', error);
-    alert('Ошибка загрузки файла: ' + error.message);
-  } finally {
-    setUploading(false);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+    if (!chatId) {
+      console.error('Chat ID not found');
+      return;
     }
-  }
-};
+
+    setUploading(true);
+    try {
+      // Передаем просто файл и ID чата, api.js сам все упакует
+      await filesAPI.upload(file, chatId); 
+      
+      const msgs = await chatsAPI.getMessages(chatId);
+      setMessages(msgs);
+      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Ошибка загрузки файла: ' + error.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const isUserMessage = (msg) => {
     // Fix: Check if message is from current user

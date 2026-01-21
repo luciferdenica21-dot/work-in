@@ -1,22 +1,11 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-// Helper function to get auth token
-export const getToken = () => {
-  // Используем sessionStorage вместо localStorage для временных сессий
-  return sessionStorage.getItem('token');
-};
+// Вспомогательные функции для токена
+export const getToken = () => sessionStorage.getItem('token');
+export const setToken = (token) => sessionStorage.setItem('token', token);
+export const removeToken = () => sessionStorage.removeItem('token');
 
-// Helper function to set auth token
-export const setToken = (token) => {
-  sessionStorage.setItem('token', token);
-};
-
-// Helper function to remove auth token
-export const removeToken = () => {
-  sessionStorage.removeItem('token');
-};
-
-// Generic fetch wrapper
+// Общий оберточный метод для запросов
 const apiRequest = async (endpoint, options = {}) => {
   const token = getToken();
   const config = {
@@ -30,10 +19,15 @@ const apiRequest = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(`${API_URL}${endpoint}`, config);
-    const data = await response.json();
+
+    // Проверяем, является ли ответ JSON-ом
+    const contentType = response.headers.get("content-type");
+    const isJson = contentType && contentType.includes("application/json");
+    const data = isJson ? await response.json() : null;
 
     if (!response.ok) {
-      throw new Error(data.message || 'Request failed');
+      // Если это 404 или другая ошибка, выбрасываем исключение с описанием
+      throw new Error(data?.message || `Request failed with status ${response.status}`);
     }
 
     return data;
@@ -58,121 +52,61 @@ export const authAPI = {
   },
   getMe: async () => {
     return apiRequest('/auth/me');
-  },
-  updateProfile: async (profileData) => {
-    return apiRequest('/auth/profile', {
-      method: 'PUT',
-      body: JSON.stringify(profileData),
-    });
-  },
+  }
 };
 
-// Chats API
+// Chat API - ОБНОВЛЕНО: добавлены методы для админа
 export const chatsAPI = {
-  getAll: async () => {
-    return apiRequest('/chats');
-  },
-  getMyChat: async () => {
-    return apiRequest('/chats/my-chat');
-  },
-  getMessages: async (chatId) => {
-    return apiRequest(`/chats/${chatId}/messages`);
-  },
-  markAsRead: async (chatId) => {
-    return apiRequest(`/chats/${chatId}/read`, {
-      method: 'PUT',
-    });
-  },
-
-  delete: async (chatId) => {
-    return apiRequest(`/chats/${chatId}`, {
-      method: 'DELETE',
-    });
-  },
+  getMyChat: () => apiRequest('/chats/my-chat'),
+  getAll: () => apiRequest('/chats'), // Получение всех чатов для админки
+  getMessages: (chatId) => apiRequest(`/chats/${chatId}/messages`),
+  markAsRead: (chatId) => apiRequest(`/chats/${chatId}/read`, { method: 'POST' }),
+  delete: (chatId) => apiRequest(`/chats/${chatId}`, { method: 'DELETE' }), // Удаление чата
 };
 
-// Messages API
+// Messages API - ОБНОВЛЕНО: добавлены методы для админа
 export const messagesAPI = {
-  send: async (chatId, text) => {
-    return apiRequest('/messages', {
-      method: 'POST',
-      body: JSON.stringify({ chatId, text }),
-    });
-  },
-
-delete: async (messageId) => {
-    return apiRequest(`/messages/${messageId}`, {
-      method: 'DELETE',
-    });
-  },
+  send: (chatId, text) => apiRequest(`/messages`, {
+    method: 'POST',
+    body: JSON.stringify({ chatId, text }),
+  }),
+  delete: (messageId) => apiRequest(`/messages/${messageId}`, { method: 'DELETE' }), // Удаление сообщения
 };
 
-// Orders API
-export const ordersAPI = {
-  // Добавлен метод получения всех заказов
-  getAll: async () => {
-    return apiRequest('/orders');
+// Files API
+export const filesAPI = {
+  upload: async (file, chatId) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('chatId', chatId);
+
+    const token = getToken();
+    const response = await fetch(`${API_URL}/files/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+    return response.json();
   },
+  getFileUrl: (filename) => `${API_URL}/files/${filename}`,
+};
+
+// Orders API - ДОБАВЛЕНО для работы ManagerPanel
+export const ordersAPI = {
   create: async (orderData) => {
     return apiRequest('/orders', {
       method: 'POST',
       body: JSON.stringify(orderData),
     });
   },
-  // Исправлено: передаем два параметра согласно роутам сервера
-  updateStatus: async (chatId, orderIndex, status) => {
-    return apiRequest(`/orders/${chatId}/${orderIndex}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
-  },
-  delete: async (chatId, orderIndex) => {
-    return apiRequest(`/orders/${chatId}/${orderIndex}`, {
-      method: 'DELETE',
-    });
-  },
-};
-
-// Files API
-export const filesAPI = {
-  upload: async (file, chatId, messageId = null) => {
-    // 1. Создаем FormData здесь, внутри API слоя
-    const formData = new FormData();
-    
-    // Важно: убеждаемся, что передаем именно файл
-    formData.append('file', file); 
-    formData.append('chatId', chatId);
-    
-    if (messageId) {
-      formData.append('messageId', messageId);
-    }
-
-    const token = getToken();
-    
-    // 2. Используем fetch напрямую, так как apiRequest принудительно ставит JSON
-    const response = await fetch(`${API_URL}/files/upload`, {
-      method: 'POST',
-      headers: {
-        // ВАЖНО: Мы НЕ ставим 'Content-Type'. 
-        // Браузер сам добавит multipart/form-data и boundary, увидев FormData в body.
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      // Пытаемся распарсить ошибку, если сервер прислал JSON
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || 'Upload failed');
-    }
-
-    return response.json();
-  },
-
-  getFileUrl: (filename) => {
-    // Убедитесь, что путь совпадает с настройками статики на бэкенде
-    return `${API_URL.replace('/api', '')}/uploads/${filename}`;
-  },
+  getAll: () => apiRequest('/orders'), // Получение всех заказов
+  updateStatus: (chatId, orderIndex, status) => apiRequest(`/orders/${chatId}/${orderIndex}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status })
+  }),
+  delete: (chatId, orderIndex) => apiRequest(`/orders/${chatId}/${orderIndex}`, { method: 'DELETE' }),
 };
 
 export default API_URL;
