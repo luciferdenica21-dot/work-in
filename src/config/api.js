@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Вспомогательные функции для токена
 export const getToken = () => sessionStorage.getItem('token');
@@ -26,7 +26,6 @@ const apiRequest = async (endpoint, options = {}) => {
     const data = isJson ? await response.json() : null;
 
     if (!response.ok) {
-      // Если это 404 или другая ошибка, выбрасываем исключение с описанием
       throw new Error(data?.message || `Request failed with status ${response.status}`);
     }
 
@@ -36,7 +35,7 @@ const apiRequest = async (endpoint, options = {}) => {
   }
 };
 
-// Auth API
+// ... далее без изменений: authAPI, chatsAPI, messagesAPI, filesAPI, ordersAPI
 export const authAPI = {
   register: async (userData) => {
     return apiRequest('/auth/register', {
@@ -55,25 +54,22 @@ export const authAPI = {
   }
 };
 
-// Chat API - ОБНОВЛЕНО: добавлены методы для админа
 export const chatsAPI = {
   getMyChat: () => apiRequest('/chats/my-chat'),
-  getAll: () => apiRequest('/chats'), // Получение всех чатов для админки
+  getAll: () => apiRequest('/chats'),
   getMessages: (chatId) => apiRequest(`/chats/${chatId}/messages`),
   markAsRead: (chatId) => apiRequest(`/chats/${chatId}/read`, { method: 'POST' }),
-  delete: (chatId) => apiRequest(`/chats/${chatId}`, { method: 'DELETE' }), // Удаление чата
+  delete: (chatId) => apiRequest(`/chats/${chatId}`, { method: 'DELETE' }),
 };
 
-// Messages API - ОБНОВЛЕНО: добавлены методы для админа
 export const messagesAPI = {
   send: (chatId, text) => apiRequest(`/messages`, {
     method: 'POST',
     body: JSON.stringify({ chatId, text }),
   }),
-  delete: (messageId) => apiRequest(`/messages/${messageId}`, { method: 'DELETE' }), // Удаление сообщения
+  delete: (messageId) => apiRequest(`/messages/${messageId}`, { method: 'DELETE' }),
 };
 
-// Files API
 export const filesAPI = {
   upload: async (file, chatId) => {
     const formData = new FormData();
@@ -93,7 +89,6 @@ export const filesAPI = {
   getFileUrl: (filename) => `${API_URL}/files/${filename}`,
 };
 
-// Orders API - ДОБАВЛЕНО для работы ManagerPanel
 export const ordersAPI = {
   create: async (orderData) => {
     return apiRequest('/orders', {
@@ -101,7 +96,7 @@ export const ordersAPI = {
       body: JSON.stringify(orderData),
     });
   },
-  getAll: () => apiRequest('/orders'), // Получение всех заказов
+  getAll: () => apiRequest('/orders'),
   updateStatus: (chatId, orderIndex, status) => apiRequest(`/orders/${chatId}/${orderIndex}/status`, {
     method: 'PATCH',
     body: JSON.stringify({ status })
