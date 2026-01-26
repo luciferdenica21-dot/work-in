@@ -107,17 +107,18 @@ export const filesAPI = {
     
     return response.json();
   },
- getFileUrl: (filename) => {
-  if (!filename) return '';
-  if (filename.startsWith('http')) return filename;
-  
-  // Получаем домен из API_URL (например, https://connector.ge)
-  const url = new URL(API_URL);
-  const origin = url.origin; 
-  
-  const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
-  return `${origin}${cleanFilename}`;
-},
+  getFileUrl: (filename) => {
+    if (!filename) return '';
+    if (filename.startsWith('http')) return filename;
+    
+    // Получаем домен из API_URL (например, https://connector.ge)
+    const url = new URL(API_URL);
+    const origin = url.origin; 
+    
+    const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
+    return `${origin}${cleanFilename}`;
+  },
+};
 
 export const ordersAPI = {
   create: async (orderData) => {
