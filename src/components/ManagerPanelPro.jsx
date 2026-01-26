@@ -28,12 +28,13 @@ const ManagerPanelPro = ({ user }) => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getAbsoluteFileUrl = (fileUrl) => {
+const getAbsoluteFileUrl = (fileUrl) => {
     if (!fileUrl) return '';
     if (fileUrl.startsWith('http')) return fileUrl;
-    const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const base = rawBase.replace('/api', '');
-    return `${base}${fileUrl}`;
+    const apiUrl = import.meta.env.VITE_API_URL || window.location.origin + '/api';
+    const base = apiUrl.replace(/\/api\/?$/, '');
+    const cleanUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
+    return `${base}${cleanUrl}`;
   };
 
   const escapeCsvValue = (value) => {

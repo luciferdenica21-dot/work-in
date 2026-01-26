@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'https://connector.ge/api';
 
 // Вспомогательные функции для токена
 export const getToken = () => localStorage.getItem('token');
@@ -107,15 +107,17 @@ export const filesAPI = {
     
     return response.json();
   },
-  getFileUrl: (filename) => {
-    if (!filename) return '';
-    if (filename.startsWith('http')) return filename;
-    // Отрезаем /api, чтобы получить корень сервера (http://localhost:5000)
-    const BASE_URL = API_URL.replace('/api', '');
-    const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
-    return `${BASE_URL}${cleanFilename}`;
-  },
-};
+ getFileUrl: (filename) => {
+  if (!filename) return '';
+  if (filename.startsWith('http')) return filename;
+  
+  // Получаем домен из API_URL (например, https://connector.ge)
+  const url = new URL(API_URL);
+  const origin = url.origin; 
+  
+  const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
+  return `${origin}${cleanFilename}`;
+},
 
 export const ordersAPI = {
   create: async (orderData) => {
