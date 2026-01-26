@@ -1,7 +1,7 @@
 import express from 'express';
 import Message from '../models/Message.js';
 import Chat from '../models/Chat.js';
-import { protect } from '../middleware/auth.js';
+import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -45,6 +45,19 @@ router.post('/', protect, async (req, res) => {
     await chat.save();
 
     res.status(201).json(message);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/:messageId', protect, admin, async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    const message = await Message.findByIdAndDelete(messageId);
+    if (!message) {
+      return res.status(404).json({ message: 'Message not found' });
+    }
+    res.json({ message: 'Message deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

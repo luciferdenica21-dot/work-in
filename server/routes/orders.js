@@ -27,32 +27,60 @@ router.get('/', protect, admin, async (req, res) => {
 // СОЗДАНИЕ ЗАКАЗА
 router.post('/', protect, async (req, res) => {
   try {
-    const { firstName, lastName, contact, services, comment } = req.body;
+    console.log('=== ORDER CREATION REQUEST ===');
+    console.log('User:', req.user._id, req.user.email);
+    console.log('Request body:', req.body);
+    
+    const { firstName, lastName, contact, services, comment, files } = req.body;
+    
+    // Валидация обязательных полей
+    if (!services || !Array.isArray(services) || services.length === 0) {
+      console.log('ERROR: No services provided');
+      return res.status(400).json({ message: 'Services are required' });
+    }
+    
+    if (!contact) {
+      console.log('ERROR: No contact provided');
+      return res.status(400).json({ message: 'Contact is required' });
+    }
+    
+    console.log('Finding chat for user:', req.user._id);
     let chat = await Chat.findOne({ userId: req.user._id });
 
     if (!chat) {
+      console.log('Creating new chat for user:', req.user._id);
       chat = await Chat.create({
         userId: req.user._id,
         userEmail: req.user.email,
         lastMessage: 'Новый заказ оформлен',
         unread: true
       });
+      console.log('New chat created:', chat._id);
+    } else {
+      console.log('Found existing chat:', chat._id);
     }
 
     const newOrder = {
       firstName: firstName || '',
       lastName: lastName || '',
       contact: contact || '',
-      services: services,
+      services: services || [], // Используем правильные значения по умолчанию
       comment: comment || '',
+      files: files || [], // Сохраняем файлы к заказу
       status: 'new', // ИСПОЛЬЗУЕМ 'new' ВМЕСТО 'pending' ДЛЯ ВАЛИДАЦИИ
       createdAt: new Date()
     };
+    
+    console.log('Creating order:', newOrder);
 
     chat.orders.push(newOrder);
     chat.lastMessage = 'Новый заказ оформлен';
     chat.unread = true;
+    
+    console.log('Saving chat with new order...');
     await chat.save();
+    
+    console.log('Order created successfully:', newOrder);
     res.status(201).json(newOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -61,26 +89,82 @@ router.post('/', protect, async (req, res) => {
 
 // ОСТАЛЬНЫЕ РОУТЫ (update/delete) ОСТАЮТСЯ КАК В ВАШЕМ ФАЙЛЕ
 router.put('/:chatId/:orderIndex/status', protect, admin, async (req, res) => {
-    /* Ваш существующий код обновления */
-    const { chatId, orderIndex } = req.params;
-    const { status } = req.body;
-    if (!['new', 'accepted', 'declined'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
-    const chat = await Chat.findById(chatId);
-    if (!chat || !chat.orders[orderIndex]) return res.status(404).json({ message: 'Not found' });
-    chat.orders[orderIndex].status = status;
-    await chat.save();
-    res.json({ message: 'Updated' });
+    try {
+      console.log('=== UPDATE ORDER STATUS ===');
+      console.log('Params:', req.params);
+      console.log('Body:', req.body);
+      
+      const { chatId, orderIndex } = req.params;
+      const { status } = req.body;
+      
+      // Конвертируем orderIndex в число
+      const orderIdx = parseInt(orderIndex);
+      
+      if (!['new', 'accepted', 'declined'].includes(status)) {
+        return res.status(400).json({ message: 'Invalid status' });
+      }
+      
+      const chat = await Chat.findById(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: 'Chat not found' });
+      }
+      
+      if (!chat.orders[orderIdx]) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+      
+      console.log('Updating order:', chat.orders[orderIdx]);
+      chat.orders[orderIdx].status = status;
+      await chat.save();
+      
+      console.log('Order status updated successfully');
+      res.json({ message: 'Updated' });
+    } catch (error) {
+      console.error('=== UPDATE ORDER STATUS ERROR ===');
+      console.error('Error:', error);
+      res.status(500).json({ message: error.message });
+    }
 });
 
-router.delete('/:chatId/:orderIndex', protect, admin, async (req, res) => {
-    /* Ваш существующий код удаления */
-    const { chatId, orderIndex } = req.params;
-    const chat = await Chat.findById(chatId);
-    if (chat) {
-        chat.orders.splice(orderIndex, 1);
-        await chat.save();
+router.delete('/:chatId/:orderIndex', protect, async (req, res) => {
+    try {
+      console.log('=== DELETE ORDER ===');
+      console.log('Params:', req.params);
+      
+      const { chatId, orderIndex } = req.params;
+      
+      // Конвертируем orderIndex в число
+      const orderIdx = parseInt(orderIndex);
+      
+      // Находим чат
+      const chat = await Chat.findById(chatId);
+      if (!chat) {
+        return res.status(404).json({ message: 'Chat not found' });
+      }
+
+      // Проверяем права: админ может удалять любой, клиент - только свои
+      if (req.user.role !== 'admin' && chat.userId.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      // Проверяем существование заказа
+      if (!chat.orders[orderIdx]) {
+        return res.status(404).json({ message: 'Order not found' });
+      }
+
+      console.log('Deleting order:', chat.orders[orderIdx]);
+
+      // Удаляем заказ
+      chat.orders.splice(orderIdx, 1);
+      await chat.save();
+
+      console.log('Order deleted successfully');
+      res.json({ message: 'Order deleted successfully' });
+    } catch (error) {
+      console.error('=== DELETE ORDER ERROR ===');
+      console.error('Error:', error);
+      res.status(500).json({ message: error.message });
     }
-    res.json({ message: 'Deleted' });
 });
 
 export default router;

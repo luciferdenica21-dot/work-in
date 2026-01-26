@@ -1,5 +1,7 @@
 import mongoose from 'mongoose';
 
+/* global process */
+
 const connectDB = async () => {
   try {
     // Подключение использует строку из .env, которую вы предоставили

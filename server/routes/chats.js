@@ -1,6 +1,7 @@
 import express from 'express';
 import Chat from '../models/Chat.js';
 import Message from '../models/Message.js';
+import User from '../models/User.js';
 import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -38,6 +39,54 @@ router.get('/', protect, admin, async (req, res) => {
     res.json(formattedChats);
   } catch (error) {
     console.error('Ошибка в GET /api/chats:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Start or get a chat with a user (admin only)
+router.post('/start', protect, admin, async (req, res) => {
+  try {
+    const { userId } = req.body || {};
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required' });
+    }
+
+    const user = await User.findById(userId).select('email phone city firstName lastName');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    let chat = await Chat.findOne({ userId: user._id }).populate('userId', 'email phone city firstName lastName');
+    if (!chat) {
+      chat = await Chat.create({
+        userId: user._id,
+        userEmail: user.email,
+        lastMessage: '',
+        unread: false,
+      });
+      await chat.populate('userId', 'email phone city firstName lastName');
+    }
+
+    const isUserPopulated = chat.userId && typeof chat.userId === 'object';
+
+    res.json({
+      chatId: chat._id,
+      userId: isUserPopulated ? chat.userId._id : chat.userId,
+      userEmail: chat.userEmail,
+      userInfo: isUserPopulated ? {
+        email: chat.userId.email,
+        phone: chat.userId.phone,
+        city: chat.userId.city,
+        firstName: chat.userId.firstName,
+        lastName: chat.userId.lastName
+      } : null,
+      lastMessage: chat.lastMessage,
+      lastUpdate: chat.lastUpdate,
+      unread: chat.unread,
+      orders: chat.orders
+    });
+  } catch (error) {
+    console.error('Ошибка в POST /api/chats/start:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -109,7 +158,7 @@ router.get('/:chatId/messages', protect, async (req, res) => {
 });
 
 // Mark chat as read
-router.put('/:chatId/read', protect, async (req, res) => {
+router.patch('/:chatId/read', protect, async (req, res) => {
   try {
     const { chatId } = req.params;
 
@@ -151,12 +200,8 @@ router.delete('/:chatId', protect, admin, async (req, res) => {
 });
 
 // Удаление отдельного сообщения (только админ)
-router.delete('/:messageId', protect, async (req, res) => {
+router.delete('/message/:messageId', protect, admin, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
-    }
-
     const message = await Message.findByIdAndDelete(req.params.messageId);
     if (!message) {
       return res.status(404).json({ message: 'Message not found' });

@@ -16,6 +16,8 @@ import fileRoutes from './routes/files.js';
 import Message from './models/Message.js';
 import Chat from './models/Chat.js';
 
+/* global process */
+
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,20 +25,34 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const server = http.createServer(app);
+
+// Обновленный список разрешенных адресов для работы на VPS
+const allowedOrigins = [
+  'http://localhost:5173', 
+  'http://localhost:5174',
+  'http://185.247.94.156',
+  'http://connector.ge',
+  'https://connector.ge',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || 'http://connector.ge',
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   }
 });
 
+app.set('io', io);
+
 connectDB();
 
 app.use(cors({
-  origin: process.env.CLIENT_URL || 'http://connector.ge',
+  origin: allowedOrigins,
   credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -144,6 +160,7 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
+// Явное указание 0.0.0.0 для приема внешних подключений на VPS
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
 });

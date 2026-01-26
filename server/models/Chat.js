@@ -24,11 +24,60 @@ const chatSchema = new mongoose.Schema({
     default: false
   },
   orders: [{
-    firstName: String,
-    lastName: String,
-    contact: String,
-    services: [String],
-    comment: String,
+    firstName: {
+      type: String,
+      required: false,
+      trim: true,
+      default: ''
+    },
+    lastName: {
+      type: String,
+      required: false,
+      trim: true,
+      default: ''
+    },
+    contact: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    services: {
+      type: [String],
+      required: true,
+      validate: {
+        validator: function(v) {
+          return v && v.length > 0;
+        },
+        message: 'At least one service is required'
+      }
+    },
+    comment: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    files: [{
+      id: {
+        type: String,
+        required: true
+      },
+      name: {
+        type: String,
+        required: true
+      },
+      size: {
+        type: Number,
+        required: true
+      },
+      type: {
+        type: String,
+        required: true
+      },
+      url: {
+        type: String,
+        required: true
+      }
+    }],
     status: {
       type: String,
       enum: ['new', 'accepted', 'declined'],

@@ -3,6 +3,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import fs from 'fs';
 
+/* global Buffer */
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -17,11 +19,19 @@ const storage = multer.diskStorage({
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {
-    // Исправление кодировки для корректной поддержки кириллицы
-    file.originalname = Buffer.from(file.originalname, 'latin1').toString('utf8');
-
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + path.extname(file.originalname));
+    try {
+      // Исправление кодировки для корректной поддержки кириллицы
+      const originalName = Buffer.from(file.originalname, 'latin1').toString('utf8');
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      const filename = uniqueSuffix + path.extname(originalName);
+      
+      console.log('Uploading file:', originalName, '->', filename);
+      cb(null, filename);
+    } catch (error) {
+      console.error('Error processing filename:', error);
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
   }
 });
 
@@ -33,7 +43,7 @@ const fileFilter = (req, file, cb) => {
 export const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB max file size
+    fileSize: 500 * 1024 * 1024 // 500MB max file size
   },
   fileFilter: fileFilter
 });

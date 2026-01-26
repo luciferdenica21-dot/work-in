@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { protect } from '../middleware/auth.js';
 
+/* global process */
+
 const router = express.Router();
 
 const generateToken = (id) => {
@@ -57,7 +59,12 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    const user = await User.findOne({ email });
+    const identifier = String(email).trim();
+    const normalizedEmail = identifier.toLowerCase();
+
+    const user = await User.findOne({
+      $or: [{ email: normalizedEmail }, { login: identifier }]
+    });
 
     if (user && (await user.matchPassword(password))) {
       res.json({
@@ -80,6 +87,63 @@ router.get('/me', protect, async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('-password');
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ОБНОВЛЕНИЕ ПРОФИЛЯ (данные о себе)
+router.put('/me', protect, async (req, res) => {
+  try {
+    const { firstName, lastName, phone, city } = req.body;
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.firstName = firstName ?? user.firstName;
+    user.lastName = lastName ?? user.lastName;
+    user.phone = phone ?? user.phone;
+    user.city = city ?? user.city;
+
+    await user.save();
+
+    const updated = await User.findById(req.user._id).select('-password');
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ПОЛУЧЕНИЕ КОНКРЕТНОГО ПОЛЬЗОВАТЕЛЯ (для админа)
+router.get('/users/:userId', protect, async (req, res) => {
+  try {
+    // Проверка что это админ или запрашивает себя
+    if (req.user.role !== 'admin' && req.user._id.toString() !== req.params.userId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    const user = await User.findById(req.params.userId).select('-password');
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// ПОЛУЧЕНИЕ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ (только для админа)
+router.get('/users', protect, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    
+    const users = await User.find({}).select('-password');
+    res.json(users);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

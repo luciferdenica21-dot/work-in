@@ -14,16 +14,33 @@ const router = express.Router();
 // Upload file to message
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
+    console.log('=== FILE UPLOAD REQUEST ===');
+    console.log('User:', req.user._id, req.user.email);
+    console.log('File info:', {
+      originalname: req.file?.originalname,
+      filename: req.file?.filename,
+      size: req.file?.size,
+      mimetype: req.file?.mimetype
+    });
+    console.log('Body:', req.body);
+    
     if (!req.file) {
+      console.log('ERROR: No file uploaded');
       return res.status(400).json({ message: 'No file uploaded' });
     }
 
     const { chatId, messageId } = req.body;
+    console.log('Processing upload for chatId:', chatId, 'messageId:', messageId);
+    
+    // Преобразуем строковые значения
+    const parsedChatId = chatId === 'undefined' || chatId === 'null' || !chatId ? null : chatId;
+    const parsedMessageId = messageId === 'undefined' || messageId === 'null' || !messageId ? null : messageId;
 
     // If messageId provided, add to existing message
-    if (messageId) {
-      const message = await Message.findById(messageId);
+    if (parsedMessageId) {
+      const message = await Message.findById(parsedMessageId);
       if (!message) {
+        console.log('ERROR: Message not found');
         return res.status(404).json({ message: 'Message not found' });
       }
 
@@ -43,6 +60,12 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       });
       await message.save();
 
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat-${message.chatId}`).emit('new-message', message);
+        io.emit('new-chat-message', { chatId: message.chatId.toString(), message: message.toObject() });
+      }
+
       return res.json({
         message: 'File uploaded',
         attachment: message.attachments[message.attachments.length - 1]
@@ -50,8 +73,8 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
     }
 
     // If chatId provided, create new message with file
-    if (chatId) {
-      const chat = await Chat.findById(chatId);
+    if (parsedChatId) {
+      const chat = await Chat.findById(parsedChatId);
       if (!chat) {
         return res.status(404).json({ message: 'Chat not found' });
       }
@@ -64,8 +87,8 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       const fileUrl = `/uploads/${req.file.filename}`;
 
       const message = await Message.create({
-        chatId,
-        text: `📎 ${req.file.originalname}`,
+        chatId: parsedChatId,
+        text: `📎 Отправлен файл: ${req.file.originalname}`,
         senderId,
         senderEmail: req.user.email,
         attachments: [{
@@ -85,12 +108,43 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       }
       await chat.save();
 
-      return res.status(201).json(message);
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat-${parsedChatId}`).emit('new-message', message);
+        io.emit('new-chat-message', { chatId: parsedChatId.toString(), message: message.toObject() });
+      }
+
+      // Возвращаем правильный формат для клиента
+      return res.status(201).json({
+        messageId: message._id,
+        fileUrl: fileUrl,
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        fileType: req.file.mimetype,
+        message: message
+      });
     }
 
-    res.status(400).json({ message: 'chatId or messageId is required' });
+    // Если нет chatId, просто загружаем файл (для заказов)
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    return res.status(201).json({
+      messageId: `file_${new Date().getTime()}`,
+      fileUrl: fileUrl,
+      fileName: req.file.originalname,
+      fileSize: req.file.size,
+      fileType: req.file.mimetype,
+      message: 'File uploaded successfully'
+    });
+
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('=== FILE UPLOAD ERROR ===');
+    console.error('Error details:', error);
+    console.error('Stack trace:', error.stack);
+    res.status(500).json({ 
+      message: error.message,
+      error: 'File upload failed'
+    });
   }
 });
 
