@@ -1465,7 +1465,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               </div>
                             ) : (
                               <>
-                                {(!msg.fileName || (msg.text && !msg.text.startsWith('📎'))) && (
+                                {(!msg.fileName || (((!msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('video/')) && (msg.text && !msg.text.startsWith('📎'))))) && (
                                   <p className="whitespace-pre-wrap break-words">{msg.text}</p>
                                 )}
                                 {msg.fileName && (

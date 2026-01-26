@@ -109,13 +109,36 @@ export const filesAPI = {
   },
   getFileUrl: (filename) => {
     if (!filename) return '';
-    if (filename.startsWith('http')) return filename;
-    
+    const raw = String(filename).trim();
+    if (!raw) return '';
+    if (raw.startsWith('http')) return raw;
+
     // Получаем только протокол и домен (без /api)
     const url = new URL(API_URL);
-    const origin = url.origin; 
-    
-    const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
+    const origin = url.origin;
+
+    // Normalize windows paths/backslashes and extract uploads part if needed
+    const normalized = raw.replace(/\\/g, '/');
+
+    let cleanFilename = normalized;
+    const uploadsIdx = normalized.indexOf('/uploads/');
+    if (uploadsIdx >= 0) {
+      cleanFilename = normalized.slice(uploadsIdx);
+    }
+
+    if (!cleanFilename.startsWith('/') && cleanFilename.startsWith('uploads/')) {
+      cleanFilename = `/${cleanFilename}`;
+    }
+
+    // If stored as bare filename in DB (old format), assume it lives in /uploads/
+    if (!cleanFilename.includes('/') && cleanFilename.includes('.')) {
+      cleanFilename = `/uploads/${cleanFilename}`;
+    }
+
+    if (!cleanFilename.startsWith('/')) {
+      cleanFilename = `/${cleanFilename}`;
+    }
+
     // VPS/nginx часто проксирует только /api, а /uploads может не отдаваться напрямую.
     // Backend кладет url как /uploads/<filename>, поэтому переписываем на /api/files/uploads/<filename>
     if (cleanFilename.startsWith('/uploads/')) {

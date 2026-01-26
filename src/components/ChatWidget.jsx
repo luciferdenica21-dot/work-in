@@ -391,7 +391,16 @@ const ChatWidget = ({ user }) => {
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const hasAttachments = msg.attachments && msg.attachments.length > 0;
-              const showText = !hasAttachments || (msg.text && !msg.text.startsWith('📎'));
+              const isAutoFileText =
+                typeof msg.text === 'string' &&
+                (msg.text.startsWith('📎') || msg.text.includes('Отправлен файл'));
+              const isMediaOnly =
+                hasAttachments &&
+                (msg.attachments || []).every((att) => {
+                  const mime = att?.mimetype || att?.type || '';
+                  return mime.startsWith('image/') || mime.startsWith('video/');
+                });
+              const showText = !hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText);
               return (
                 <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`min-w-0 max-w-[80%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white/80 rounded-tl-none'}`}>

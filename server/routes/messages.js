@@ -50,13 +50,39 @@ router.post('/', protect, async (req, res) => {
   }
 });
 
-router.delete('/:messageId', protect, admin, async (req, res) => {
+router.delete('/:messageId', protect, async (req, res) => {
   try {
     const { messageId } = req.params;
-    const message = await Message.findByIdAndDelete(messageId);
+
+    const message = await Message.findById(messageId);
     if (!message) {
       return res.status(404).json({ message: 'Message not found' });
     }
+
+    const chat = await Chat.findById(message.chatId);
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    // Admin can delete any message
+    if (req.user.role !== 'admin') {
+      // User must own chat and be sender of message
+      if (chat.userId?.toString() !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+      if (message.senderId !== req.user._id.toString()) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+    }
+
+    await Message.findByIdAndDelete(messageId);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${message.chatId}`).emit('message-deleted', { messageId });
+      io.emit('message-deleted', { messageId });
+    }
+
     res.json({ message: 'Message deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });

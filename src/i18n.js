@@ -89,6 +89,9 @@ const resources = {
   "support_chat": "ЧАТ С ПОДДЕРЖКОЙ",
   "support_chat_description": "Свяжитесь с нами через виджет чата на главной странице",
   "open_chat": "Открыть чат",
+  "Повторить пароль":"Повторить пароль",
+  "Логин":"Логин",
+  "Логин или Email":"Логин или Email",
       
       
 
@@ -361,6 +364,9 @@ TIG (Tungsten Inert Gas) Сварка:
   "support_chat": "SUPPORT CHAT",
   "support_chat_description": "Contact us via the chat widget on the home page",
   "open_chat": "Open chat",
+  "Повторить пароль":"Repeat password",
+  "Логин":"username",
+  "Логин или Email":"username or email:",
 
 
       
@@ -705,6 +711,10 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
   "support_chat": "მხარდაჭერის ჩატი",
   "support_chat_description": "დაგვიკავშირდით ჩატის საშუალებით მთავარ გვერდზე",
   "open_chat": "ჩატის გახსნა",
+  "Повторить пароль":"გაიმეორეთ პაროლი",
+  "Логин":"მეტსახელი",
+  "Логин или Email":"მეტსახელი ან ფოსტა",
+
      
 
 

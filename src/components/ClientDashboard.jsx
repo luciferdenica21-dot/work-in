@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { authAPI, chatsAPI, ordersAPI } from '../config/api';
+import { authAPI, chatsAPI, ordersAPI, filesAPI } from '../config/api';
 import ChatWidget from './ChatWidget';
 import { 
   User, Mail, Phone, MapPin, LogOut, Edit2, 
@@ -110,11 +110,7 @@ const ClientDashboard = ({ user: initialUser }) => {
   };
 
   const getAbsoluteFileUrl = (fileUrl) => {
-    if (!fileUrl) return '';
-    if (fileUrl.startsWith('http')) return fileUrl;
-    const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-    const base = rawBase.replace('/api', '');
-    return `${base}${fileUrl}`;
+    return filesAPI.getFileUrl(fileUrl);
   };
 
   const renderOrderFile = (file) => {
@@ -128,9 +124,6 @@ const ClientDashboard = ({ user: initialUser }) => {
             src={url}
             alt={file.name}
             style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '14px', border: `1px solid ${theme.border}` }}
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
           />
         </a>
       );
