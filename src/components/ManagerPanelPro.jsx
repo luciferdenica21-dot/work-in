@@ -30,11 +30,7 @@ const ManagerPanelPro = ({ user }) => {
 
 const getAbsoluteFileUrl = (fileUrl) => {
     if (!fileUrl) return '';
-    if (fileUrl.startsWith('http')) return fileUrl;
-    const apiUrl = import.meta.env.VITE_API_URL || window.location.origin + '/api';
-    const base = apiUrl.replace(/\/api\/?$/, '');
-    const cleanUrl = fileUrl.startsWith('/') ? fileUrl : `/${fileUrl}`;
-    return `${base}${cleanUrl}`;
+    return filesAPI.getFileUrl(fileUrl);
   };
 
   const escapeCsvValue = (value) => {

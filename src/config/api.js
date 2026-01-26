@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'https://connector.ge/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Вспомогательные функции для токена
 export const getToken = () => localStorage.getItem('token');
@@ -107,7 +107,7 @@ export const filesAPI = {
     
     return response.json();
   },
-getFileUrl: (filename) => {
+  getFileUrl: (filename) => {
     if (!filename) return '';
     if (filename.startsWith('http')) return filename;
     
@@ -116,7 +116,16 @@ getFileUrl: (filename) => {
     const origin = url.origin; 
     
     const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
-    // Если в БД путь уже содержит 'uploads/', убедитесь, что здесь нет дублирования
+    // VPS/nginx часто проксирует только /api, а /uploads может не отдаваться напрямую.
+    // Backend кладет url как /uploads/<filename>, поэтому переписываем на /api/files/uploads/<filename>
+    if (cleanFilename.startsWith('/uploads/')) {
+      return `${origin}/api/files${cleanFilename}`;
+    }
+    // Если url уже содержит /api/files, оставляем как есть
+    if (cleanFilename.startsWith('/api/files/')) {
+      return `${origin}${cleanFilename}`;
+    }
+
     return `${origin}${cleanFilename}`;
   },
 };
