@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import OrderButton from './OrderButton';
 import OrderSidebar from './OrderSidebar';
 
-const Navbar = ({ setIsOrderOpen, isOrderOpen, setIsAuthOpen, user, onLogout }) => {
+const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -110,12 +110,11 @@ const Navbar = ({ setIsOrderOpen, isOrderOpen, setIsAuthOpen, user, onLogout }) 
                 </div>
               </div>
 
-<OrderButton 
-  user={user} 
-  setIsOrderOpen={setIsOrderOpen} 
-  setIsAuthOpen={setIsAuthOpen} 
-  className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
-/>
+              <OrderButton 
+                user={user} 
+                setIsOrderOpen={setIsOrderOpen} 
+                className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
+              />
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
@@ -222,14 +221,13 @@ const Navbar = ({ setIsOrderOpen, isOrderOpen, setIsAuthOpen, user, onLogout }) 
           <OrderButton 
             user={user} 
             setIsOrderOpen={setIsOrderOpen} 
-            setIsAuthOpen={setIsAuthOpen} 
             className="text-blue-400"
           />
 
           {/* СМЕНА ЯЗЫКА */}
           <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="12" cy="12" r="10" />
+{ /* ... */ }
               <line x1="2" y1="12" x2="22" y2="12" />
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
             </svg>

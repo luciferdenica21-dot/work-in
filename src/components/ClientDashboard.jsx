@@ -6,10 +6,10 @@ import ChatWidget from './ChatWidget';
 import { 
   User, Mail, Phone, MapPin, LogOut, Edit2, 
   FileText, MessageSquare, Package, CheckCircle, 
-  XCircle, Clock, ArrowLeft, Settings
+  XCircle, Clock, ArrowLeft, Settings, Trash2
 } from 'lucide-react';
 
-const ClientDashboard = ({ user: initialUser, onLogout }) => {
+const ClientDashboard = ({ user: initialUser }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const [user, setUser] = useState(initialUser);
@@ -27,7 +27,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
   useEffect(() => {
     const loadData = async () => {
       try {
-        const userData = await authAPI.getMe();
+        const userData = await authAPI.me();
         setUser(userData);
         setProfileData({
           firstName: userData.firstName || '',
@@ -47,7 +47,7 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
     };
 
     loadData();
-  }, []);
+  }, [authAPI, chatsAPI]);
 
   const handleUpdateProfile = async () => {
     try {
@@ -58,6 +58,32 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
     } catch (error) {
       console.error('Error updating profile:', error);
       alert(t('profile_updated_error'));
+    }
+  };
+
+  const handleDeleteOrder = async (orderIndex) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этот заказ?')) {
+      return;
+    }
+
+    try {
+      if (!chat?.chatId) {
+        throw new Error('Chat not loaded');
+      }
+
+      await ordersAPI.delete(chat.chatId, orderIndex);
+      
+      // Обновляем локальный список заказов
+      const newOrders = orders.filter((_, idx) => idx !== orderIndex);
+      setOrders(newOrders);
+      
+      // Обновляем данные чата
+      const updatedChat = await chatsAPI.getMyChat();
+      setChat(updatedChat);
+      setOrders(updatedChat.orders || []);
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert('Ошибка при удалении заказа: ' + error.message);
     }
   };
 
@@ -81,6 +107,66 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
       default:
         return t('status_pending');
     }
+  };
+
+  const getAbsoluteFileUrl = (fileUrl) => {
+    if (!fileUrl) return '';
+    if (fileUrl.startsWith('http')) return fileUrl;
+    const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+    const base = rawBase.replace('/api', '');
+    return `${base}${fileUrl}`;
+  };
+
+  const renderOrderFile = (file) => {
+    const url = getAbsoluteFileUrl(file.url);
+    if (!url) return null;
+
+    if (file.type?.startsWith('image/')) {
+      return (
+        <a href={url} target="_blank" rel="noopener noreferrer" style={{ display: 'block' }}>
+          <img
+            src={url}
+            alt={file.name}
+            style={{ width: '100%', height: '140px', objectFit: 'cover', borderRadius: '14px', border: `1px solid ${theme.border}` }}
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+            }}
+          />
+        </a>
+      );
+    }
+
+    if (file.type?.startsWith('video/')) {
+      return (
+        <video
+          src={url}
+          controls
+          style={{ width: '100%', height: '180px', borderRadius: '14px', border: `1px solid ${theme.border}` }}
+        />
+      );
+    }
+
+    if (file.type?.startsWith('audio/')) {
+      return (
+        <audio
+          src={url}
+          controls
+          style={{ width: '100%' }}
+        />
+      );
+    }
+
+    return (
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ display: 'flex', alignItems: 'center', gap: '10px', color: theme.accent, fontSize: '12px', fontWeight: 700, textDecoration: 'underline' }}
+      >
+        <FileText size={16} />
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
+      </a>
+    );
   };
 
   const theme = {
@@ -270,7 +356,10 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
               <div style={{ width: '44px', height: '44px', background: 'rgba(56, 189, 248, 0.1)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <Package size={22} color={theme.accent} />
               </div>
-              <h2 style={{ fontSize: '18px', fontWeight: 900, margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('my_orders')}</h2>
+              <h2 style={{ fontSize: '18px', fontWeight: 900, color: theme.accent, display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px', textTransform: 'uppercase' }}>
+                <MessageSquare size={24} />
+                {t('my_orders')}
+              </h2>
             </div>
 
             {orders.length === 0 ? (
@@ -287,14 +376,44 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                       <div>
                         <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '6px', fontWeight: 700, textTransform: 'uppercase' }}>{t('order_number')} #{idx + 1}</div>
                         <div style={{ fontSize: '13px', color: theme.textMuted }}>
-                          {new Date(order.createdAt).toLocaleDateString('ru-RU', 'ka-GEO', 'en-ENG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''}
                         </div>
                       </div>
-                      <div className="order-status-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: `${order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent}15`, padding: '8px 16px', borderRadius: '10px', border: `1px solid ${order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent}30` }}>
-                        {getStatusIcon(order.status)}
-                        <span style={{ fontSize: '11px', fontWeight: 800, color: order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent }}>
-                          {getStatusText(order.status).toUpperCase()}
-                        </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div className="order-status-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', background: `${order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent}15`, padding: '8px 16px', borderRadius: '10px', border: `1px solid ${order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent}30` }}>
+                          {getStatusIcon(order.status)}
+                          <span style={{ fontSize: '11px', fontWeight: 800, color: order.status === 'accepted' ? theme.success : order.status === 'declined' ? theme.danger : theme.accent }}>
+                            {getStatusText(order.status).toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        {/* Кнопка удаления заказа */}
+                        <button
+                          onClick={() => handleDeleteOrder(idx)}
+                          style={{
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid rgba(239, 68, 68, 0.3)',
+                            borderRadius: '8px',
+                            padding: '8px',
+                            cursor: 'pointer',
+                            color: theme.danger,
+                            transition: 'all 0.2s ease',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}
+                          title="Удалить заказ"
+                          onMouseEnter={(e) => {
+                            e.target.style.background = 'rgba(239, 68, 68, 0.2)';
+                            e.target.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.target.style.background = 'rgba(239, 68, 68, 0.1)';
+                            e.target.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
                     </div>
 
@@ -321,6 +440,21 @@ const ClientDashboard = ({ user: initialUser, onLogout }) => {
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '10px', fontWeight: 800 }}>{t("Комментарий к заказу")}:</div>
                         <div style={{ fontSize: '13px', color: theme.textMain, fontStyle: 'italic', lineHeight: '1.6', fontWeight: 300 }}>"{order.comment}"</div>
+                      </div>
+                    )}
+
+                    {order.files && order.files.length > 0 && (
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '16px' }}>
+                        <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800, letterSpacing: '0.05em' }}>
+                          Файлы заказа:
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
+                          {order.files.map((file) => (
+                            <div key={file.id || file.url || file.name}>
+                              {renderOrderFile(file)}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>

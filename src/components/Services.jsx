@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // OrderSidebar здесь больше не нужен, он управляется в App.jsx
 import OrderButton from './OrderButton';
 
-const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, isOrderOpen }) => {
+const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
   const { t, i18n } = useTranslation();
 
   const servicesData = [
@@ -72,7 +72,6 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, isOrderOpen }
     setIsContactOpen(false);
   };
 
-  const brandGradient = "bg-gradient-to-r from-[#00A3FF] to-[#0066CC]";
 
   return (
     <section id="services" className="relative py-24 px-4 bg-[#050505]">

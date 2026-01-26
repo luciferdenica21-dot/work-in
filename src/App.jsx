@@ -10,7 +10,7 @@ import Contact from './components/Contact';
 import OrderSidebar from './components/OrderSidebar';
 import AuthModal from './components/AuthModal';
 import ChatWidget from './components/ChatWidget';
-import ManagerPanel from './components/ManagerPanel';
+import ManagerPanel from './components/ManagerPanelPro';
 import ClientDashboard from './components/ClientDashboard';
 import { authAPI, getToken, removeToken } from './config/api';
 
@@ -22,30 +22,32 @@ function App() {
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const token = getToken();
-      if (!token) {
-        setLoading(false);
-        return;
-      }
+ useEffect(() => {
+  const checkAuth = async () => {
+    const token = getToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const userData = await authAPI.getMe();
-        setUser(userData);
-        setUserRole(userData.role);
-      } catch (error) {
-        // Token invalid, remove it
-        removeToken();
-        setUser(null);
-        setUserRole(null);
-      } finally {
-        setLoading(false);
-      }
-    };
+    try {
+      // ИСПРАВЛЕНО: me() вместо getMe()
+      const userData = await authAPI.me(); 
+      setUser(userData);
+      setUserRole(userData.role);
+    } catch (error) {
+      console.error("Auth check failed:", error);
+      removeToken();
+      setUser(null);
+      setUserRole(null);
+    } finally {
+      // ВАЖНО: всегда выключаем загрузку в конце
+      setLoading(false); 
+    }
+  };
 
-    checkAuth();
-  }, []);
+  checkAuth();
+}, []);
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
@@ -103,31 +105,37 @@ function App() {
   );
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<MainSite />} />
-        <Route 
-          path="/manager" 
-          element={
-            user && userRole === 'admin' ? (
-              <ManagerPanel user={user} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-        <Route 
-          path="/dashboard" 
-          element={
-            user && userRole === 'user' ? (
-              <ClientDashboard user={user} onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/" replace />
-            )
-          } 
-        />
-      </Routes>
-    </Router>
+   <Router>
+  <Routes>
+    <Route path="/" element={<MainSite />} />
+    <Route 
+      path="/manager" 
+      element={
+        loading ? (
+          /* Пока идет загрузка, ничего не рендерим или показываем спиннер */
+          null 
+        ) : user && userRole === 'admin' ? (
+          <ManagerPanel user={user} />
+        ) : (
+          /* Только если загрузка завершена и юзера нет — редирект */
+          <Navigate to="/" replace />
+        )
+      } 
+    />
+    <Route 
+      path="/dashboard" 
+      element={
+        loading ? (
+          null
+        ) : user && userRole === 'user' ? (
+          <ClientDashboard user={user} onLogout={handleLogout} />
+        ) : (
+          <Navigate to="/" replace />
+        )
+      } 
+    />
+  </Routes>
+</Router>
   );
 }
 
