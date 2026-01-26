@@ -107,15 +107,16 @@ export const filesAPI = {
     
     return response.json();
   },
-  getFileUrl: (filename) => {
+getFileUrl: (filename) => {
     if (!filename) return '';
     if (filename.startsWith('http')) return filename;
     
-    // Получаем домен из API_URL (например, https://connector.ge)
+    // Получаем только протокол и домен (без /api)
     const url = new URL(API_URL);
     const origin = url.origin; 
     
     const cleanFilename = filename.startsWith('/') ? filename : `/${filename}`;
+    // Если в БД путь уже содержит 'uploads/', убедитесь, что здесь нет дублирования
     return `${origin}${cleanFilename}`;
   },
 };
