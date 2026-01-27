@@ -1,7 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
-import { protect } from '../middleware/auth.js';
+import Chat from '../models/Chat.js';
+import Message from '../models/Message.js';
+import { protect, admin } from '../middleware/auth.js';
 
 /* global process */
 
@@ -144,6 +146,29 @@ router.get('/users', protect, async (req, res) => {
     
     const users = await User.find({}).select('-password');
     res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// УДАЛЕНИЕ ПОЛЬЗОВАТЕЛЯ (только для админа)
+router.delete('/users/:userId', protect, admin, async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const chat = await Chat.findOneAndDelete({ userId: user._id });
+    if (chat?._id) {
+      await Message.deleteMany({ chatId: chat._id.toString() });
+    }
+
+    await User.findByIdAndDelete(user._id);
+
+    res.json({ message: 'User deleted' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

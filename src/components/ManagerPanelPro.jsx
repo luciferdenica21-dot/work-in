@@ -8,7 +8,7 @@ import {
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
-  BookOpen, Users, Home, Package, MessageCircle, Code, Globe, Shield, Database, Menu,
+  BookOpen, Users, Home, Package, MessageCircle, Code, Languages, Shield, Database, Menu,
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar
 } from 'lucide-react';
 
@@ -386,6 +386,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [chats, setChats] = useState([]);
   const [orders, setOrders] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
+  const [selectedClient, setSelectedClient] = useState(null);
   const [activeId, setActiveId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
@@ -442,6 +443,49 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [editingScriptId, setEditingScriptId] = useState(null);
   const [showScriptMenu, setShowScriptMenu] = useState(false);
   const [editingService, setEditingService] = useState(null);
+
+  const getClientChat = (clientId) => {
+    if (!clientId) return null;
+    return chats.find((c) => String(c?.userId) === String(clientId)) || null;
+  };
+
+  const getClientOrders = (clientId) => {
+    const chat = getClientChat(clientId);
+    if (!chat?.chatId) return [];
+    return (orders || []).filter((o) => String(o?.chatId) === String(chat.chatId));
+  };
+
+  const openClientInfo = (client) => {
+    if (!client) return;
+    setSelectedClient(client);
+  };
+
+  const handleDeleteClient = async (clientId) => {
+    if (!clientId) return;
+    if (!window.confirm('Удалить клиента?')) return;
+
+    try {
+      await authAPI.deleteUser(clientId);
+      setAllUsers((prev) => (prev || []).filter((u) => String(u?.id) !== String(clientId)));
+
+      const chat = getClientChat(clientId);
+      if (chat?.chatId) {
+        setChats((prev) => (prev || []).filter((c) => String(c?.chatId) !== String(chat.chatId)));
+        setOrders((prev) => (prev || []).filter((o) => String(o?.chatId) !== String(chat.chatId)));
+        if (String(activeId) === String(chat.chatId)) {
+          setActiveId(null);
+          setMessages([]);
+        }
+      }
+
+      if (String(selectedClient?.id) === String(clientId)) {
+        setSelectedClient(null);
+      }
+    } catch (err) {
+      console.error('Ошибка удаления клиента:', err);
+      alert('Не удалось удалить клиента');
+    }
+  };
 
   // Навигационные пункты для админа - только основные
   const navItems = [
@@ -1073,28 +1117,42 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
           {/* Mobile меню */}
           {mobileMenuOpen && (
-            <div className="lg:hidden py-4 border-t border-white/10">
-              <div className="grid grid-cols-2 gap-2">
-                {navItems.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => {
-                        setActiveSection(item.id);
-                        setMobileMenuOpen(false);
-                      }}
-                      className={`flex flex-col items-center space-y-1 p-3 rounded-lg text-sm transition-all ${
-                        activeSection === item.id
-                          ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                          : 'text-gray-300 hover:text-white hover:bg-white/5'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
-                    </button>
-                  );
-                })}
+            <div className="lg:hidden">
+              <div
+                className="fixed inset-0 bg-black/70 backdrop-blur-[1px] z-30"
+                onClick={() => setMobileMenuOpen(false)}
+              />
+              <div className="fixed left-0 right-0 top-16 z-40 px-4 py-6">
+                <div className="mx-auto max-w-sm bg-[#050a18]/95 border border-white/10 rounded-2xl p-4 shadow-2xl">
+                  <div className="flex flex-col items-center gap-2 text-center">
+                    <div className="text-sm font-semibold text-white">Меню</div>
+                    <div className="text-xs text-white/60">Навигация по панели</div>
+                  </div>
+
+                  <div className="mt-4 flex flex-col gap-2">
+                    {navItems.map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeSection === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveSection(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base ${
+                            isActive
+                              ? 'bg-blue-600/20 text-blue-200 border border-blue-500/30'
+                              : 'text-gray-200 hover:text-white hover:bg-white/5 border border-white/10'
+                          }`}
+                        >
+                          <Icon className="w-5 h-5" />
+                          <span className="text-center">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1299,12 +1357,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               <MessageCircle className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => openClientInfo(client)}
                               className="px-3 py-2 rounded-lg bg-white/5 text-gray-200 border border-white/10"
                               title="Информация"
                             >
                               <Info className="w-4 h-4" />
                             </button>
                             <button
+                              onClick={() => handleDeleteClient(client.id)}
                               className="px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
                               title="Удалить"
                             >
@@ -1371,10 +1431,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     >
                                       <MessageCircle className="w-4 h-4" />
                                     </button>
-                                    <button className="text-gray-400 hover:text-gray-300 p-1" title="Информация">
+                                    <button
+                                      onClick={() => openClientInfo(client)}
+                                      className="text-gray-400 hover:text-gray-300 p-1"
+                                      title="Информация"
+                                    >
                                       <Info className="w-4 h-4" />
                                     </button>
-                                    <button className="text-red-400 hover:text-red-300 p-1" title="Удалить">
+                                    <button
+                                      onClick={() => handleDeleteClient(client.id)}
+                                      className="text-red-400 hover:text-red-300 p-1"
+                                      title="Удалить"
+                                    >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
                                   </div>
@@ -1385,6 +1453,81 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </table>
                       </div>
                     </div>
+
+                    {selectedClient && (
+                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+                        <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden">
+                          <div className="p-4 border-b border-white/10 flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="text-white font-semibold truncate">
+                                {selectedClient.firstName} {selectedClient.lastName}
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">{selectedClient.email}</div>
+                            </div>
+                            <button
+                              onClick={() => setSelectedClient(null)}
+                              className="p-2 rounded-lg text-white hover:bg-white/10"
+                              title="Закрыть"
+                            >
+                              <X className="w-5 h-5" />
+                            </button>
+                          </div>
+
+                          <div className="p-4 space-y-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                                <div className="text-xs text-gray-400">Телефон</div>
+                                <div className="text-gray-200">{selectedClient.phone || 'Не указан'}</div>
+                              </div>
+                              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                                <div className="text-xs text-gray-400">Город</div>
+                                <div className="text-gray-200">{selectedClient.city || 'Не указан'}</div>
+                              </div>
+                            </div>
+
+                            <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <div className="text-xs text-gray-400">Заказы</div>
+                                  <div className="text-sm text-gray-200">
+                                    {getClientOrders(selectedClient.id).length}
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => handleDeleteClient(selectedClient.id)}
+                                  className="px-3 py-2 rounded-lg text-white border border-red-400/40 hover:bg-red-500/10 transition-colors text-xs"
+                                >
+                                  Удалить клиента
+                                </button>
+                              </div>
+
+                              {getClientOrders(selectedClient.id).length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {getClientOrders(selectedClient.id).slice(0, 10).map((o, idx) => (
+                                    <div key={`${o.chatId}-${o.orderIndex}-${idx}`} className="bg-black/20 border border-white/10 rounded-lg p-3">
+                                      <div className="flex items-center justify-between gap-3">
+                                        <div className="text-xs text-gray-200">
+                                          #{o.orderIndex}
+                                        </div>
+                                        <div className="text-xs text-gray-400">
+                                          {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 text-xs text-gray-300">
+                                        {(o.services || []).join(', ')}
+                                      </div>
+                                      {o.comment && (
+                                        <div className="mt-2 text-xs text-gray-400 italic">"{o.comment}"</div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </>
                 );
               })()}
@@ -1622,6 +1765,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           onChange={handleFileUpload}
                           className="hidden"
                         />
+                        <button
+                          onClick={() => setShowScriptMenu((v) => !v)}
+                          disabled={!activeId}
+                          className="p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 disabled:opacity-50"
+                          title="Скрипты"
+                        >
+                          <Code className="w-5 h-5" />
+                        </button>
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={!activeId || uploading}

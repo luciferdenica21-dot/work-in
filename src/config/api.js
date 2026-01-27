@@ -52,6 +52,7 @@ export const authAPI = {
   }),
   getUsers: () => apiRequest('/auth/users'),
   getUserById: (userId) => apiRequest(`/auth/users/${userId}`),
+  deleteUser: (userId) => apiRequest(`/auth/users/${userId}`, { method: 'DELETE' }),
 };
 
 export const chatsAPI = {
