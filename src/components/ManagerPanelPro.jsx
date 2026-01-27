@@ -175,7 +175,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       phone: safe.phone,
       city: safe.city,
       services: safe.services || [],
-      comment: safe.comment || '',
+      comment: safe.comment || safe.comments || safe.note || safe.message || '',
       files: (safe.files || []).map((f) => ({
         id: f?.id,
         name: f?.name,
@@ -840,6 +840,39 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
+  const handleClearChat = async () => {
+    if (!activeId) return;
+    if (!window.confirm('Очистить чат? Будут удалены все сообщения.')) return;
+
+    try {
+      setMessages([]);
+      await chatsAPI.clearMessages(activeId);
+      loadChats();
+    } catch (err) {
+      console.error('Ошибка очистки чата:', err);
+      alert('Не удалось очистить чат');
+      loadChats();
+    }
+  };
+
+  const handleDeleteChat = async () => {
+    if (!activeId) return;
+    if (!window.confirm('Удалить чат? Будут удалены чат и все сообщения.')) return;
+
+    const deletingId = activeId;
+    try {
+      setMessages([]);
+      setActiveId(null);
+      await chatsAPI.deleteChat(deletingId);
+      loadChats();
+    } catch (err) {
+      console.error('Ошибка удаления чата:', err);
+      alert('Не удалось удалить чат');
+      setActiveId(deletingId);
+      loadChats();
+    }
+  };
+
   const handleUpdateOrderStatus = async (chatId, orderIndex, status) => {
     try {
       console.log('Updating order status:', { chatId, orderIndex, status });
@@ -1440,12 +1473,29 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             {chats.find(c => c.chatId === activeId)?.userEmail}
                           </p>
                         </div>
-                        <button
-                          onClick={() => setActiveId(null)}
-                          className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
-                        >
-                          <X className="w-5 h-5" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={handleClearChat}
+                            className="px-3 py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
+                            title="Очистить чат"
+                          >
+                            Очистить
+                          </button>
+                          <button
+                            onClick={handleDeleteChat}
+                            className="px-3 py-2 rounded-lg text-white border border-red-400/40 hover:bg-red-500/10 transition-colors text-xs"
+                            title="Удалить чат"
+                          >
+                            Удалить чат
+                          </button>
+                          <button
+                            onClick={() => setActiveId(null)}
+                            className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
+                            title="Закрыть"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        </div>
                       </div>
                     </div>
 

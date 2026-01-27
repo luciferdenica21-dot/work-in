@@ -70,6 +70,12 @@ export const chatsAPI = {
     method: 'PATCH',
     body: JSON.stringify({ status }),
   }),
+  clearMessages: (chatId) => apiRequest(`/chats/${chatId}/messages`, {
+    method: 'DELETE',
+  }),
+  deleteChat: (chatId) => apiRequest(`/chats/${chatId}`, {
+    method: 'DELETE',
+  }),
 };
 
 export const messagesAPI = {

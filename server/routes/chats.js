@@ -179,11 +179,41 @@ router.patch('/:chatId/read', protect, async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Очистка чата (удалить все сообщения) (только админ)
+router.delete('/:chatId/messages', protect, admin, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+
+    await Message.deleteMany({ chatId });
+
+    chat.lastMessage = '';
+    chat.unread = false;
+    chat.lastUpdate = new Date();
+    await chat.save();
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${chatId}`).emit('chat-cleared', { chatId });
+      io.emit('chat-cleared', { chatId });
+    }
+
+    res.json({ message: 'Chat cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // Удаление чата (только админ)
 router.delete('/:chatId', protect, admin, async (req, res) => {
   try {
     const { chatId } = req.params;
-    
+
     // Удаляем сам чат
     const chat = await Chat.findByIdAndDelete(chatId);
     if (!chat) {
@@ -192,6 +222,12 @@ router.delete('/:chatId', protect, admin, async (req, res) => {
 
     // Удаляем все сообщения, связанные с этим чатом
     await Message.deleteMany({ chatId });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${chatId}`).emit('chat-deleted', { chatId });
+      io.emit('chat-deleted', { chatId });
+    }
 
     res.json({ message: 'Chat and messages deleted successfully' });
   } catch (error) {
