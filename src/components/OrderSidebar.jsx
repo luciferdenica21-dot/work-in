@@ -124,11 +124,16 @@ const OrderSidebar = ({
       type: f.type
     })));
 
-    // Проверка размера файлов (максимум 10MB каждый)
-    const oversizedFiles = files.filter(file => file.size > 10 * 1024 * 1024);
+    // Проверка размера файлов (фото/видео до 100MB каждый, остальные до 10MB)
+    const oversizedFiles = files.filter((file) => {
+      const type = String(file?.type || '');
+      const isMedia = type.startsWith('image/') || type.startsWith('video/');
+      const maxSizeMb = isMedia ? 100 : 10;
+      return file.size > maxSizeMb * 1024 * 1024;
+    });
     if (oversizedFiles.length > 0) {
       console.log('ERROR: Files too large:', oversizedFiles);
-      alert(`Файлы слишком большие. Максимальный размер: 10MB. Проблемные файлы: ${oversizedFiles.map(f => f.name).join(', ')}`);
+      alert(`Файлы слишком большие. Максимальный размер: фото/видео 100MB, остальные 10MB. Проблемные файлы: ${oversizedFiles.map(f => f.name).join(', ')}`);
       return;
     }
 

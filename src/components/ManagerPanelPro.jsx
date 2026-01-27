@@ -796,9 +796,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
       return;
     }
 
-    // Проверка размера файла (максимум 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      alert('Файл слишком большой. Максимальный размер: 10MB');
+    // Проверка размера файла (фото/видео до 100MB, остальные до 10MB)
+    const isMedia = String(file.type || '').startsWith('image/') || String(file.type || '').startsWith('video/');
+    const maxSizeMb = isMedia ? 100 : 10;
+    if (file.size > maxSizeMb * 1024 * 1024) {
+      alert(`Файл слишком большой. Максимальный размер: ${maxSizeMb}MB`);
       return;
     }
 
