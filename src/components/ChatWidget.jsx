@@ -168,9 +168,17 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-  const handleFileUpload = async (e) => {
+const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Проверка размера файла (100 MB = 104857600 bytes)
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      alert('Файл слишком большой. Максимальный размер — 100 МБ');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
 
     if (!chatId) {
       console.error('Chat ID not found');
