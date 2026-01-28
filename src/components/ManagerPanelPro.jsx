@@ -9,7 +9,7 @@ import {
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
   BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
-  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar
+  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown
  } from 'lucide-react';
 
 const ManagerPanelPro = ({ user }) => {
@@ -398,6 +398,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [activeSection, setActiveSection] = useState('dashboard'); 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileChatListOpen, setMobileChatListOpen] = useState(true);
+  const [chatActionsOpen, setChatActionsOpen] = useState(false);
+  const [systemOverviewOpen, setSystemOverviewOpen] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -1103,6 +1105,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const newOrders = (orders || []).filter((o) => o?.status === 'new');
   const unseenNewOrdersCount = newOrders.filter((o) => !seenOrders.includes(getOrderKey(o))).length;
 
+  const adminLabel = (
+    user?.name ||
+    user?.login ||
+    user?.username ||
+    user?.email?.split('@')?.[0] ||
+    'Admin'
+  );
+
   return (
     <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'} bg-[#050a18] text-white`}>
 
@@ -1174,7 +1184,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
               {/* Выход */}
               <button
                 onClick={() => { removeToken(); navigate('/'); }}
-                className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                className="hidden lg:flex p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                 title="Выйти"
               >
                 <LogOut className="w-4 h-4" />
@@ -1194,7 +1204,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
           {mobileMenuOpen && (
             <div className="lg:hidden">
               <div
-                className="fixed inset-0 bg-black/70 backdrop-blur-[1px] z-30"
+                className="fixed inset-0 bg-black/95 z-30"
                 onClick={() => setMobileMenuOpen(false)}
               />
               <div className="fixed left-0 right-0 top-16 z-40 px-4 py-6">
@@ -1226,6 +1236,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </button>
                       );
                     })}
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        removeToken();
+                        navigate('/');
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-red-300 hover:text-red-200 hover:bg-red-500/10 border border-red-500/20"
+                      title="Выйти"
+                    >
+                      <LogOut className="w-5 h-5" />
+                      <span className="text-center">Выйти</span>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1264,41 +1289,50 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 </div>
               </div>
 
-              <h2 className="text-lg sm:text-2xl font-bold text-white">Обзор системы</h2>
+              <button
+                onClick={() => setSystemOverviewOpen((v) => !v)}
+                className="w-full flex items-center justify-between text-left"
+                type="button"
+              >
+                <h2 className="text-lg sm:text-2xl font-bold text-white">Обзор системы</h2>
+                <ChevronDown className={`w-5 h-5 text-white/70 transition-transform ${systemOverviewOpen ? 'rotate-180' : ''}`} />
+              </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setActiveSection('chats')}
-                  className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-gray-300">Новые сообщения</div>
-                      <div className="text-2xl font-bold text-white">{unreadMessagesCount}</div>
-                      <div className={`mt-1 text-xs ${unreadMessagesCount ? 'text-yellow-300' : 'text-green-300'}`}>
-                        {unreadMessagesCount ? 'Не просмотрено' : 'Просмотрено'}
+              {systemOverviewOpen && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setActiveSection('chats')}
+                    className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-gray-300">Новые сообщения</div>
+                        <div className="text-2xl font-bold text-white">{unreadMessagesCount}</div>
+                        <div className={`mt-1 text-xs ${unreadMessagesCount ? 'text-yellow-300' : 'text-green-300'}`}>
+                          {unreadMessagesCount ? 'Не просмотрено' : 'Просмотрено'}
+                        </div>
                       </div>
+                      <Bell className={`w-7 h-7 ${unreadMessagesCount ? 'text-yellow-400' : 'text-green-400'}`} />
                     </div>
-                    <Bell className={`w-7 h-7 ${unreadMessagesCount ? 'text-yellow-400' : 'text-green-400'}`} />
-                  </div>
-                </button>
+                  </button>
 
-                <button
-                  onClick={() => setActiveSection('orders')}
-                  className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-gray-300">Новые заказы</div>
-                      <div className="text-2xl font-bold text-white">{newOrders.length}</div>
-                      <div className={`mt-1 text-xs ${unseenNewOrdersCount ? 'text-yellow-300' : 'text-green-300'}`}>
-                        {unseenNewOrdersCount ? `Не просмотрено: ${unseenNewOrdersCount}` : 'Просмотрено'}
+                  <button
+                    onClick={() => setActiveSection('orders')}
+                    className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-gray-300">Новые заказы</div>
+                        <div className="text-2xl font-bold text-white">{newOrders.length}</div>
+                        <div className={`mt-1 text-xs ${unseenNewOrdersCount ? 'text-yellow-300' : 'text-green-300'}`}>
+                          {unseenNewOrdersCount ? `Не просмотрено: ${unseenNewOrdersCount}` : 'Просмотрено'}
+                        </div>
                       </div>
+                      <Package className={`w-7 h-7 ${unseenNewOrdersCount ? 'text-yellow-400' : 'text-green-400'}`} />
                     </div>
-                    <Package className={`w-7 h-7 ${unseenNewOrdersCount ? 'text-yellow-400' : 'text-green-400'}`} />
-                  </div>
-                </button>
-              </div>
+                  </button>
+                </div>
+              )}
 
               {/* Desktop: большие карточки */}
               <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1647,18 +1681,36 @@ const getAbsoluteFileUrl = (fileUrl) => {
           {activeSection === 'chats' && (
             <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100dvh-8rem)] lg:h-[calc(100vh-8rem)]">
               {/* Мобильная кнопка переключения списка чатов */}
-              <div className="lg:hidden flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Чаты</h2>
+              <div className="lg:hidden flex justify-between items-center mb-3">
                 <button
-                  onClick={() => setMobileChatListOpen(!mobileChatListOpen)}
+                  onClick={() => {
+                    setChatActionsOpen(false);
+                    if (activeId) {
+                      setActiveId(null);
+                      setMobileChatListOpen(true);
+                      return;
+                    }
+                    setActiveSection('dashboard');
+                  }}
+                  className="p-2 rounded-lg text-white hover:bg-white/10"
+                  title="Назад"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => {
+                    setChatActionsOpen(false);
+                    setMobileChatListOpen(!mobileChatListOpen);
+                  }}
                   className="p-2 bg-white/10 rounded-lg text-white"
+                  title={mobileChatListOpen ? 'Скрыть список' : 'Показать список'}
                 >
                   {mobileChatListOpen ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
                 </button>
               </div>
 
               {/* Список чатов - мобильный и десктоп */}
-              <div className={`${mobileChatListOpen ? 'block' : 'hidden'} lg:block w-full lg:w-80 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden`}>
+              <div className={`${mobileChatListOpen ? 'block' : 'hidden'} lg:block flex-1 lg:flex-none w-full lg:w-80 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden`}>
                 <div className="p-4 border-b border-white/10">
                   <h3 className="text-lg font-semibold text-white hidden lg:block">Чаты</h3>
                   <div className="relative">
@@ -1680,6 +1732,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     <div
                       key={chat.chatId}
                       onClick={() => {
+                        setChatActionsOpen(false);
                         setActiveId(chat.chatId);
                         setMobileChatListOpen(false); // Закрываем список на мобильных
                       }}
@@ -1711,7 +1764,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
               </div>
 
               {/* Область чата */}
-              <div className="flex-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden flex flex-col">
+              <div className={`flex-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${activeId ? 'flex' : 'hidden lg:flex'} flex-col`}>
                 {activeId ? (
                   <>
                     {/* Заголовок чата */}
@@ -1726,26 +1779,62 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
+                            <Shield className="w-4 h-4 text-blue-300" />
+                            <span className="text-xs text-white/80 max-w-[120px] truncate">{adminLabel}</span>
+                          </div>
+
+                          <div className="relative">
+                            <button
+                              onClick={() => setChatActionsOpen((v) => !v)}
+                              className="p-2 rounded-lg text-white hover:bg-white/10 border border-white/10"
+                              title="Настройки"
+                            >
+                              <Settings className="w-4 h-4" />
+                            </button>
+
+                            {chatActionsOpen && (
+                              <>
+                                <div
+                                  className="fixed inset-0 z-40"
+                                  onClick={() => setChatActionsOpen(false)}
+                                />
+                                <div className="absolute right-0 mt-2 w-44 bg-[#050a18]/95 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                  <button
+                                    onClick={() => {
+                                      setChatActionsOpen(false);
+                                      handleClearChat();
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5"
+                                    type="button"
+                                  >
+                                    Очистить чат
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      setChatActionsOpen(false);
+                                      handleDeleteChat();
+                                    }}
+                                    className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10"
+                                    type="button"
+                                  >
+                                    Удалить чат
+                                  </button>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
                           <button
-                            onClick={handleClearChat}
-                            className="px-3 py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
-                            title="Очистить чат"
-                          >
-                            Очистить
-                          </button>
-                          <button
-                            onClick={handleDeleteChat}
-                            className="px-3 py-2 rounded-lg text-white border border-red-400/40 hover:bg-red-500/10 transition-colors text-xs"
-                            title="Удалить чат"
-                          >
-                            Удалить чат
-                          </button>
-                          <button
-                            onClick={() => setActiveId(null)}
+                            onClick={() => {
+                              setChatActionsOpen(false);
+                              setActiveId(null);
+                              setMobileChatListOpen(true);
+                            }}
                             className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
-                            title="Закрыть"
+                            title="Назад"
                           >
-                            <X className="w-5 h-5" />
+                            <ChevronLeft className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
@@ -2011,7 +2100,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </div>
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center">
+                  <div className="hidden lg:flex flex-1 items-center justify-center">
                     <div className="text-center">
                       <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-600" />
                       <p className="text-gray-400">Выберите чат для начала общения</p>
