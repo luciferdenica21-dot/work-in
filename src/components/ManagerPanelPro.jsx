@@ -456,6 +456,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [scriptEditorOpen, setScriptEditorOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem('manager_scripts', JSON.stringify(scripts));
+    } catch {
+      // ignore
+    }
+  }, [scripts]);
+
   const getClientChat = (clientId) => {
     if (!clientId) return null;
     return chats.find((c) => String(c?.userId) === String(clientId)) || null;
@@ -973,9 +981,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const handleDeleteScript = (scriptId) => {
     if (!window.confirm("Удалить скрипт?")) return;
     try {
-      setScripts(prev => prev.filter(s => s.id !== scriptId));
-      // Сохраняем в localStorage
-      localStorage.setItem('manager_scripts', JSON.stringify(scripts.filter(s => s.id !== scriptId)));
+      setScripts((prev) => (prev || []).filter((s) => s.id !== scriptId));
     } catch (err) {
       console.error('Ошибка удаления скрипта:', err);
       alert('Не удалось удалить скрипт');
@@ -984,13 +990,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
   const handleSaveScript = () => {
     if (!newScript.title || !newScript.text) return;
-    
-    if (editingScriptId) {
-      setScripts(scripts.map(s => s.id === editingScriptId ? { ...newScript, id: editingScriptId } : s));
-      setEditingScriptId(null);
-    } else {
-      setScripts([...scripts, { ...newScript, id: Date.now() }]);
-    }
+
+    const payload = { ...newScript, title: String(newScript.title).trim(), text: String(newScript.text).trim() };
+
+    setScripts((prev) => {
+      const list = Array.isArray(prev) ? prev : [];
+      if (editingScriptId) {
+        return list.map((s) => (s.id === editingScriptId ? { ...payload, id: editingScriptId } : s));
+      }
+      return [...list, { ...payload, id: Date.now() }];
+    });
+
+    if (editingScriptId) setEditingScriptId(null);
     setNewScript({ title: '', text: '' });
   };
 
@@ -2287,8 +2298,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </button>
                           <button
                             onClick={() => {
+                              if (!newScript.title || !newScript.text) return;
                               handleSaveScript();
-                              if (newScript.title && newScript.text) closeScriptEditor();
+                              closeScriptEditor();
                             }}
                             disabled={!newScript.title || !newScript.text}
                             className={`px-4 py-3 rounded-xl ${brandGradient} text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
