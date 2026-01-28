@@ -8,12 +8,12 @@ import {
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
-  BookOpen, Users, Home, Package, MessageCircle, Code, Languages, Shield, Database, Menu,
+  BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar
-} from 'lucide-react';
+ } from 'lucide-react';
 
 const ManagerPanelPro = ({ user }) => {
-  const { t, i18n } = useTranslation();
+  const { i18n } = useTranslation();
   const navigate = useNavigate();
   
   // Функция форматирования размера файла
@@ -401,6 +401,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [pinnedOrder, setPinnedOrder] = useState(null);
+  const [seenOrders, setSeenOrders] = useState(() => {
+    try {
+      const raw = localStorage.getItem('manager_seen_orders');
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -431,7 +441,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?' },
         { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.' }
       ];
-    } catch (e) {
+    } catch {
       return [
       { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?' },
       { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.' }
@@ -456,6 +466,36 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (!chat?.chatId) return [];
     return (orders || []).filter((o) => String(o?.chatId) === String(chat.chatId));
   };
+
+  const getOrderKey = (order) => {
+    const chatId = order?.chatId;
+    const orderIndex = order?.orderIndex;
+    if (chatId == null || orderIndex == null) return '';
+    return `${chatId}:${orderIndex}`;
+  };
+
+  const markOrderSeen = (order) => {
+    const key = getOrderKey(order);
+    if (!key) return;
+    setSeenOrders((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  };
+
+  const openChatWithOrder = (order) => {
+    if (!order?.chatId) return;
+    setPinnedOrder(order);
+    markOrderSeen(order);
+    setActiveSection('chats');
+    setActiveId(order.chatId);
+    setMobileChatListOpen(false);
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('manager_seen_orders', JSON.stringify(seenOrders));
+    } catch {
+      // ignore
+    }
+  }, [seenOrders]);
 
   const openClientInfo = (client) => {
     if (!client) return;
@@ -498,25 +538,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
     { id: 'scripts', label: 'Скрипты', icon: Code }
   ];
 
-  // Добавим Error Boundary для предотвращения падения компонента
-  
-  if (error) {
-    return (
-      <div className="min-h-screen bg-[#050a18] flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">Произошла ошибка</div>
-          <p className="text-white mb-4">{error.message}</p>
-          <button 
-            onClick={() => setError(null)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg"
-          >
-            Перезагрузить
-          </button>
-        </div>
-      </div>
-    );
-  }
-
 
   const brandGradient = "bg-gradient-to-r from-blue-600 to-cyan-500";
 
@@ -545,7 +566,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       try {
         const usersData = await authAPI.getUsers() || [];
         realUsers = usersData;
-      } catch (error) {
+      } catch {
         console.log('Users API not available, using chat/order data');
       }
 
@@ -778,7 +799,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
     } catch (err) { 
       console.error('Error sending message:', err);
       alert('Ошибка отправки сообщения');
-      const tempId = Date.now().toString();
     }
   };
 
@@ -1064,8 +1084,31 @@ const getAbsoluteFileUrl = (fileUrl) => {
     );
   }
 
+  const unreadMessagesCount = (chats || []).reduce((sum, c) => {
+    if (typeof c?.unread === 'number') return sum + c.unread;
+    return sum + (c?.unread ? 1 : 0);
+  }, 0);
+
+  const newOrders = (orders || []).filter((o) => o?.status === 'new');
+  const unseenNewOrdersCount = newOrders.filter((o) => !seenOrders.includes(getOrderKey(o))).length;
+
   return (
     <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'} bg-[#050a18] text-white`}>
+
+      {error && (
+        <div className="fixed inset-0 z-[9999] bg-[#050a18] flex items-center justify-center p-6">
+          <div className="text-center max-w-lg">
+            <div className="text-red-400 text-xl mb-4">Произошла ошибка</div>
+            <p className="text-white mb-4">{error.message}</p>
+            <button 
+              onClick={() => setError(null)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+            >
+              Перезагрузить
+            </button>
+          </div>
+        </div>
+      )}
       
       {/* Навигация */}
       <nav className="fixed top-0 w-full z-50 bg-[#050a18]/95 backdrop-blur-md border-b border-white/10">
@@ -1211,6 +1254,40 @@ const getAbsoluteFileUrl = (fileUrl) => {
               </div>
 
               <h2 className="text-lg sm:text-2xl font-bold text-white">Обзор системы</h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={() => setActiveSection('chats')}
+                  className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-300">Новые сообщения</div>
+                      <div className="text-2xl font-bold text-white">{unreadMessagesCount}</div>
+                      <div className={`mt-1 text-xs ${unreadMessagesCount ? 'text-yellow-300' : 'text-green-300'}`}>
+                        {unreadMessagesCount ? 'Не просмотрено' : 'Просмотрено'}
+                      </div>
+                    </div>
+                    <Bell className={`w-7 h-7 ${unreadMessagesCount ? 'text-yellow-400' : 'text-green-400'}`} />
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => setActiveSection('orders')}
+                  className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-sm text-gray-300">Новые заказы</div>
+                      <div className="text-2xl font-bold text-white">{newOrders.length}</div>
+                      <div className={`mt-1 text-xs ${unseenNewOrdersCount ? 'text-yellow-300' : 'text-green-300'}`}>
+                        {unseenNewOrdersCount ? `Не просмотрено: ${unseenNewOrdersCount}` : 'Просмотрено'}
+                      </div>
+                    </div>
+                    <Package className={`w-7 h-7 ${unseenNewOrdersCount ? 'text-yellow-400' : 'text-green-400'}`} />
+                  </div>
+                </button>
+              </div>
 
               {/* Desktop: большие карточки */}
               <div className="hidden sm:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1663,6 +1740,29 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       </div>
                     </div>
 
+                    {pinnedOrder && String(pinnedOrder.chatId) === String(activeId) && (
+                      <div className="p-4 border-b border-white/10 bg-white/5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs text-gray-400">Заказ прикреплён</div>
+                            <div className="text-sm font-semibold text-white truncate">
+                              #{pinnedOrder.orderIndex} · {(pinnedOrder.services || []).join(', ') || 'Заказ'}
+                            </div>
+                            {pinnedOrder.comment && (
+                              <div className="mt-1 text-xs text-gray-300 italic line-clamp-2">"{pinnedOrder.comment}"</div>
+                            )}
+                          </div>
+                          <button
+                            onClick={() => setPinnedOrder(null)}
+                            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                            title="Открепить"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Сообщения */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {messages.map(msg => (
@@ -1955,7 +2055,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 {orders.filter(order => 
                   filterStatus === 'all' || order.status === filterStatus
                 ).map((order, idx) => (
-                  <div key={`${order.chatId}-${idx}`} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6">
+                  <div
+                    key={`${order.chatId}-${idx}`}
+                    className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6"
+                    onClick={() => markOrderSeen(order)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') markOrderSeen(order);
+                    }}
+                  >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <div className="flex items-center justify-between sm:justify-start gap-3">
                         <span className={`px-2 py-1 text-xs rounded-full ${
@@ -1966,9 +2075,27 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         {order.status === 'new' ? 'Новый' :
                          order.status === 'accepted' ? 'Принят' : 'Отклонен'}
                         </span>
+
+                        <span className={`px-2 py-1 text-xs rounded-full border ${
+                          seenOrders.includes(getOrderKey(order))
+                            ? 'border-green-500/30 text-green-300 bg-green-500/10'
+                            : 'border-yellow-500/30 text-yellow-300 bg-yellow-500/10'
+                        }`}>
+                          {seenOrders.includes(getOrderKey(order)) ? 'Просмотрено' : 'Не просмотрено'}
+                        </span>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-end gap-2 sm:justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openChatWithOrder(order);
+                          }}
+                          className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-blue-400/30 hover:bg-blue-500/10 transition-colors text-xs"
+                          title="Связаться с клиентом"
+                        >
+                          Связаться
+                        </button>
                         <select
                           value={order.status || 'new'}
                           onChange={(e) => handleUpdateOrderStatus(order.chatId, order.orderIndex, e.target.value)}
@@ -1980,7 +2107,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <option className="bg-slate-900 text-white" value="declined">Отклонен</option>
                         </select>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             downloadOrder(order, 'json');
                           }}
                           className="p-3 sm:p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors"
@@ -1989,7 +2117,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <Download className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => downloadOrdersPdf([order])}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            downloadOrdersPdf([order]);
+                          }}
                           className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
                           title="Скачать PDF"
                         >
