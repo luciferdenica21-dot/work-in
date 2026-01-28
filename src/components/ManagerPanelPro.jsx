@@ -9,7 +9,7 @@ import {
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
   BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
-  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown
+  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
  } from 'lucide-react';
 
 const ManagerPanelPro = ({ user }) => {
@@ -400,6 +400,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [mobileChatListOpen, setMobileChatListOpen] = useState(true);
   const [chatActionsOpen, setChatActionsOpen] = useState(false);
   const [systemOverviewOpen, setSystemOverviewOpen] = useState(true);
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [longPressTimer, setLongPressTimer] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [uploading, setUploading] = useState(false);
@@ -916,6 +919,77 @@ const getAbsoluteFileUrl = (fileUrl) => {
       // Откатываем изменения если ошибка
       loadChats();
     }
+  }; // eslint-disable-line no-unused-vars
+
+  // eslint-disable-next-line no-unused-vars
+  const _handleDeleteMessage = handleDeleteMessage;
+
+  const handleDeleteSelectedMessages = async () => {
+    if (selectedMessages.size === 0) return;
+    if (!window.confirm(`Удалить ${selectedMessages.size} сообщений?`)) return;
+
+    try {
+      const ids = Array.from(selectedMessages);
+      setMessages(prev => prev.filter(m => !ids.includes(m._id || m.id)));
+      setSelectedMessages(new Set());
+
+      // Удаляем на сервере
+      await Promise.all(ids.map(id => messagesAPI.delete(id).catch(() => null)));
+
+      const socket = getSocket();
+      if (socket) {
+        ids.forEach(id => {
+          socket.emit('delete-message', { chatId: activeId, messageId: id });
+        });
+      }
+    } catch (err) {
+      console.error('Ошибка удаления сообщений:', err);
+      alert('Не удалось удалить сообщения');
+      loadChats();
+    }
+  };
+
+  const handlePinMessage = (msg) => {
+    if (pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id)) {
+      setPinnedMessage(null);
+    } else {
+      setPinnedMessage(msg);
+    }
+  };
+
+  const handleMessageMouseDown = (msg) => {
+    const timer = setTimeout(() => {
+      setSelectedMessages(prev => {
+        const newSet = new Set(prev);
+        const msgId = msg._id || msg.id;
+        if (newSet.has(msgId)) {
+          newSet.delete(msgId);
+        } else {
+          newSet.add(msgId);
+        }
+        return newSet;
+      });
+    }, 500);
+    setLongPressTimer(timer);
+  };
+
+  const handleMessageMouseUp = () => {
+    if (longPressTimer) {
+      clearTimeout(longPressTimer);
+      setLongPressTimer(null);
+    }
+  };
+
+  const toggleMessageSelection = (msgId) => {
+    setSelectedMessages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId);
+      } else {
+        newSet.add(msgId);
+      }
+      return newSet;
+    });
   };
 
   const handleClearChat = async () => {
@@ -1863,6 +1937,54 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       </div>
                     )}
 
+                    {pinnedMessage && (
+                      <div className="p-4 border-b border-white/10 bg-blue-500/10">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="text-xs text-blue-300 flex items-center gap-1">
+                              <Pin className="w-3 h-3" />
+                              Прикреплённое сообщение
+                            </div>
+                            <div className="text-sm text-white mt-1 line-clamp-3">
+                              {pinnedMessage.text}
+                            </div>
+                            <div className="text-xs text-gray-400 mt-1">
+                              {new Date(pinnedMessage.createdAt).toLocaleString()}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => setPinnedMessage(null)}
+                            className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                            title="Открепить"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedMessages.size > 0 && (
+                      <div className="p-3 border-b border-white/10 bg-red-500/10 flex items-center justify-between">
+                        <span className="text-sm text-red-300">
+                          Выбрано: {selectedMessages.size}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => setSelectedMessages(new Set())}
+                            className="px-3 py-1 text-xs bg-white/10 rounded-lg text-white hover:bg-white/20"
+                          >
+                            Отменить
+                          </button>
+                          <button
+                            onClick={handleDeleteSelectedMessages}
+                            className="px-3 py-1 text-xs bg-red-600 rounded-lg text-white hover:bg-red-700"
+                          >
+                            Удалить
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Сообщения */}
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {messages.map(msg => (
@@ -1871,7 +1993,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             msg.senderId === 'manager' 
                               ? 'bg-blue-600 text-white' 
                               : 'bg-white/10 text-white'
-                          }`}>
+                          } ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
+                            onMouseDown={() => handleMessageMouseDown(msg)}
+                            onMouseUp={handleMessageMouseUp}
+                            onMouseLeave={handleMessageMouseUp}
+                            onTouchStart={() => handleMessageMouseDown(msg)}
+                            onTouchEnd={handleMessageMouseUp}
+                          >
                             {msg.isUploading ? (
                               <div className="flex items-center space-x-2">
                                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -1957,12 +2085,26 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               </>
                             )}
                             {!msg.isUploading && (
-                              <button
-                                onClick={() => handleDeleteMessage(msg._id || msg.id)}
-                                className="ml-2 text-red-400 hover:text-red-300"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
+                              <div className="flex items-center gap-1 ml-2">
+                                <button
+                                  onClick={() => toggleMessageSelection(msg._id || msg.id)}
+                                  className="text-white/60 hover:text-white"
+                                  title={selectedMessages.has(msg._id || msg.id) ? 'Снять выделение' : 'Выделить'}
+                                >
+                                  {selectedMessages.has(msg._id || msg.id) ? (
+                                    <CheckSquare className="w-3 h-3 text-blue-400" />
+                                  ) : (
+                                    <Square className="w-3 h-3" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handlePinMessage(msg)}
+                                  className="text-white/60 hover:text-white"
+                                  title={pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id) ? 'Открепить' : 'Прикрепить'}
+                                >
+                                  <Pin className={`w-3 h-3 ${pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id) ? 'text-blue-400' : ''}`} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
