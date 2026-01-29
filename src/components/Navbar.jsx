@@ -245,7 +245,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
             <select onChange={changeLanguage} value={i18n.language} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
               <option value="ru">RU</option>
               <option value="en">EN</option>
-              <option value="ka">KA</option>
+              <option value="ka">GE</option>
             </select>
           </div>
 
