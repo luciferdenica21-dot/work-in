@@ -8,7 +8,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
   const { t, i18n } = useTranslation();
 
   const servicesData = [
-    { title: t("S1_T"), img: "/gallery/Гибочные работы по металлам.jpg", desc: "", fullDesc: t("S1_D") },
+    { title: t("S1_T"), img: "/gallery/Гибочные работы по металлам.jpg", video: "/gallery/гибочные работы.mp4", desc: "", fullDesc: t("S1_D") },
     { title: t("S2_T"), img: "/gallery/Жидкостная окраска.jpg", desc: "", fullDesc: t("S2_D") },
     { title: t("S3_T"), img: "/gallery/Лазерная гравировка.jpg", desc: "", fullDesc: t("S3_D") },
     { title: t("S4_T"), img: "/gallery/Лазерная резка металлов.jpg", desc: "", fullDesc: t("S4_D") },
