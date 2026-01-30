@@ -4,7 +4,7 @@ const Contact = () => {
   const contacts = [
     {
       name: 'Telegram',
-      url: 'https://t.me/@MichaelPiliaev',
+      url: 'https://t.me/https://t.me/ConnectorGe',
       color: 'hover:bg-[#229ED9] hover:shadow-[0_0_30px_rgba(34,158,217,0.6)]',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-7 md:h-7">
@@ -14,7 +14,7 @@ const Contact = () => {
     },
     {
       name: 'WhatsApp',
-      url: 'https://wa.me/+995593450833',
+      url: 'https://wa.me/+995591160685',
       color: 'hover:bg-[#25D366] hover:shadow-[0_0_30px_rgba(37,211,102,0.6)]',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-7 md:h-7">
@@ -24,20 +24,8 @@ const Contact = () => {
       ),
     },
     {
-      name: 'Instagram',
-      url: 'https://instagram.com/connector',
-      color: 'hover:bg-[#E4405F] hover:shadow-[0_0_30px_rgba(228,64,95,0.6)]',
-      icon: (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-7 md:h-7">
-          <rect x="4" y="4" width="16" height="16" rx="4" />
-          <circle cx="12" cy="12" r="3" />
-          <line x1="16.5" y1="7.5" x2="16.5" y2="7.501" />
-        </svg>
-      ),
-    },
-    {
       name: 'Gmail',
-      url: 'mailto:luciferdenica21@gmail.com',
+      url: 'mailto:useconnector@gmail.com',
       color: 'hover:bg-[#EA4335] hover:shadow-[0_0_30px_rgba(234,67,53,0.6)]',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-7 md:h-7">
