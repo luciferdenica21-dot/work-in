@@ -1,13 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
-import { Paperclip, X, Download, Maximize2, Minimize2 } from 'lucide-react';
+import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square } from 'lucide-react';
 
 const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
+
+  const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [replyTo, setReplyTo] = useState(null);
+  const longPressTimerRef = useRef(null);
+  const longPressTriggeredRef = useRef(false);
 
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -42,6 +48,118 @@ const ChatWidget = ({ user }) => {
         }
       ]
     };
+  };
+
+  const isSelecting = selectedMessages.size > 0;
+
+  const toggleMessageSelection = (msg) => {
+    const id = getMsgId(msg);
+    if (!id) return;
+    setSelectedMessages((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedMessages(new Set());
+  };
+
+  const handleDeleteSelected = async () => {
+    if (!chatId) return;
+    if (selectedMessages.size === 0) return;
+
+    const selectedIds = Array.from(selectedMessages);
+    const allowedIds = messages
+      .filter((m) => {
+        const id = getMsgId(m);
+        if (!id || String(id).startsWith('temp_')) return false;
+        if (!selectedIds.includes(id)) return false;
+        return isUserMessage(m);
+      })
+      .map((m) => getMsgId(m));
+
+    if (allowedIds.length === 0) return;
+    if (!window.confirm(`Удалить ${allowedIds.length} сообщений?`)) return;
+
+    setMessages((prev) => prev.filter((m) => !allowedIds.includes(getMsgId(m))));
+    clearSelection();
+
+    await Promise.all(
+      allowedIds.map((id) =>
+        messagesAPI.delete(id).catch(() => null)
+      )
+    );
+  };
+
+  const handlePinSelected = () => {
+    if (selectedMessages.size !== 1) return;
+    const id = Array.from(selectedMessages)[0];
+    const msg = messages.find((m) => getMsgId(m) === id);
+    if (!msg) return;
+    const nextPinned = pinnedMessage && getMsgId(pinnedMessage) === id ? null : msg;
+    setPinnedMessage(nextPinned);
+    try {
+      if (nextPinned) localStorage.setItem(`chatwidget_pinned_${chatId}`, JSON.stringify(nextPinned));
+      else localStorage.removeItem(`chatwidget_pinned_${chatId}`);
+    } catch {
+      // ignore
+    }
+    clearSelection();
+  };
+
+  const handleReplySelected = () => {
+    if (selectedMessages.size !== 1) return;
+    const id = Array.from(selectedMessages)[0];
+    const msg = messages.find((m) => getMsgId(m) === id);
+    if (!msg) return;
+    setReplyTo(msg);
+    clearSelection();
+  };
+
+  const handleMessagePressStart = (msg) => {
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      toggleMessageSelection(msg);
+    }, 500);
+  };
+
+  const handleMessagePressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const getMsgId = (msg) => msg?._id || msg?.id;
+
+  const parseReplyMetaFromText = (text) => {
+    if (typeof text !== 'string') return null;
+    if (!text.startsWith('[[reply:')) return null;
+
+    const end = text.indexOf(']]\n');
+    if (end === -1) return null;
+    const header = text.slice(0, end + 2);
+    const body = text.slice(end + 3);
+
+    const inside = header.slice('[[reply:'.length, -2);
+    const sepIdx = inside.indexOf('|');
+    if (sepIdx === -1) return null;
+
+    const replyId = inside.slice(0, sepIdx);
+    const snippet = inside.slice(sepIdx + 1);
+    return { replyId, snippet, bodyText: body };
+  };
+
+  const buildReplyEncodedText = (replyMsg, bodyText) => {
+    const id = getMsgId(replyMsg);
+    const snippetRaw = String(replyMsg?.text || '').replace(/\s+/g, ' ').trim();
+    const snippet = snippetRaw.slice(0, 80);
+    return `[[reply:${id || ''}|${snippet}]]\n${bodyText}`;
   };
 
   useEffect(() => {
@@ -95,10 +213,24 @@ const ChatWidget = ({ user }) => {
         }
       };
 
+      const handleMessageDeleted = (payload) => {
+        const messageId = payload?.messageId || payload?.id;
+        if (!messageId) return;
+        setMessages((prev) => prev.filter((m) => (m._id || m.id) !== messageId));
+        setSelectedMessages((prev) => {
+          if (!prev?.size) return prev;
+          const next = new Set(prev);
+          next.delete(messageId);
+          return next;
+        });
+      };
+
       socket.on('new-message', handleNewMessage);
+      socket.on('message-deleted', handleMessageDeleted);
 
       return () => {
         socket.off('new-message', handleNewMessage);
+        socket.off('message-deleted', handleMessageDeleted);
       };
     }
 
@@ -126,12 +258,26 @@ const ChatWidget = ({ user }) => {
     }
   }, [isOpen, chatId]);
 
+  useEffect(() => {
+    if (!chatId) return;
+    setSelectedMessages(new Set());
+    setReplyTo(null);
+    try {
+      const raw = localStorage.getItem(`chatwidget_pinned_${chatId}`);
+      const parsed = raw ? JSON.parse(raw) : null;
+      setPinnedMessage(parsed || null);
+    } catch {
+      setPinnedMessage(null);
+    }
+  }, [chatId]);
+
   const sendMessage = async (e) => {
     e.preventDefault();
     if (!message.trim() || !chatId) return;
 
-    const text = message;
+    const text = replyTo ? buildReplyEncodedText(replyTo, message) : message;
     setMessage('');
+    setReplyTo(null);
 
     try {
       const socket = getSocket();
@@ -168,53 +314,6 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-const handleFileUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Проверка размера файла (100 MB = 104857600 bytes)
-    const MAX_FILE_SIZE = 100 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      alert('Файл слишком большой. Максимальный размер — 100 МБ');
-      if (fileInputRef.current) fileInputRef.current.value = '';
-      return;
-    }
-
-    if (!chatId) {
-      console.error('Chat ID not found');
-      return;
-    }
-
-    setUploading(true);
-    try {
-      const result = await filesAPI.upload(file, chatId);
-
-      const serverMessage = result?.message || result?.data?.message || result?.data;
-      if (serverMessage && (serverMessage._id || serverMessage.id)) {
-        const normalized = normalizeMessage(serverMessage);
-        setMessages((prev) => {
-          const id = normalized._id || normalized.id;
-          if (id && prev.some((m) => (m._id || m.id) === id)) return prev;
-          return [...prev, normalized];
-        });
-      } else {
-        const msgs = await messagesAPI.getByChatId(chatId);
-        setMessages((msgs || []).map(normalizeMessage));
-      }
-
-      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-    } catch (error) {
-      console.error('Error uploading file:', error);
-      alert('Ошибка загрузки файла: ' + error.message);
-    } finally {
-      setUploading(false);
-
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
   const isUserMessage = (msg) => {
     return msg.senderId === user._id || msg.senderId === user._id?.toString();
   };
@@ -230,29 +329,6 @@ const handleFileUpload = async (e) => {
   const getSenderLabel = (msg) => {
     if (isManagerMessage(msg)) return 'Support';
     return getClientLabel();
-  };
-
-  const handleDeleteMessage = async (msg) => {
-    if (!msg) return;
-    if (!isUserMessage(msg)) return;
-
-    const id = msg._id || msg.id;
-    if (!id || String(id).startsWith('temp_')) return;
-
-    if (!window.confirm('Удалить сообщение?')) return;
-
-    try {
-      await messagesAPI.delete(id);
-      setMessages((prev) => prev.filter((m) => (m._id || m.id) !== id));
-    } catch (err) {
-      console.error('Error deleting message:', err);
-      try {
-        const msgs = await messagesAPI.getByChatId(chatId);
-        setMessages((msgs || []).map(normalizeMessage));
-      } catch (e) {
-        // ignore
-      }
-    }
   };
 
   const getFileUrl = (filename) => {
@@ -380,24 +456,101 @@ const handleFileUpload = async (e) => {
           }
         >
           <div className="p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
-            <span className="text-white text-[10px] uppercase font-bold tracking-widest">CONNECTOR Support</span>
-            <div className="flex items-center gap-2">
-              {!isMobile && (
-                <button 
-                  onClick={toggleMaximize}
-                  className="text-white/40 hover:text-white transition-colors"
-                  title={isMaximized ? "Свернуть" : "Развернуть"}
+            {isSelecting ? (
+              <div className="flex items-center gap-3 min-w-0">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="text-white/60 hover:text-white transition-colors"
+                  title="Отменить"
                 >
-                  {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  <X className="w-4 h-4" />
                 </button>
+                <span className="text-white text-[10px] uppercase font-bold tracking-widest truncate">
+                  Выбрано: {selectedMessages.size}
+                </span>
+              </div>
+            ) : (
+              <span className="text-white text-[10px] uppercase font-bold tracking-widest">CONNECTOR Support</span>
+            )}
+
+            <div className="flex items-center gap-2">
+              {isSelecting ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleReplySelected}
+                    disabled={selectedMessages.size !== 1}
+                    className="text-white/60 hover:text-white transition-colors disabled:opacity-30"
+                    title="Ответить"
+                  >
+                    <Reply className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePinSelected}
+                    disabled={selectedMessages.size !== 1}
+                    className="text-white/60 hover:text-white transition-colors disabled:opacity-30"
+                    title="Закрепить"
+                  >
+                    <Pin className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDeleteSelected}
+                    className="text-red-300 hover:text-red-200 transition-colors"
+                    title="Удалить"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </>
+              ) : (
+                !isMobile && (
+                  <button 
+                    onClick={toggleMaximize}
+                    className="text-white/40 hover:text-white transition-colors"
+                    title={isMaximized ? "Свернуть" : "Развернуть"}
+                  >
+                    {isMaximized ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+                  </button>
+                )
               )}
               <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white">✕</button>
             </div>
           </div>
+
+          {pinnedMessage && (
+            <div className="px-4 py-3 border-b border-white/5 bg-blue-500/10 flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[10px] uppercase tracking-widest text-blue-300 font-bold">Закреплено</div>
+                <div className="mt-1 text-xs text-white/80 whitespace-pre-wrap break-words line-clamp-2">
+                  {parseReplyMetaFromText(pinnedMessage.text)?.bodyText || pinnedMessage.text}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setPinnedMessage(null);
+                  try {
+                    if (chatId) localStorage.removeItem(`chatwidget_pinned_${chatId}`);
+                  } catch {
+                    // ignore
+                  }
+                }}
+                className="text-white/60 hover:text-white transition-colors"
+                title="Открепить"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
           
           <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
+              const msgId = getMsgId(msg);
+              const isSelected = !!msgId && selectedMessages.has(msgId);
+              const replyMeta = parseReplyMetaFromText(msg.text);
               const hasAttachments = msg.attachments && msg.attachments.length > 0;
               const isAutoFileText =
                 typeof msg.text === 'string' &&
@@ -411,21 +564,54 @@ const handleFileUpload = async (e) => {
               const showText = !hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText);
               return (
                 <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`min-w-0 max-w-[80%] px-3 py-2 rounded-2xl text-xs ${isMine ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white/80 rounded-tl-none'}`}>
+                  <div
+                    role={isSelecting ? 'button' : undefined}
+                    tabIndex={isSelecting ? 0 : undefined}
+                    onMouseDown={() => handleMessagePressStart(msg)}
+                    onMouseUp={handleMessagePressEnd}
+                    onMouseLeave={handleMessagePressEnd}
+                    onTouchStart={() => handleMessagePressStart(msg)}
+                    onTouchEnd={handleMessagePressEnd}
+                    onClick={(e) => {
+                      if (longPressTriggeredRef.current) {
+                        longPressTriggeredRef.current = false;
+                        e.preventDefault();
+                        return;
+                      }
+                      if (isSelecting) {
+                        e.preventDefault();
+                        toggleMessageSelection(msg);
+                      }
+                    }}
+                    className={`min-w-0 max-w-[80%] px-3 py-2 rounded-2xl text-xs text-left ${
+                      isMine ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white/80 rounded-tl-none'
+                    } ${isSelected ? 'ring-2 ring-blue-300' : ''}`}
+                  >
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <span className="text-[10px] text-white/60 leading-none">{getSenderLabel(msg)}</span>
-                      {isMine && (msg._id || msg.id) && !String(msg._id || msg.id).startsWith('temp_') && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteMessage(msg)}
-                          className="text-white/50 hover:text-white/90 transition-colors flex-shrink-0"
-                          title="Удалить"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
+                      {isSelecting && (
+                        <span className="flex-shrink-0">
+                          {isSelected ? (
+                            <CheckSquare className="w-3 h-3 text-white" />
+                          ) : (
+                            <Square className="w-3 h-3 text-white/60" />
+                          )}
+                        </span>
                       )}
                     </div>
-                    {showText && <p className="whitespace-pre-wrap break-words">{msg.text}</p>}
+
+                    {replyMeta && (
+                      <div className="mb-2 px-2 py-1 rounded-lg bg-black/20 border border-white/10">
+                        <div className="text-[10px] text-white/60">Ответ</div>
+                        <div className="text-[11px] text-white/80 whitespace-pre-wrap break-words line-clamp-2">
+                          {replyMeta.snippet}
+                        </div>
+                      </div>
+                    )}
+
+                    {showText && (
+                      <p className="whitespace-pre-wrap break-words">{replyMeta?.bodyText ?? msg.text}</p>
+                    )}
                     {hasAttachments && (
                       <div className="mt-2 space-y-2">
                         {msg.attachments.map((att, idx) => (
@@ -443,6 +629,24 @@ const handleFileUpload = async (e) => {
           </div>
 
           <form onSubmit={sendMessage} className="p-4 border-t border-white/5 flex flex-col gap-2">
+            {replyTo && (
+              <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
+                <div className="min-w-0">
+                  <div className="text-[10px] uppercase tracking-widest text-white/60">Ответ</div>
+                  <div className="text-xs text-white/80 whitespace-pre-wrap break-words line-clamp-2">
+                    {String(parseReplyMetaFromText(replyTo.text)?.bodyText || replyTo.text || '').slice(0, 120)}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setReplyTo(null)}
+                  className="text-white/60 hover:text-white transition-colors flex-shrink-0"
+                  title="Отменить"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
             <input 
               type="file"
               ref={fileInputRef}

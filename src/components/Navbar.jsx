@@ -11,6 +11,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const [isScrolling, setIsScrolling] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
 
   const servicesList = [
     "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
@@ -60,6 +61,10 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
       onLogout();
     }
     navigate('/');
+  };
+
+  const handleRequireAuthForOrder = () => {
+    setShowOrderAuthPrompt(true);
   };
 
   return (
@@ -113,6 +118,8 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <OrderButton 
                 user={user} 
                 setIsOrderOpen={setIsOrderOpen} 
+                setIsAuthOpen={setIsAuthOpen}
+                onRequireAuth={handleRequireAuthForOrder}
                 className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
               />
             </div>
@@ -203,6 +210,43 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
       </nav>
 
+      {showOrderAuthPrompt && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowOrderAuthPrompt(false)}
+          />
+          <div className="relative w-full max-w-[420px] bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="text-white text-sm font-bold uppercase tracking-widest">
+              {t('Уведомление')}
+            </div>
+            <div className="mt-3 text-white/70 text-sm leading-relaxed">
+              {t('Чтобы заказать услугу, сначала войдите')}
+            </div>
+
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowOrderAuthPrompt(false)}
+                className="px-4 py-2 rounded-xl border border-white/10 text-white/80 hover:bg-white/5 transition-colors"
+              >
+                {t('Отмена')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOrderAuthPrompt(false);
+                  if (typeof setIsAuthOpen === 'function') setIsAuthOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                {t('Войти')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#0a0a0a]/40 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
         <div className="grid grid-cols-5 items-center justify-items-center">
           
@@ -235,6 +279,8 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
           <OrderButton 
             user={user} 
             setIsOrderOpen={setIsOrderOpen} 
+            setIsAuthOpen={setIsAuthOpen}
+            onRequireAuth={handleRequireAuthForOrder}
             className="text-blue-400"
           />
 

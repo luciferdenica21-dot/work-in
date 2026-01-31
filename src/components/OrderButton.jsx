@@ -1,14 +1,20 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, className }) => {
+const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuth, className }) => {
   const { t } = useTranslation();
 
   const handleOrderClick = () => {
     if (user) {
       setIsOrderOpen(true);
     } else {
-      setIsAuthOpen(true);
+      if (typeof onRequireAuth === 'function') {
+        onRequireAuth();
+        return;
+      }
+      if (typeof setIsAuthOpen === 'function') {
+        setIsAuthOpen(true);
+      }
     }
   };
 
