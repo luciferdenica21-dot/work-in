@@ -2016,7 +2016,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
                       {messages.map(msg => (
                         <div key={msg._id || msg.id} className={`flex ${msg.senderId === 'manager' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`flex items-end gap-2 ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
+                          <div className={`flex items-start gap-2 ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
                             {renderChatMessageAvatar(msg.senderId === 'manager')}
                             <div className={`min-w-0 max-w-[90%] sm:max-w-xs lg:max-w-md px-3 py-2 sm:px-4 rounded-lg text-[12px] sm:text-sm ${
                               msg.senderId === 'manager' 

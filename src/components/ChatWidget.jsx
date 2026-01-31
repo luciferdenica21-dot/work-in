@@ -634,7 +634,7 @@ const ChatWidget = ({ user }) => {
               const showText = !hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText);
               return (
                 <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`flex items-end gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+                  <div className={`flex items-start gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
                     {renderMessageAvatar(isMine)}
                     <div
                       role={isSelecting ? 'button' : undefined}
