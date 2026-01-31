@@ -1187,6 +1187,33 @@ const getAbsoluteFileUrl = (fileUrl) => {
     'Admin'
   );
 
+  const getActiveClientLabel = () => {
+    const chat = (chats || []).find((c) => String(c?.chatId) === String(activeId));
+    const email = chat?.userEmail;
+    return String(email || '').trim() || 'Client';
+  };
+
+  const getActiveClientInitial = () => {
+    const label = getActiveClientLabel();
+    return (label[0] || 'U').toUpperCase();
+  };
+
+  const renderChatMessageAvatar = (isManagerSender) => {
+    if (isManagerSender) {
+      return (
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
+          <img src="/img/logo.png" alt="logo" className="w-full h-full object-contain p-1" />
+        </div>
+      );
+    }
+
+    return (
+      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
+        {getActiveClientInitial()}
+      </div>
+    );
+  };
+
   return (
     <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'} bg-[#050a18] text-white`}>
 
@@ -1842,13 +1869,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 {activeId ? (
                   <>
                     {/* Заголовок чата */}
-                    <div className="p-4 border-b border-white/10 bg-white/5">
+                    <div className="p-3 sm:p-4 border-b border-white/10 bg-white/5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <h3 className="text-lg font-semibold text-white">
+                          <h3 className="text-base sm:text-lg font-semibold text-white">
                             {chats.find(c => c.chatId === activeId)?.userEmail?.split('@')[0] || 'Chat'}
                           </h3>
-                          <p className="text-sm text-gray-400">
+                          <p className="text-xs sm:text-sm text-gray-400">
                             {chats.find(c => c.chatId === activeId)?.userEmail}
                           </p>
                         </div>
@@ -1861,7 +1888,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <div className="relative">
                             <button
                               onClick={() => setChatActionsOpen((v) => !v)}
-                              className="p-2 rounded-lg text-white hover:bg-white/10 border border-white/10"
+                              className="p-1.5 sm:p-2 rounded-lg text-white hover:bg-white/10 border border-white/10"
                               title="Настройки"
                             >
                               <Settings className="w-4 h-4" />
@@ -1905,10 +1932,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               setActiveId(null);
                               setMobileChatListOpen(true);
                             }}
-                            className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
+                            className="lg:hidden p-1.5 sm:p-2 rounded-lg text-white hover:bg-white/10"
                             title="Назад"
                           >
-                            <ChevronLeft className="w-5 h-5" />
+                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                           </button>
                         </div>
                       </div>
@@ -1986,20 +2013,22 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     )}
 
                     {/* Сообщения */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4">
                       {messages.map(msg => (
                         <div key={msg._id || msg.id} className={`flex ${msg.senderId === 'manager' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`min-w-0 max-w-[90%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                            msg.senderId === 'manager' 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-white/10 text-white'
-                          } ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
-                            onMouseDown={() => handleMessageMouseDown(msg)}
-                            onMouseUp={handleMessageMouseUp}
-                            onMouseLeave={handleMessageMouseUp}
-                            onTouchStart={() => handleMessageMouseDown(msg)}
-                            onTouchEnd={handleMessageMouseUp}
-                          >
+                          <div className={`flex items-end gap-2 ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {renderChatMessageAvatar(msg.senderId === 'manager')}
+                            <div className={`min-w-0 max-w-[90%] sm:max-w-xs lg:max-w-md px-3 py-2 sm:px-4 rounded-lg text-[12px] sm:text-sm ${
+                              msg.senderId === 'manager' 
+                                ? 'bg-blue-600 text-white' 
+                                : 'bg-white/10 text-white'
+                            } ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
+                              onMouseDown={() => handleMessageMouseDown(msg)}
+                              onMouseUp={handleMessageMouseUp}
+                              onMouseLeave={handleMessageMouseUp}
+                              onTouchStart={() => handleMessageMouseDown(msg)}
+                              onTouchEnd={handleMessageMouseUp}
+                            >
                             {msg.isUploading ? (
                               <div className="flex items-center space-x-2">
                                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -2106,6 +2135,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 </button>
                               </div>
                             )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -2113,13 +2143,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </div>
 
                     {/* Поле ввода */}
-                    <div className="p-4 border-t border-white/10 relative">
+                    <div className="p-3 sm:p-4 border-t border-white/10 relative">
                       <div className="flex items-end space-x-2">
                         <textarea
                           value={inputText}
                           onChange={(e) => setInputText(e.target.value)}
                           placeholder="Введите сообщение..."
-                          className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
+                          className="flex-1 px-3 py-2 sm:px-4 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none text-sm"
                           rows={1}
                         />
                         <input
@@ -2131,24 +2161,24 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <button
                           onClick={() => setShowScriptMenu((v) => !v)}
                           disabled={!activeId}
-                          className="p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 disabled:opacity-50"
+                          className="p-1.5 sm:p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 disabled:opacity-50"
                           title="Скрипты"
                         >
-                          <Code className="w-5 h-5" />
+                          <Code className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={!activeId || uploading}
-                          className="p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 disabled:opacity-50"
+                          className="p-1.5 sm:p-2 bg-white/10 rounded-lg text-white hover:bg-white/20 disabled:opacity-50"
                         >
-                          <Paperclip className="w-5 h-5" />
+                          <Paperclip className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                         <button
                           onClick={() => executeSend()}
                           disabled={!inputText.trim() || !activeId || uploading}
-                          className="p-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 disabled:opacity-50"
+                          className="p-1.5 sm:p-2 bg-blue-600 rounded-lg text-white hover:bg-blue-700 disabled:opacity-50"
                         >
-                          <Send className="w-5 h-5" />
+                          <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                         </button>
                       </div>
 
