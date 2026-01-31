@@ -1,7 +1,7 @@
 import express from 'express';
 import Message from '../models/Message.js';
 import Chat from '../models/Chat.js';
-import { protect, admin } from '../middleware/auth.js';
+import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 

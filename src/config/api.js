@@ -17,22 +17,18 @@ const apiRequest = async (endpoint, options = {}) => {
     },
   };
 
-  try {
-    const response = await fetch(`${API_URL}${endpoint}`, config);
+  const response = await fetch(`${API_URL}${endpoint}`, config);
 
-    // Проверяем, является ли ответ JSON-ом
-    const contentType = response.headers.get("content-type");
-    const isJson = contentType && contentType.includes("application/json");
-    const data = isJson ? await response.json() : null;
+  // Проверяем, является ли ответ JSON-ом
+  const contentType = response.headers.get("content-type");
+  const isJson = contentType && contentType.includes("application/json");
+  const data = isJson ? await response.json() : null;
 
-    if (!response.ok) {
-      throw new Error(data?.message || `Request failed with status ${response.status}`);
-    }
-
-    return data;
-  } catch (error) {
-    throw error;
+  if (!response.ok) {
+    throw new Error(data?.message || `Request failed with status ${response.status}`);
   }
+
+  return data;
 };
 
 export const authAPI = {

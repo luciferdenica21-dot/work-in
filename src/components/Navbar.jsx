@@ -8,7 +8,6 @@ import OrderSidebar from './OrderSidebar';
 const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isScrolling, setIsScrolling] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
   const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
@@ -30,7 +29,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   useEffect(() => {
     const handleScroll = () => {
       if (window.innerWidth < 768 && isOpen) {
-        setIsScrolling(window.scrollY > 10);
+        // no-op
       }
     };
     window.addEventListener('scroll', handleScroll);

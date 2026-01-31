@@ -15,6 +15,14 @@ const ChatWidget = ({ user }) => {
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
 
+  function getMsgId(msg) {
+    return msg?._id || msg?.id;
+  }
+
+  function isUserMessage(msg) {
+    return msg?.senderId === user?._id || msg?.senderId === user?._id?.toString();
+  }
+
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
@@ -135,7 +143,50 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-  const getMsgId = (msg) => msg?._id || msg?.id;
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_FILE_SIZE = 100 * 1024 * 1024;
+    if (file.size > MAX_FILE_SIZE) {
+      alert('Файл слишком большой. Максимальный размер — 100 МБ');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
+    if (!chatId) {
+      console.error('Chat ID not found');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const result = await filesAPI.upload(file, chatId);
+
+      const serverMessage = result?.message || result?.data?.message || result?.data;
+      if (serverMessage && (serverMessage._id || serverMessage.id)) {
+        const normalized = normalizeMessage(serverMessage);
+        setMessages((prev) => {
+          const id = normalized._id || normalized.id;
+          if (id && prev.some((m) => (m._id || m.id) === id)) return prev;
+          return [...prev, normalized];
+        });
+      } else {
+        const msgs = await messagesAPI.getByChatId(chatId);
+        setMessages((msgs || []).map(normalizeMessage));
+      }
+
+      setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Ошибка загрузки файла: ' + error.message);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const parseReplyMetaFromText = (text) => {
     if (typeof text !== 'string') return null;
@@ -241,7 +292,7 @@ const ChatWidget = ({ user }) => {
 
   useEffect(() => {
     if (isOpen && chatId) {
-      setHasNewMessage(false);
+      setTimeout(() => setHasNewMessage(false), 0);
       chatsAPI.markAsRead(chatId).catch(console.error);
 
       const loadMessages = async () => {
@@ -260,15 +311,17 @@ const ChatWidget = ({ user }) => {
 
   useEffect(() => {
     if (!chatId) return;
-    setSelectedMessages(new Set());
-    setReplyTo(null);
-    try {
-      const raw = localStorage.getItem(`chatwidget_pinned_${chatId}`);
-      const parsed = raw ? JSON.parse(raw) : null;
-      setPinnedMessage(parsed || null);
-    } catch {
-      setPinnedMessage(null);
-    }
+    setTimeout(() => {
+      setSelectedMessages(new Set());
+      setReplyTo(null);
+      try {
+        const raw = localStorage.getItem(`chatwidget_pinned_${chatId}`);
+        const parsed = raw ? JSON.parse(raw) : null;
+        setPinnedMessage(parsed || null);
+      } catch {
+        setPinnedMessage(null);
+      }
+    }, 0);
   }, [chatId]);
 
   const sendMessage = async (e) => {
@@ -297,7 +350,7 @@ const ChatWidget = ({ user }) => {
           try {
             const msgs = await messagesAPI.getByChatId(chatId);
             setMessages((msgs || []).map(normalizeMessage));
-          } catch (err) {
+          } catch {
             // ignore
           }
         }, 400);
@@ -312,10 +365,6 @@ const ChatWidget = ({ user }) => {
       console.error('Error sending message:', err);
       setMessage(text);
     }
-  };
-
-  const isUserMessage = (msg) => {
-    return msg.senderId === user._id || msg.senderId === user._id?.toString();
   };
 
   const getClientLabel = () => {
