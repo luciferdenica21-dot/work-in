@@ -572,6 +572,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
+  const isUserOnline = (user) => {
+    const now = new Date();
+    const lastSeen = new Date(user.lastSeen || user.lastMessageTime || user.createdAt);
+    const diffMinutes = (now - lastSeen) / (1000 * 60);
+    return diffMinutes < 5; // онлайн, если был активен менее 5 минут назад
+  };
+
   const loadAllUsers = async () => {
     try {
       // Сначала получаем реальных пользователей с сайта
@@ -1274,7 +1281,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
               <div className="hidden md:flex items-center space-x-4 text-sm">
                 <div className="flex items-center space-x-1">
                   <Users className="w-4 h-4 text-green-400" />
-                  <span className="text-gray-300">{allUsers.filter(u => u.status === 'online').length}</span>
+                  <span className="text-gray-300">{allUsers.filter(u => isUserOnline(u)).length}</span>
                 </div>
                 <div className="flex items-center space-x-1">
                   <Package className="w-4 h-4 text-yellow-400" />
@@ -1442,7 +1449,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     <div>
                       <p className="text-sm text-blue-300">Всего клиентов</p>
                       <p className="text-3xl font-bold text-white">{allUsers.length}</p>
-                      <p className="text-xs text-blue-400 mt-1">{allUsers.filter(u => u.status === 'online').length} онлайн</p>
+                      <p className="text-xs text-blue-400 mt-1">{allUsers.filter(u => isUserOnline(u)).length} онлайн</p>
                     </div>
                     <Users className="w-10 h-10 text-blue-400" />
                   </div>
@@ -1488,7 +1495,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <span className="text-lg font-bold text-white">{allUsers.length}</span>
                     </div>
                     <div className="mt-1 text-xs text-gray-300">Клиенты</div>
-                    <div className="text-[10px] text-blue-400">{allUsers.filter(u => u.status === 'online').length} онлайн</div>
+                    <div className="text-[10px] text-blue-400">{allUsers.filter(u => isUserOnline(u)).length} онлайн</div>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-lg p-3">
@@ -1572,9 +1579,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               </div>
                             </div>
                             <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              client.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                              isUserOnline(client) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
                             }`}>
-                              {client.status === 'online' ? 'Онлайн' : 'Офлайн'}
+                              {isUserOnline(client) ? 'Онлайн' : 'Офлайн'}
                             </span>
                           </div>
 
@@ -1669,9 +1676,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 <td className="px-6 py-4 whitespace-nowrap">
                                   <div className="flex flex-col gap-1">
                                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      client.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                                      isUserOnline(client) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
                                     }`}>
-                                      {client.status === 'online' ? 'Онлайн' : 'Офлайн'}
+                                      {isUserOnline(client) ? 'Онлайн' : 'Офлайн'}
                                     </span>
                                     {getClientOrders(client.id).length > 0 && (
                                       <span className="text-xs text-gray-400">
