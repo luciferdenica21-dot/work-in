@@ -2420,14 +2420,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <div>
                         <p className="text-xs text-gray-400">Услуги</p>
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {order.services?.slice(0, 2).map((service, i) => (
+                          {order.services?.map((service, i) => (
                             <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
                               {service}
                             </span>
                           ))}
-                          {order.services?.length > 2 && (
-                            <span className="text-xs text-gray-400">+{order.services.length - 2}</span>
-                          )}
                         </div>
                       </div>
 
