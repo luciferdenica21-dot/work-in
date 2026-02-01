@@ -755,14 +755,10 @@ const ChatWidget = ({ user }) => {
             </div>
             {!isMobile && !isMaximized && (
               <div 
-                className="absolute bottom-2 right-2 w-4 h-4 bg-blue-500/20 hover:bg-blue-500/40 rounded-full cursor-ns-resize transition-colors"
+                className="absolute bottom-2 right-2 w-4 h-4 cursor-ns-resize"
                 onMouseDown={handleMouseDown}
                 title="Изменить размер"
-              >
-                <svg className="w-3 h-3 text-white/60" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z"/>
-                </svg>
-              </div>
+              />
             )}
           </form>
         </div>
