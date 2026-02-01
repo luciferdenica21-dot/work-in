@@ -1652,17 +1652,33 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                   <div className="text-sm text-gray-300">{client.phone || 'Не указан'}</div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-300">{client.ordersCount || 0} заказов</div>
-                                  {client.unreadCount > 0 && (
-                                    <div className="text-xs text-blue-400">{client.unreadCount} новых сообщений</div>
+                                  <div className="text-sm text-gray-300">
+                                    {getClientOrders(client.id).length} заказов
+                                  </div>
+                                  {getClientOrders(client.id).filter(o => o.status === 'new').length > 0 && (
+                                    <div className="text-xs text-yellow-400">
+                                      {getClientOrders(client.id).filter(o => o.status === 'new').length} новых
+                                    </div>
+                                  )}
+                                  {getClientOrders(client.id).filter(o => o.status === 'in-progress').length > 0 && (
+                                    <div className="text-xs text-blue-400">
+                                      {getClientOrders(client.id).filter(o => o.status === 'in-progress').length} в работе
+                                    </div>
                                   )}
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                    client.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                                  }`}>
-                                    {client.status === 'online' ? 'Онлайн' : 'Офлайн'}
-                                  </span>
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                                      client.status === 'online' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                                    }`}>
+                                      {client.status === 'online' ? 'Онлайн' : 'Офлайн'}
+                                    </span>
+                                    {getClientOrders(client.id).length > 0 && (
+                                      <span className="text-xs text-gray-400">
+                                        {getClientOrders(client.id).some(o => o.status === 'new') ? 'Есть новые' : 'Без новых'}
+                                      </span>
+                                    )}
+                                  </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                   <div className="flex items-center space-x-2">
