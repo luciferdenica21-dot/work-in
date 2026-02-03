@@ -164,12 +164,12 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
         {isOpen && (
           <div
-            className="md:hidden fixed inset-0 bg-black/70 backdrop-blur-[1px] z-40"
+            className="md:hidden fixed inset-0 bg-[#000]/80 backdrop-blur-xl z-40"
             onClick={() => setIsOpen(false)}
           />
         )}
 
-        <div className={`md:hidden fixed left-0 right-0 top-20 bg-[#0a0a0ae0] border-b border-blue-500/20 transition-all duration-300 ease-in-out z-40 ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
+        <div className={`md:hidden fixed left-0 right-0 top-20 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
           <div className="px-4 pt-4 pb-6 space-y-2 text-center">
             <div>
               <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
@@ -181,13 +181,14 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                   <a 
                     key={sKey} 
                     href={`#services?service=${t(sKey)}`} 
-                    className="block px-6 py-3 text-[11px] uppercase tracking-widest text-white/70 hover:text-blue-400 text-center"
+                      className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
                     onClick={(e) => { 
                       handleMobileClick(e, '#services');
                       window.location.hash = `services?service=${t(sKey)}`;
                     }}
                   >
                     {t(sKey)}
+                    <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
                   </a>
                 ))}
               </div>
@@ -200,7 +201,16 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               </button>
               <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
                 {contactLinks.map((contact) => (
-                  <a key={contact.name} href={contact.url} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-3 px-6 py-3 text-[11px] uppercase tracking-widest text-white/70 hover:text-blue-400">{contact.icon}{contact.name}</a>
+                  <a
+                    key={contact.name}
+                    href={contact.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-center gap-3 px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  >
+                    {contact.icon}{contact.name}
+                    <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                  </a>
                 ))}
               </div>
             </div>
