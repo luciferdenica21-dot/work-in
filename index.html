@@ -13,9 +13,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="google" content="notranslate">
   <title>CONNECTOR</title>
+  <style>
+    #app-loader {
+      position: fixed;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      background: #0a0a0a;
+      z-index: 9999;
+      transition: opacity .3s ease
+    }
+
+    #app-loader .logo {
+      width: min(35vw, 160px);
+      height: auto;
+      image-rendering: auto;
+      filter: drop-shadow(0 6px 20px rgba(0, 0, 0, .35))
+    }
+  </style>
 </head>
 
 <body>
+  <div id="app-loader">
+    <img class="logo" src="/img/logo.png" alt="CONNECTOR" />
+  </div>
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>

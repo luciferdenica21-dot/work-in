@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "eslint .",
     "generate:icons": "node scripts/generate-icons.mjs",
+    "update:svg": "node scripts/update-svg-icons.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
