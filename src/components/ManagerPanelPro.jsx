@@ -499,15 +499,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (!key) return {};
     const existing = orderDetailsDraft[key];
     if (existing) return existing;
-    const init = {
+    return {
       managerComment: order.managerComment || '',
       priceGel: order.priceGel ?? 0,
       priceUsd: order.priceUsd ?? 0,
       priceEur: order.priceEur ?? 0,
       managerDate: order.managerDate ? new Date(order.managerDate).toISOString().slice(0, 10) : ''
     };
-    setOrderDetailsDraft((prev) => ({ ...prev, [key]: init }));
-    return init;
   };
 
   const setOrderDraftField = (order, field, value) => {
@@ -522,7 +520,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const handleSaveOrderDetails = async (order) => {
     try {
       const key = getOrderKey(order);
-      const payload = orderDetailsDraft[key] || {};
+      const draft = orderDetailsDraft[key] || getOrderDraft(order);
+      const payload = {
+        managerComment: draft.managerComment || '',
+        priceGel: Number(draft.priceGel) || 0,
+        priceUsd: Number(draft.priceUsd) || 0,
+        priceEur: Number(draft.priceEur) || 0,
+        managerDate: draft.managerDate || null
+      };
       await ordersAPI.updateDetails(order.chatId, order.orderIndex, payload);
       loadOrders();
     } catch (err) {
@@ -547,6 +552,26 @@ const getAbsoluteFileUrl = (fileUrl) => {
       // ignore
     }
   }, [seenOrders]);
+
+  useEffect(() => {
+    setOrderDetailsDraft((prev) => {
+      const next = { ...prev };
+      (orders || []).forEach((order) => {
+        const key = getOrderKey(order);
+        if (!key) return;
+        if (!next[key]) {
+          next[key] = {
+            managerComment: order.managerComment || '',
+            priceGel: order.priceGel ?? 0,
+            priceUsd: order.priceUsd ?? 0,
+            priceEur: order.priceEur ?? 0,
+            managerDate: order.managerDate ? new Date(order.managerDate).toISOString().slice(0, 10) : ''
+          };
+        }
+      });
+      return next;
+    });
+  }, [orders]);
 
   const openClientInfo = (client) => {
     if (!client) return;
