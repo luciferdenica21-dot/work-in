@@ -175,28 +175,50 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                 </div>
               </div>
             </div>
+            {isOpen && (
+              <div
+                className="md:hidden fixed inset-0 bg-[#000]/80 backdrop-blur-xl z-40"
+                onClick={() => setIsOpen(false)}
+              />
+            )}
 
-            <div className={`md:hidden absolute w-full bg-[#0a0a0ae0] border-b border-blue-500/20 transition-all duration-300 ease-in-out ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
-              <div className="px-4 pt-2 pb-6 space-y-1">
+            <div className={`md:hidden fixed left-0 right-0 top-20 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
+              <div className="px-4 pt-4 pb-6 space-y-2 text-center">
                 <div>
-                  <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-between px-3 py-4 text-[10px] font-bold uppercase tracking-widest text-white/70 border-b border-white/5">
+                  <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                     {t('УСЛУГИ')}
                     <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                   <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isServicesOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
                     {servicesList.map((sKey) => (
-                      <button key={sKey} onClick={() => { setSelectedService(servicesData.find(s => s.title === t(sKey))); setIsOpen(false); }} className="block w-full text-left px-6 py-3 text-[9px] uppercase tracking-widest text-white/50 hover:text-blue-400">{t(sKey)}</button>
+                      <button
+                        key={sKey}
+                        onClick={() => { setSelectedService(servicesData.find(s => s.title === t(sKey))); setIsOpen(false); }}
+                        className="group block w-full text-left px-6 py-3 text-[9px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
+                      >
+                        {t(sKey)}
+                        <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                      </button>
                     ))}
                   </div>
                 </div>
                 <div>
-                  <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-between px-3 py-4 text-[10px] font-bold uppercase tracking-widest text-white/70 border-b border-white/5">
+                  <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                     {t('КОНТАКТЫ')}
                     <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                   <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
                     {contactLinks.map((contact) => (
-                      <a key={contact.name} href={contact.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-6 py-3 text-[9px] uppercase tracking-widest text-white/50 hover:text-blue-400">{contact.icon}{contact.name}</a>
+                      <a
+                        key={contact.name}
+                        href={contact.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group flex items-center gap-3 px-6 py-3 text-[9px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
+                      >
+                        {contact.icon}{contact.name}
+                        <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                      </a>
                     ))}
                   </div>
                 </div>
