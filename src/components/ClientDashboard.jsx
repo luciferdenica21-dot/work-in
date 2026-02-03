@@ -438,9 +438,9 @@ const ClientDashboard = ({ user: initialUser }) => {
 
                     {order.files && order.files.length > 0 && (
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '16px' }}>
-                        <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800, letterSpacing: '0.05em' }}>
-                          Файлы заказа:
-                        </div>
+<div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800, letterSpacing: '0.05em' }}>
+  {t('Файлы заказа:')}
+</div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
                           {order.files.map((file) => (
                             <div key={file.id || file.url || file.name}>
