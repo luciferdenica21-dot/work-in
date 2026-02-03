@@ -204,4 +204,32 @@ router.put('/:chatId/:orderIndex/details', protect, admin, async (req, res) => {
   }
 });
 
+router.delete('/:chatId/:orderIndex/details', protect, admin, async (req, res) => {
+  try {
+    const { chatId, orderIndex } = req.params;
+    const orderIdx = parseInt(orderIndex);
+
+    const chat = await Chat.findById(chatId);
+    if (!chat) {
+      return res.status(404).json({ message: 'Chat not found' });
+    }
+    if (!chat.orders[orderIdx]) {
+      return res.status(404).json({ message: 'Order not found' });
+    }
+
+    const order = chat.orders[orderIdx];
+    order.managerComment = '';
+    order.priceGel = 0;
+    order.priceUsd = 0;
+    order.priceEur = 0;
+    order.managerDate = null;
+    chat.lastUpdate = new Date();
+    await chat.save();
+
+    res.json({ message: 'Cleared' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 export default router;

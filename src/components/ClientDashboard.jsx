@@ -429,34 +429,6 @@ const ClientDashboard = ({ user: initialUser }) => {
                       </div>
                     </div>
 
-                    {(order.managerDate || order.priceGel || order.priceUsd || order.priceEur || order.managerComment) && (
-                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '16px' }}>
-                        <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800, letterSpacing: '0.05em' }}>
-                          Данные менеджера:
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
-                          {order.managerDate && (
-                            <div style={{ fontSize: '12px', color: theme.textMain }}>
-                              <span style={{ color: theme.textMuted, fontSize: '11px' }}>Дата: </span>
-                              {new Date(order.managerDate).toLocaleDateString()}
-                            </div>
-                          )}
-                          {(order.priceGel || order.priceUsd || order.priceEur) && (
-                            <div style={{ fontSize: '12px', color: theme.textMain }}>
-                              <span style={{ color: theme.textMuted, fontSize: '11px' }}>Цена: </span>
-                              {[order.priceGel ? `₾ ${order.priceGel}` : null, order.priceUsd ? `$ ${order.priceUsd}` : null, order.priceEur ? `€ ${order.priceEur}` : null].filter(Boolean).join(' / ')}
-                            </div>
-                          )}
-                        </div>
-                        {order.managerComment && (
-                          <div style={{ fontSize: '13px', color: theme.textMain, marginTop: '10px' }}>
-                            <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '6px', fontWeight: 800 }}>Комментарий менеджера:</div>
-                            <div style={{ lineHeight: '1.6', fontWeight: 300 }}>{order.managerComment}</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     {order.comment && (
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '10px', fontWeight: 800 }}>{t("Комментарий к заказу")}:</div>
@@ -476,6 +448,34 @@ const ClientDashboard = ({ user: initialUser }) => {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    )}
+
+                    {(order.managerDate || order.priceGel || order.priceUsd || order.priceEur || order.managerComment) && (
+                      <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)', marginTop: '16px' }}>
+                        <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '12px', fontWeight: 800, letterSpacing: '0.05em' }}>
+                          Примечание менеджера:
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                          {order.managerDate && (
+                            <div style={{ fontSize: '12px', color: theme.textMain }}>
+                              <span style={{ color: theme.textMuted, fontSize: '11px' }}>Дата: </span>
+                              {new Date(order.managerDate).toLocaleDateString()}
+                            </div>
+                          )}
+                          {(order.priceGel || order.priceUsd || order.priceEur) && (
+                            <div style={{ fontSize: '12px', color: theme.textMain }}>
+                              <span style={{ color: theme.textMuted, fontSize: '11px' }}>Цена: </span>
+                              {[order.priceGel ? `₾ ${order.priceGel}` : null, order.priceUsd ? `$ ${order.priceUsd}` : null, order.priceEur ? `€ ${order.priceEur}` : null].filter(Boolean).join(' / ')}
+                            </div>
+                          )}
+                        </div>
+                        {order.managerComment && (
+                          <div style={{ fontSize: '13px', color: theme.textMain, marginTop: '10px' }}>
+                            <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '6px', fontWeight: 800 }}>Комментарий:</div>
+                            <div style={{ lineHeight: '1.6', fontWeight: 300 }}>{order.managerComment}</div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

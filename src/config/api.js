@@ -172,6 +172,9 @@ export const ordersAPI = {
     method: 'PUT',
     body: JSON.stringify(details),
   }),
+  deleteDetails: (chatId, orderIndex) => apiRequest(`/orders/${chatId}/${orderIndex}/details`, {
+    method: 'DELETE',
+  }),
   delete: (chatId, orderIndex) => apiRequest(`/orders/${chatId}/${orderIndex}`, {
     method: 'DELETE',
   }),

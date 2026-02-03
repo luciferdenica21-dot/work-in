@@ -461,6 +461,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [scriptSearch, setScriptSearch] = useState('');
   const [scriptEditorOpen, setScriptEditorOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
+  const [orderDetailsEditorOpen, setOrderDetailsEditorOpen] = useState(false);
+  const [editingOrder, setEditingOrder] = useState(null);
 
   useEffect(() => {
     try {
@@ -2485,6 +2487,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           PDF
                         </button>
                         <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderDetailsEditorOpen(true);
+                            setEditingOrder(order);
+                          }}
+                          className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
+                          title="Данные менеджера"
+                        >
+                          Данные
+                        </button>
+                        <button
                           onClick={() => handleDeleteOrder(order.chatId, order.orderIndex)}
                           className="p-3 sm:p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                           title="Удалить заказ"
@@ -2534,64 +2547,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </div>
                       )}
 
-                      <div className="mt-3">
-                        <p className="text-xs text-gray-400">Данные менеджера</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-400">Дата</span>
-                            <input
-                              type="date"
-                              value={getOrderDraft(order).managerDate}
-                              onChange={(e) => setOrderDraftField(order, 'managerDate', e.target.value)}
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-400">Цена (₾)</span>
-                            <input
-                              type="number"
-                              value={getOrderDraft(order).priceGel}
-                              onChange={(e) => setOrderDraftField(order, 'priceGel', e.target.value)}
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-400">Цена ($)</span>
-                            <input
-                              type="number"
-                              value={getOrderDraft(order).priceUsd}
-                              onChange={(e) => setOrderDraftField(order, 'priceUsd', e.target.value)}
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-400">Цена (€)</span>
-                            <input
-                              type="number"
-                              value={getOrderDraft(order).priceEur}
-                              onChange={(e) => setOrderDraftField(order, 'priceEur', e.target.value)}
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                            />
-                          </div>
-                          <div className="sm:col-span-2 flex flex-col gap-1">
-                            <span className="text-[11px] text-gray-400">Комментарий менеджера</span>
-                            <textarea
-                              rows={3}
-                              value={getOrderDraft(order).managerComment}
-                              onChange={(e) => setOrderDraftField(order, 'managerComment', e.target.value)}
-                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
-                            />
-                          </div>
-                        </div>
-                        <div className="mt-2">
-                          <button
-                            onClick={() => handleSaveOrderDetails(order)}
-                            className={`px-4 py-2 ${brandGradient} rounded-lg text-white text-xs font-medium`}
-                          >
-                            Сохранить
-                          </button>
-                        </div>
-                      </div>
                       <div className="pt-2" />
                     </div>
                   </div>
@@ -2606,6 +2561,95 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <p className="text-gray-400">Заказы не найдены</p>
                 </div>
               )}
+            </div>
+          )}
+          
+          {orderDetailsEditorOpen && editingOrder && (
+            <div className="fixed inset-0 z-50">
+              <div className="absolute inset-0 bg-black/70" onClick={() => { setOrderDetailsEditorOpen(false); setEditingOrder(null); }} />
+              <div className="absolute inset-x-0 bottom-0 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-white">
+                    Данные менеджера · #{editingOrder.orderIndex}
+                  </div>
+                  <button
+                    onClick={() => { setOrderDetailsEditorOpen(false); setEditingOrder(null); }}
+                    className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-400">Дата</span>
+                    <input
+                      type="date"
+                      value={getOrderDraft(editingOrder).managerDate}
+                      onChange={(e) => setOrderDraftField(editingOrder, 'managerDate', e.target.value)}
+                      className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-400">Цена (₾)</span>
+                    <input
+                      type="number"
+                      value={getOrderDraft(editingOrder).priceGel}
+                      onChange={(e) => setOrderDraftField(editingOrder, 'priceGel', e.target.value)}
+                      className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-400">Цена ($)</span>
+                    <input
+                      type="number"
+                      value={getOrderDraft(editingOrder).priceUsd}
+                      onChange={(e) => setOrderDraftField(editingOrder, 'priceUsd', e.target.value)}
+                      className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-400">Цена (€)</span>
+                    <input
+                      type="number"
+                      value={getOrderDraft(editingOrder).priceEur}
+                      onChange={(e) => setOrderDraftField(editingOrder, 'priceEur', e.target.value)}
+                      className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="sm:col-span-2 flex flex-col gap-1">
+                    <span className="text-[11px] text-gray-400">Комментарий менеджера</span>
+                    <textarea
+                      rows={4}
+                      value={getOrderDraft(editingOrder).managerComment}
+                      onChange={(e) => setOrderDraftField(editingOrder, 'managerComment', e.target.value)}
+                      className="px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500 resize-none"
+                    />
+                  </div>
+                </div>
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => {
+                      handleSaveOrderDetails(editingOrder);
+                      setOrderDetailsEditorOpen(false);
+                      setEditingOrder(null);
+                    }}
+                    className={`px-4 py-3 rounded-xl ${brandGradient} text-white font-medium`}
+                  >
+                    Сохранить
+                  </button>
+                  <button
+                    onClick={async () => {
+                      await ordersAPI.deleteDetails(editingOrder.chatId, editingOrder.orderIndex);
+                      loadOrders();
+                      setOrderDetailsEditorOpen(false);
+                      setEditingOrder(null);
+                    }}
+                    className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-red-300 hover:bg-white/10"
+                  >
+                    Удалить
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
