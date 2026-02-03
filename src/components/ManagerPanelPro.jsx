@@ -68,6 +68,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const blocks = safeList.map((o) => {
       const client = [o.firstName, o.lastName].filter(Boolean).join(' ');
       const services = (o.services || []).join(', ');
+      const prices = [
+        o.priceGel ? `₾ ${o.priceGel}` : null,
+        o.priceUsd ? `$ ${o.priceUsd}` : null,
+        o.priceEur ? `€ ${o.priceEur}` : null
+      ].filter(Boolean).join(' / ');
       const fileBlocks = (o.files || []).map((f) => {
         const url = f?.url;
         const name = f?.name || 'file';
@@ -104,6 +109,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
           <div class="row"><span class="k">Телефон:</span><span class="v">${escapeHtml(o.phone || '')}</span></div>
           <div class="row"><span class="k">Город:</span><span class="v">${escapeHtml(o.city || '')}</span></div>
           <div class="row"><span class="k">Услуги:</span><span class="v">${escapeHtml(services || '')}</span></div>
+          ${o.managerDate ? `<div class="row"><span class="k">Дата менеджера:</span><span class="v">${escapeHtml(new Date(o.managerDate).toLocaleDateString())}</span></div>` : ''}
+          ${prices ? `<div class="row"><span class="k">Цена:</span><span class="v">${escapeHtml(prices)}</span></div>` : ''}
+          ${o.managerComment ? `<div class="row"><span class="k">Примечание менеджера:</span><span class="v">${escapeHtml(o.managerComment)}</span></div>` : ''}
           ${o.comment ? `<div class="row"><span class="k">Комментарий:</span><span class="v">${escapeHtml(o.comment)}</span></div>` : ''}
           ${fileBlocks ? `<div class="photos">${fileBlocks}</div>` : ''}
         </div>
@@ -175,6 +183,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
       phone: safe.phone,
       city: safe.city,
       services: safe.services || [],
+      managerDate: safe.managerDate || null,
+      priceGel: safe.priceGel ?? 0,
+      priceUsd: safe.priceUsd ?? 0,
+      priceEur: safe.priceEur ?? 0,
+      managerComment: safe.managerComment || '',
       comment: safe.comment || safe.comments || safe.note || safe.message || '',
       files: (safe.files || []).map((f) => ({
         id: f?.id,
@@ -206,6 +219,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
         `Phone: ${safe.phone || ''}`,
         `City: ${safe.city || ''}`,
         `Services: ${(safe.services || []).join(', ')}`,
+        `Manager Date: ${safe.managerDate ? new Date(safe.managerDate).toLocaleDateString() : ''}`,
+        `Manager Prices: ${[safe.priceGel ? `₾ ${safe.priceGel}` : null, safe.priceUsd ? `$ ${safe.priceUsd}` : null, safe.priceEur ? `€ ${safe.priceEur}` : null].filter(Boolean).join(' / ')}`,
+        `Manager Note: ${safe.managerComment || ''}`,
         `Comment: ${safe.comment || ''}`,
         `Files:`,
         ...(safe.files || []).map((f) => `- ${f.name || ''} (${f.type || ''}, ${f.size || ''}) ${f.url || ''}`),
@@ -226,6 +242,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
         phone: safe.phone,
         city: safe.city,
         services: (safe.services || []).join('|'),
+        managerDate: safe.managerDate || '',
+        priceGel: safe.priceGel ?? 0,
+        priceUsd: safe.priceUsd ?? 0,
+        priceEur: safe.priceEur ?? 0,
+        managerComment: safe.managerComment || '',
         comment: safe.comment,
         files: (safe.files || []).map((f) => f.url).filter(Boolean).join('|'),
       };
@@ -251,12 +272,20 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (format === 'txt') {
       const txt = safeList.map((o) => {
         const client = [o.firstName, o.lastName].filter(Boolean).join(' ');
+        const prices = [
+          o.priceGel ? `₾ ${o.priceGel}` : null,
+          o.priceUsd ? `$ ${o.priceUsd}` : null,
+          o.priceEur ? `€ ${o.priceEur}` : null
+        ].filter(Boolean).join(' / ');
         return [
           `# ${o.chatId || ''} / ${o.orderIndex ?? ''}`,
           `Status: ${o.status || ''}`,
           `Client: ${client}`,
           `Contact: ${o.contact || ''}`,
           `Services: ${(o.services || []).join(', ')}`,
+          `Manager Date: ${o.managerDate ? new Date(o.managerDate).toLocaleDateString() : ''}`,
+          `Manager Prices: ${prices}`,
+          `Manager Note: ${o.managerComment || ''}`,
           `Files: ${(o.files || []).map((f) => f.url).filter(Boolean).join(', ')}`,
         ].join('\n');
       }).join('\n\n');
@@ -266,7 +295,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
     if (format === 'csv') {
       const headers = [
-        'chatId','orderIndex','status','createdAt','firstName','lastName','contact','phone','city','services','comment','files'
+        'chatId','orderIndex','status','createdAt','firstName','lastName','contact','phone','city','services','managerDate','priceGel','priceUsd','priceEur','managerComment','comment','files'
       ];
       const rows = safeList.map((o) => {
         const row = {
@@ -280,6 +309,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
           phone: o.phone,
           city: o.city,
           services: (o.services || []).join('|'),
+          managerDate: o.managerDate || '',
+          priceGel: o.priceGel ?? 0,
+          priceUsd: o.priceUsd ?? 0,
+          priceEur: o.priceEur ?? 0,
+          managerComment: o.managerComment || '',
           comment: o.comment,
           files: (o.files || []).map((f) => f.url).filter(Boolean).join('|'),
         };
