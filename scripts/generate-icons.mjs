@@ -11,29 +11,18 @@ const inputPath = path.join(projectRoot, 'public', 'img', 'logo.png');
 const outputs = [
   { file: 'favicon-16x16.png', size: 16, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   { file: 'favicon-32x32.png', size: 32, background: { r: 0, g: 0, b: 0, alpha: 0 } },
-  { file: 'apple-touch-icon.png', size: 180, background: { r: 10, g: 10, b: 10, alpha: 1 } },
-  { file: 'android-chrome-192x192.png', size: 192, background: { r: 10, g: 10, b: 10, alpha: 1 } },
-  { file: 'android-chrome-512x512.png', size: 512, background: { r: 10, g: 10, b: 10, alpha: 1 } }
+  { file: 'apple-touch-icon.png', size: 180, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  { file: 'android-chrome-192x192.png', size: 192, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  { file: 'android-chrome-512x512.png', size: 512, background: { r: 0, g: 0, b: 0, alpha: 0 } }
 ];
 
 const makeSquareIcon = async ({ file, size, background }) => {
-  const inner = Math.max(1, Math.round(size * 0.72));
-  const margin = Math.floor((size - inner) / 2);
-
-  const img = sharp(inputPath)
-    .trim()
-    .resize(inner, inner, { fit: 'contain' })
-    .extend({
-      top: margin,
-      bottom: size - inner - margin,
-      left: margin,
-      right: size - inner - margin,
-      background
-    })
-    .png();
-
   const outPath = path.join(projectRoot, 'public', file);
-  await img.toFile(outPath);
+  await sharp(inputPath)
+    .trim()
+    .resize(size, size, { fit: 'contain', background })
+    .png()
+    .toFile(outPath);
   console.log(`Generated: ${outPath}`);
 };
 
