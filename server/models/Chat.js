@@ -56,6 +56,27 @@ const chatSchema = new mongoose.Schema({
       default: '',
       trim: true
     },
+    managerComment: {
+      type: String,
+      default: '',
+      trim: true
+    },
+    priceGel: {
+      type: Number,
+      default: 0
+    },
+    priceUsd: {
+      type: Number,
+      default: 0
+    },
+    priceEur: {
+      type: Number,
+      default: 0
+    },
+    managerDate: {
+      type: Date,
+      default: null
+    },
     files: [{
       id: {
         type: String,

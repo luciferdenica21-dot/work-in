@@ -416,6 +416,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       return [];
     }
   });
+  const [orderDetailsDraft, setOrderDetailsDraft] = useState({});
 
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -491,6 +492,43 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const key = getOrderKey(order);
     if (!key) return;
     setSeenOrders((prev) => (prev.includes(key) ? prev : [...prev, key]));
+  };
+
+  const getOrderDraft = (order) => {
+    const key = getOrderKey(order);
+    if (!key) return {};
+    const existing = orderDetailsDraft[key];
+    if (existing) return existing;
+    const init = {
+      managerComment: order.managerComment || '',
+      priceGel: order.priceGel ?? 0,
+      priceUsd: order.priceUsd ?? 0,
+      priceEur: order.priceEur ?? 0,
+      managerDate: order.managerDate ? new Date(order.managerDate).toISOString().slice(0, 10) : ''
+    };
+    setOrderDetailsDraft((prev) => ({ ...prev, [key]: init }));
+    return init;
+  };
+
+  const setOrderDraftField = (order, field, value) => {
+    const key = getOrderKey(order);
+    if (!key) return;
+    setOrderDetailsDraft((prev) => ({
+      ...prev,
+      [key]: { ...(prev[key] || getOrderDraft(order)), [field]: value }
+    }));
+  };
+
+  const handleSaveOrderDetails = async (order) => {
+    try {
+      const key = getOrderKey(order);
+      const payload = orderDetailsDraft[key] || {};
+      await ordersAPI.updateDetails(order.chatId, order.orderIndex, payload);
+      loadOrders();
+    } catch (err) {
+      console.error('Error saving order details:', err);
+      alert('Ошибка сохранения данных заказа');
+    }
   };
 
   const openChatWithOrder = (order) => {
@@ -2471,6 +2509,64 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </div>
                       )}
 
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-400">Данные менеджера</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-400">Дата</span>
+                            <input
+                              type="date"
+                              value={getOrderDraft(order).managerDate}
+                              onChange={(e) => setOrderDraftField(order, 'managerDate', e.target.value)}
+                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-400">Цена (₾)</span>
+                            <input
+                              type="number"
+                              value={getOrderDraft(order).priceGel}
+                              onChange={(e) => setOrderDraftField(order, 'priceGel', e.target.value)}
+                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-400">Цена ($)</span>
+                            <input
+                              type="number"
+                              value={getOrderDraft(order).priceUsd}
+                              onChange={(e) => setOrderDraftField(order, 'priceUsd', e.target.value)}
+                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-400">Цена (€)</span>
+                            <input
+                              type="number"
+                              value={getOrderDraft(order).priceEur}
+                              onChange={(e) => setOrderDraftField(order, 'priceEur', e.target.value)}
+                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div className="sm:col-span-2 flex flex-col gap-1">
+                            <span className="text-[11px] text-gray-400">Комментарий менеджера</span>
+                            <textarea
+                              rows={3}
+                              value={getOrderDraft(order).managerComment}
+                              onChange={(e) => setOrderDraftField(order, 'managerComment', e.target.value)}
+                              className="px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white text-xs placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-2">
+                          <button
+                            onClick={() => handleSaveOrderDetails(order)}
+                            className={`px-4 py-2 ${brandGradient} rounded-lg text-white text-xs font-medium`}
+                          >
+                            Сохранить
+                          </button>
+                        </div>
+                      </div>
                       <div className="pt-2" />
                     </div>
                   </div>
