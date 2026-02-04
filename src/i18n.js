@@ -889,16 +889,16 @@ const getLang = () => {
   const p = params.get('lang');
   if (p && ['ru','en','ka'].includes(p)) return p;
   const ls = (navigator.languages || [navigator.language]).filter(Boolean).map(s => s.toLowerCase());
-  if (ls.some(l => l.startsWith('ka') || l.endsWith('-ge'))) return 'ka';
-  const cis = ['ru','be','uk','kk','uz','ky','tg','tk','az','hy'];
-  if (ls.some(l => cis.some(c => l.startsWith(c)))) return 'ru';
-  return 'en';
+  if (ls.some(l => l.startsWith('ka'))) return 'ka';
+  if (ls.some(l => l.startsWith('en'))) return 'en';
+  if (ls.some(l => l.startsWith('ru'))) return 'ru';
+  return 'ru';
 };
 
 i18n.use(initReactI18next).init({
   resources,
   lng: getLang(),
-  fallbackLng: "en",
+  fallbackLng: "ru",
   interpolation: { escapeValue: false }
 });
 
