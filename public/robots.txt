@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /manager
+Disallow: /dashboard
+Sitemap: https://connector.ge/sitemap.xml
