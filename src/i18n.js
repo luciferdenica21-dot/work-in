@@ -890,15 +890,15 @@ const getLang = () => {
   if (p && ['ru','en','ka'].includes(p)) return p;
   const ls = (navigator.languages || [navigator.language]).filter(Boolean).map(s => s.toLowerCase());
   if (ls.some(l => l.startsWith('ka'))) return 'ka';
-  if (ls.some(l => l.startsWith('en'))) return 'en';
   if (ls.some(l => l.startsWith('ru'))) return 'ru';
-  return 'ru';
+  if (ls.some(l => l.startsWith('en'))) return 'en';
+  return 'en';
 };
 
 i18n.use(initReactI18next).init({
   resources,
   lng: getLang(),
-  fallbackLng: "ru",
+  fallbackLng: "en",
   interpolation: { escapeValue: false }
 });
 
