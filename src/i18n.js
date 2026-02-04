@@ -890,10 +890,10 @@ const getLang = () => {
   const params = new URLSearchParams(window.location.search);
   const p = params.get('lang');
   if (p && ['ru','en','ka'].includes(p)) return p;
-  const ls = (navigator.languages || [navigator.language]).filter(Boolean).map(s => s.toLowerCase());
-  if (ls.some(l => l.startsWith('ka'))) return 'ka';
-  if (ls.some(l => l.startsWith('ru'))) return 'ru';
-  if (ls.some(l => l.startsWith('en'))) return 'en';
+  const primary = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
+  if (primary.startsWith('ka')) return 'ka';
+  if (primary.startsWith('ru')) return 'ru';
+  if (primary.startsWith('en')) return 'en';
   return 'en';
 };
 
