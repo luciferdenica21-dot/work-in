@@ -884,10 +884,21 @@ TIG (Tungsten Inert Gas) შედუღება:
   }
 };
 
+const getLang = () => {
+  const params = new URLSearchParams(window.location.search);
+  const p = params.get('lang');
+  if (p && ['ru','en','ka'].includes(p)) return p;
+  const ls = (navigator.languages || [navigator.language]).filter(Boolean).map(s => s.toLowerCase());
+  if (ls.some(l => l.startsWith('ka') || l.endsWith('-ge'))) return 'ka';
+  const cis = ['ru','be','uk','kk','uz','ky','tg','tk','az','hy'];
+  if (ls.some(l => cis.some(c => l.startsWith(c)))) return 'ru';
+  return 'en';
+};
+
 i18n.use(initReactI18next).init({
   resources,
-  lng: "ru",
-  fallbackLng: "ru",
+  lng: getLang(),
+  fallbackLng: "en",
   interpolation: { escapeValue: false }
 });
 
