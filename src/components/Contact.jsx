@@ -4,7 +4,7 @@ const Contact = () => {
   const contacts = [
     {
       name: 'Telegram',
-      url: 'https://t.me/https://t.me/ConnectorGe',
+      url: 'https://t.me/ConnectorGe',
       color: 'hover:bg-[#229ED9] hover:shadow-[0_0_30px_rgba(34,158,217,0.6)]',
       icon: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-5 h-5 md:w-7 md:h-7">
