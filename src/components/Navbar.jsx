@@ -183,72 +183,73 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
           </div>
         </div>
 
-        {isOpen && (
-          <div
-            className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-[110]"
-            onClick={() => setIsOpen(false)}
-          />
-        )}
-
-        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[120] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-          <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
-            <div className="space-y-2 text-center overflow-y-auto">
-              <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
-                {t('УСЛУГИ')}
-                <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-              <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isServicesOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
-                {servicesList.map((sKey) => (
-                  <a 
-                    key={sKey} 
-                    href={`#services?service=${t(sKey)}`} 
-                      className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
-                    onClick={(e) => { 
-                      handleMobileClick(e, '#services');
-                      window.location.hash = `services?service=${t(sKey)}`;
-                    }}
-                  >
-                    {t(sKey)}
-                    <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
-                  </a>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2 text-center overflow-y-auto">
-              <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
-                {t('КОНТАКТЫ')}
-                <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-              </button>
-              <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
-                {contactLinks.map((contact) => (
-                  <a
-                    key={contact.name}
-                    href={contact.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group flex items-center justify-center gap-3 px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
-                  >
-                    {contact.icon}{contact.name}
-                    <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
-                  </a>
-                ))}
-              </div>
-              <div className="mt-2">
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                  className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all"
-                >
-                  {t('HOW_IT_WORKS_BTN')}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
       </nav>
 
+      {isOpen && (
+        <div
+          className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-black/70 z-[500]"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[510] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
+          <div className="space-y-2 text-center overflow-y-auto">
+            <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
+              {t('УСЛУГИ')}
+              <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isServicesOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
+              {servicesList.map((sKey) => (
+                <a 
+                  key={sKey} 
+                  href={`#services?service=${t(sKey)}`} 
+                    className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  onClick={(e) => { 
+                    handleMobileClick(e, '#services');
+                    window.location.hash = `services?service=${t(sKey)}`;
+                  }}
+                >
+                  {t(sKey)}
+                  <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                </a>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2 text-center overflow-y-auto">
+            <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
+              {t('КОНТАКТЫ')}
+              <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
+              {contactLinks.map((contact) => (
+                <a
+                  key={contact.name}
+                  href={contact.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-center gap-3 px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
+                >
+                  {contact.icon}{contact.name}
+                  <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                </a>
+              ))}
+            </div>
+            <div className="mt-2">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
+                className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all"
+              >
+                {t('HOW_IT_WORKS_BTN')}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
       {showOrderAuthPrompt && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div

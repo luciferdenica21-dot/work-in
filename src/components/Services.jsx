@@ -100,7 +100,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black flex justify-center items-start animate-fadeIn scrollbar-hide">
           <div className="fixed inset-0 z-0 bg-[#050505]/95 backdrop-blur-3xl" />
 
-          <nav className="bg-[#0a0a0a] fixed top-0 left-0 right-0 z-[110] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <nav className="bg-[#0a0a0a] fixed top-0 left-0 right-0 z-[500] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
             <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-20">
                 <div className="flex items-center z-10">
@@ -194,12 +194,12 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
             </div>
             {isOpen && (
               <div
-                className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-40"
+                className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-black/70 z-[510]"
                 onClick={() => setIsOpen(false)}
               />
             )}
 
-            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-50 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[520] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
               <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
                 <div>
                   <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
