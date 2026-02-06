@@ -68,7 +68,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
   return (
     <>
-      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md sticky top-0 z-50 text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 md:sticky z-50 text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center z-10">
@@ -122,31 +122,11 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
               />
               
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-blue-500/30 text-white/90 hover:bg-blue-500/10 hover:text-white transition-all text-[10px] uppercase tracking-widest"
-                title={t('HOW_IT_WORKS_BTN')}
-              >
-                {t('HOW_IT_WORKS_BTN')}
-              </button>
+              
             </div>
 
             <div className="flex items-center gap-2 md:gap-4">
-              {/* Mobile: i icon that expands to button on hover */}
-              <div className="md:hidden group relative mr-1">
-                <button
-                  type="button"
-                  onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-blue-600/40 text-white hover:bg-blue-600 transition-all"
-                  aria-label={t('HOW_IT_WORKS_BTN')}
-                >
-                  <span className="font-bold">i</span>
-                </button>
-                <span className="pointer-events-none absolute top-1/2 -translate-y-1/2 left-10 whitespace-nowrap text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg border border-blue-500/30 bg-[#0a0a0a]/80 text-white/90 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {t('HOW_IT_WORKS_BTN')}
-                </span>
-              </div>
+              
               <div className="hidden md:block">
                 <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-1 outline-none text-xs cursor-pointer">
                   <option value="ru" className="bg-[#0a0a0a]">RU</option>
@@ -154,6 +134,15 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                   <option value="ka" className="bg-[#0a0a0a]">GEO</option>
                 </select>
               </div>
+              
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-purple-600 active:scale-95 transition-all"
+                title={t('HOW_IT_WORKS_BTN')}
+              >
+                {t('HOW_IT_WORKS_BTN')}
+              </button>
 
               {user ? (
                 <>
@@ -240,10 +229,9 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 <button
                   type="button"
                   onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                  className="group block w-full px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all"
                 >
                   {t('HOW_IT_WORKS_BTN')}
-                  <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
                 </button>
               </div>
             </div>
