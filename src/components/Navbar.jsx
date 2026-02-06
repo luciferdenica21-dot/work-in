@@ -185,12 +185,12 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
         {isOpen && (
           <div
-            className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-30"
+            className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-[110]"
             onClick={() => setIsOpen(false)}
           />
         )}
 
-        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[120] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
           <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
             <div className="space-y-2 text-center overflow-y-auto">
               <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
