@@ -12,6 +12,7 @@ import AuthModal from './components/AuthModal';
 import ChatWidget from './components/ChatWidget';
 import ManagerPanel from './components/ManagerPanelPro';
 import ClientDashboard from './components/ClientDashboard';
+import TermsInfo from './components/TermsInfo';
 import { authAPI, getToken, removeToken } from './config/api';
 
 function App() {
@@ -101,6 +102,7 @@ function App() {
       />
       
       {user && userRole !== 'admin' && <ChatWidget user={user} />}
+      <TermsInfo />
     </div>
   );
 
@@ -128,7 +130,10 @@ function App() {
         loading ? (
           null
         ) : user && userRole === 'user' ? (
-          <ClientDashboard user={user} onLogout={handleLogout} />
+          <>
+            <ClientDashboard user={user} onLogout={handleLogout} />
+            <TermsInfo />
+          </>
         ) : (
           <Navigate to="/" replace />
         )
