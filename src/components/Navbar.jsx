@@ -175,22 +175,20 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
         {isOpen && (
           <div
-            className="md:hidden fixed inset-0 bg-[#000]/80 backdrop-blur-xl z-40"
+            className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-30"
             onClick={() => setIsOpen(false)}
           />
         )}
 
-        <div className={`md:hidden fixed left-0 right-0 top-0 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[60] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-          <div className="px-4 pt-2 pb-6 h-full flex flex-col">
-            <div className="flex items-center justify-between h-20 px-4 border-b border-white/10">
-              <div className="flex items-center gap-2">
-                <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
-                <span className="text-s font-black tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</span>
-              </div>
-              <button onClick={() => setIsOpen(false)} className="p-2 text-white">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
+        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+          <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
+            <a
+              href="#"
+              onClick={(e) => handleMobileClick(e, '#')}
+              className="w-full block px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5 text-center"
+            >
+              {t('ГЛАВНАЯ')}
+            </a>
             <div className="space-y-2 text-center overflow-y-auto">
               <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                 {t('УСЛУГИ')}

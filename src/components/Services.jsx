@@ -184,22 +184,20 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
             </div>
             {isOpen && (
               <div
-                className="md:hidden fixed inset-0 bg-[#000]/80 backdrop-blur-xl z-40"
+                className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-[#000]/70 backdrop-blur-xl z-40"
                 onClick={() => setIsOpen(false)}
               />
             )}
 
             <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-50 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-              <div className="px-4 pt-2 pb-6 h-full flex flex-col">
-                <div className="flex items-center justify-between px-2 py-2 border-b border-white/10">
-                  <div className="flex items-center gap-2">
-                    <img src="/img/logo.png" alt="logo" className="w-[40px] h-[40px] object-contain" />
-                    <span className="text-s font-black tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</span>
-                  </div>
-                  <button onClick={() => setIsOpen(false)} className="p-2 text-white">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
+              <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
+                <a
+                  href="#"
+                  onClick={(e) => { e.preventDefault(); closeModal(); }}
+                  className="w-full block text-center px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5"
+                >
+                  {t('ГЛАВНАЯ')}
+                </a>
                 <div>
                   <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                     {t('УСЛУГИ')}
