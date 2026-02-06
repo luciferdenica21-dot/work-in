@@ -166,7 +166,17 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 </button>
               )}
 
-              <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white p-2">
+              <button
+                onClick={() => {
+                  const next = !isOpen;
+                  setIsOpen(next);
+                  if (next) {
+                    setIsServicesOpen(true);
+                    setIsContactOpen(true);
+                  }
+                }}
+                className="md:hidden text-white p-2"
+              >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
               </button>
             </div>
@@ -182,13 +192,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
         <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
           <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
-            <a
-              href="#"
-              onClick={(e) => handleMobileClick(e, '#')}
-              className="w-full block px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5 text-center"
-            >
-              {t('ГЛАВНАЯ')}
-            </a>
             <div className="space-y-2 text-center overflow-y-auto">
               <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                 {t('УСЛУГИ')}
