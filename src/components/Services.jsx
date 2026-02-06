@@ -148,9 +148,6 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
-                  <div className="hidden md:block">
-                    <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-1 outline-none text-xs cursor-pointer"><option value="ru" className="bg-[#0a0a0a]">RU</option><option value="en" className="bg-[#0a0a0a]">ENG</option><option value="ka" className="bg-[#0a0a0a]">GEO</option></select>
-                  </div>
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new Event('useterms:open'))}
@@ -159,6 +156,9 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                   >
                     {t('HOW_IT_WORKS_BTN')}
                   </button>
+                  <div className="hidden md:block">
+                    <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-1 outline-none text-xs cursor-pointer"><option value="ru" className="bg-[#0a0a0a]">RU</option><option value="en" className="bg-[#0a0a0a]">ENG</option><option value="ka" className="bg-[#0a0a0a]">GEO</option></select>
+                  </div>
                   {user ? (
                     <>
                       {user.role !== 'admin' && (
@@ -189,8 +189,8 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
               />
             )}
 
-            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
-              <div className="px-4 pt-4 pb-6 h-full flex flex-col">
+            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-50 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+              <div className="px-4 pt-2 pb-6 h-full flex flex-col">
                 <div className="flex items-center justify-between px-2 py-2 border-b border-white/10">
                   <div className="flex items-center gap-2">
                     <img src="/img/logo.png" alt="logo" className="w-[40px] h-[40px] object-contain" />
