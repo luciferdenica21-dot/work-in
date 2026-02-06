@@ -33,6 +33,14 @@ const ChatWidget = ({ user }) => {
   const scrollRef = useRef();
   const fileInputRef = useRef();
   const widgetRef = useRef(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const normalizeMessage = (msg) => {
     if (!msg) return msg;
@@ -496,7 +504,8 @@ const ChatWidget = ({ user }) => {
     <div className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-150">
       <button 
         onClick={() => setIsOpen(!isOpen)} 
-        className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-all relative"
+        className={`w-14 h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
+        ${scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
         {hasNewMessage && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-pulse border-2 border-[#0a0a0a]"></span>
