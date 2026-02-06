@@ -100,7 +100,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black flex justify-center items-start animate-fadeIn scrollbar-hide">
           <div className="fixed inset-0 z-0 bg-[#050505]/95 backdrop-blur-3xl" />
 
-          <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 z-[110] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <nav className="bg-[#0a0a0a] fixed top-0 left-0 right-0 z-[110] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
             <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-20">
                 <div className="flex items-center z-10">
@@ -151,7 +151,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                    className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
+                  className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
                     title={t('HOW_IT_WORKS_BTN')}
                   >
                     {t('HOW_IT_WORKS_BTN')}

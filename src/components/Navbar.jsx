@@ -129,7 +129,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
                 title={t('HOW_IT_WORKS_BTN')}
               >
                 {t('HOW_IT_WORKS_BTN')}
@@ -180,11 +180,11 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
           />
         )}
 
-        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-50 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+        <div className={`md:hidden fixed left-0 right-0 top-0 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[60] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
           <div className="px-4 pt-2 pb-6 h-full flex flex-col">
-            <div className="flex items-center justify-between px-2 py-2 border-b border-white/10">
+            <div className="flex items-center justify-between h-20 px-4 border-b border-white/10">
               <div className="flex items-center gap-2">
-                <img src="/img/logo.png" alt="logo" className="w-[40px] h-[40px] object-contain" />
+                <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
                 <span className="text-s font-black tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</span>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-2 text-white">
