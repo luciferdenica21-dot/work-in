@@ -9,7 +9,7 @@ const TermsInfo = () => {
       <button
         aria-label="Use Terms"
         onClick={() => setOpen(true)}
-        className="fixed bottom-20 right-3 md:bottom-6 md:right-6 z-[130] flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/[0.03] border border-blue-500/30 backdrop-blur-xl text-white/70 hover:text-white hover:border-blue-500/60 shadow-[0_0_20px_rgba(34,158,217,0.15)] hover:shadow-[0_0_30px_rgba(34,158,217,0.35)] transition-all"
+        className="fixed bottom-20 left-3 md:bottom-6 md:left-6 z-[130] flex items-center justify-center w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-white/[0.03] border border-blue-500/30 backdrop-blur-xl text-white/70 hover:text-white hover:border-blue-500/60 shadow-[0_0_20px_rgba(34,158,217,0.15)] hover:shadow-[0_0_30px_rgba(34,158,217,0.35)] transition-all"
       >
         <FileText className="w-6 h-6" />
       </button>
