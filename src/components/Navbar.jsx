@@ -68,7 +68,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
   return (
     <>
-      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 md:sticky z-50 text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-50 text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center z-10">
@@ -138,7 +138,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-blue-500 to-purple-500 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-blue-600 hover:to-purple-600 active:scale-95 transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
                 title={t('HOW_IT_WORKS_BTN')}
               >
                 {t('HOW_IT_WORKS_BTN')}
@@ -181,9 +181,18 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
           />
         )}
 
-        <div className={`md:hidden fixed left-0 right-0 top-20 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'max-h-screen opacity-100 visible' : 'max-h-0 opacity-0 invisible'}`}>
-          <div className="px-4 pt-4 pb-6 space-y-2 text-center">
-            <div>
+        <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a]/95 backdrop-blur-xl border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-40 ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+          <div className="px-4 pt-4 pb-6 h-full flex flex-col">
+            <div className="flex items-center justify-between px-2 py-2 border-b border-white/10">
+              <div className="flex items-center gap-2">
+                <img src="/img/logo.png" alt="logo" className="w-[40px] h-[40px] object-contain" />
+                <span className="text-s font-black tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</span>
+              </div>
+              <button onClick={() => setIsOpen(false)} className="p-2 text-white">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="space-y-2 text-center overflow-y-auto">
               <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                 {t('УСЛУГИ')}
                 <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -206,7 +215,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               </div>
             </div>
 
-            <div>
+            <div className="space-y-2 text-center overflow-y-auto">
               <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
                 {t('КОНТАКТЫ')}
                 <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
