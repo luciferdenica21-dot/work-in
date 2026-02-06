@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
@@ -6,17 +6,33 @@ import { FileText } from 'lucide-react';
 const TermsInfo = () => {
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
+  const [isMobile, setIsMobile] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    onScroll();
+    window.addEventListener('scroll', onScroll);
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   if (typeof document === 'undefined') return null;
 
   return createPortal(
     <>
-      <div className="fixed bottom-24 left-6 md:bottom-8 md:left-8 z-[150]">
+      <div className="fixed bottom-24 left-6 md:bottom-8 md:left-8 z-[200]">
         <button
           aria-label="Use Terms"
           onClick={() => setOpen((v) => !v)}
           className={`w-9 h-9 md:w-14 md:h-14 rounded-full shadow-2xl transition-all relative flex items-center justify-center
-          bg-blue-600/30 text-white opacity-80 hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
+          ${isMobile && scrolled ? 'bg-blue-600 text-white opacity-100' : 'bg-blue-600/30 text-white opacity-80'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
         >
           <span className="absolute inset-0 rounded-full ring-2 ring-blue-400/40" />
           <FileText className="w-4 h-4 md:w-6 md:h-6" />
@@ -24,12 +40,12 @@ const TermsInfo = () => {
       </div>
 
       {open && (
-        <div className="fixed inset-0 z-[140]">
+        <div className="fixed inset-0 z-[210]">
           <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-[141] mx-auto mt-16 md:mt-24 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl">
+          <div className="relative z-[211] mx-auto mt-12 md:mt-24 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[70vh] md:max-h-none overflow-hidden">
             <div className="p-6 md:p-8">
               <div className="flex items-start justify-between">
                 <div>
@@ -47,7 +63,7 @@ const TermsInfo = () => {
                 </button>
               </div>
 
-              <div className="mt-6 space-y-6 text-white/80 leading-relaxed">
+              <div className="mt-6 space-y-6 text-white/80 leading-relaxed overflow-y-auto max-h-[52vh] md:max-h-none pr-2">
                 <div>
                   <div className="text-blue-400 font-bold uppercase tracking-widest text-xs">{t('TERMS_S1_TITLE')}</div>
                   <p className="mt-2 text-sm">
