@@ -68,7 +68,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
   return (
     <>
-      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-50 text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-[120] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center z-10">
