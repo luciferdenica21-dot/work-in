@@ -797,6 +797,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
           socket.on('message-deleted', ({ messageId }) => {
             setMessages(prev => prev.filter(m => (m._id || m.id) !== messageId));
           });
+          
+          socket.on('order-created', ({ chatId, order }) => {
+            console.log('=== ORDER CREATED ===', chatId, order);
+            loadOrders();
+          });
         }
       } catch (error) {
         console.error('Error initializing socket:', error);
@@ -810,6 +815,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       if (socket) {
         socket.off('new-chat-message');
         socket.off('message-deleted');
+        socket.off('order-created');
       }
       disconnectSocket();
     };

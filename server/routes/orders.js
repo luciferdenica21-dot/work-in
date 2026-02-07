@@ -52,8 +52,8 @@ router.post('/', protect, async (req, res) => {
       chat = await Chat.create({
         userId: req.user._id,
         userEmail: req.user.email,
-        lastMessage: 'Новый заказ оформлен',
-        unread: true
+        lastMessage: '',
+        unread: false
       });
       console.log('New chat created:', chat._id);
     } else {
@@ -74,11 +74,15 @@ router.post('/', protect, async (req, res) => {
     console.log('Creating order:', newOrder);
 
     chat.orders.push(newOrder);
-    chat.lastMessage = 'Новый заказ оформлен';
-    chat.unread = true;
+    chat.lastUpdate = new Date();
     
     console.log('Saving chat with new order...');
     await chat.save();
+    
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('order-created', { chatId: chat._id.toString(), order: newOrder });
+    }
     
     console.log('Order created successfully:', newOrder);
     res.status(201).json(newOrder);
