@@ -42,7 +42,7 @@ const TermsInfo = () => {
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-[530] mx-auto mt-12 md:mt-24 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[70vh] md:max-h-none overflow-hidden">
+          <div className="relative z-[530] mx-auto my-12 md:my-12 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[85vh] overflow-hidden">
             <div className="p-6 md:p-8">
               <div className="flex items-start justify-between">
                 <div>
@@ -60,7 +60,7 @@ const TermsInfo = () => {
                 </button>
               </div>
 
-              <div className="mt-6 space-y-6 text-white/80 leading-relaxed overflow-y-auto max-h-[52vh] md:max-h-none pr-2">
+              <div className="mt-6 space-y-6 text-white/80 leading-relaxed overflow-y-auto max-h-[60vh] pr-2">
                 <div>
                   <div className="text-blue-400 font-bold uppercase tracking-widest text-xs">{t('TERMS_S1_TITLE')}</div>
                   <p className="mt-2 text-sm">
