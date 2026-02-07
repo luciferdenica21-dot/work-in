@@ -71,6 +71,27 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
     setIsContactOpen(false);
   };
 
+  useEffect(() => {
+    const onServicesClose = () => {
+      setSelectedService(null);
+      setIsOpen(false);
+      setIsServicesOpen(false);
+      setIsContactOpen(false);
+      if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
+      if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);
+    };
+    window.addEventListener('services:close', onServicesClose);
+    return () => window.removeEventListener('services:close', onServicesClose);
+  }, []);
+
+  const handleGoHome = () => {
+    closeModal();
+    if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
+    if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);
+    window.dispatchEvent(new Event('useterms:close'));
+    navigate('/');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <section id="services" className="relative py-24 px-4 bg-[#050505]">
@@ -104,14 +125,14 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
             <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-20">
                 <div className="flex items-center z-10">
-                  <button onClick={closeModal} className="flex items-center gap-2 group">
+                  <button onClick={handleGoHome} className="flex items-center gap-2 group">
                     <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
                     <span className="text-s font-black tracking-[0.2em] bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</span>
                   </button>
                 </div>
 
                 <div className="hidden md:flex items-center space-x-12">
-                  <button onClick={closeModal} className="relative font-medium tracking-widest hover:text-blue-400 transition-all group uppercase">{t('ГЛАВНАЯ')}<span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover:w-full"></span></button>
+                  <button onClick={handleGoHome} className="relative font-medium tracking-widest hover:text-blue-400 transition-all group uppercase">{t('ГЛАВНАЯ')}<span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover:w-full"></span></button>
                   
                   <div className="relative group/dropdown">
                     <button className="relative font-medium tracking-widest hover:text-blue-400 transition-all flex items-center gap-1 cursor-default uppercase">
@@ -151,7 +172,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                  className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:from-sky-600 hover:to-blue-700 active:scale-95 transition-all"
+                  className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-blue-500/40 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:bg-blue-500/10 active:scale-95 transition-all"
                     title={t('HOW_IT_WORKS_BTN')}
                   >
                     {t('HOW_IT_WORKS_BTN')}
@@ -242,7 +263,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                     <button
                       type="button"
                       onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                      className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl bg-blue-500 text-white shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all"
+                      className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-blue-500/40 text-white shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:bg-blue-500/10 active:scale-95 transition-all"
                     >
                       {t('HOW_IT_WORKS_BTN')}
                     </button>
@@ -268,7 +289,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
 
           <div className="md:hidden fixed bottom-0 left-0 right-0 z-[120] bg-[#0a0a0a]/40 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
             <div className="grid grid-cols-5 items-center justify-items-center">
-              <button onClick={closeModal} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
+              <button onClick={handleGoHome} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M3 9.5L12 3l9 6.5V20a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9.5z" />
                   <path d="M9 21V12h6v9" />
