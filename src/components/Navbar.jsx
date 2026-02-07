@@ -165,7 +165,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-xl border border-blue-500/40 text-white text-[10px] font-extrabold uppercase tracking-widest shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:bg-blue-500/10 active:scale-95 transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-1 rounded-lg border border-blue-500/30 text-white text-[10px] font-extrabold uppercase tracking-widest bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
                 title={t('HOW_IT_WORKS_BTN')}
               >
                 {t('HOW_IT_WORKS_BTN')}
@@ -195,7 +195,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                   </button>
                 </>
               ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-2 border border-white/10 rounded-lg hover:border-blue-500/50 transition-all group">
+                <button onClick={() => setIsAuthOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-1 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all group">
                   <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
