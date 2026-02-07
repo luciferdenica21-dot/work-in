@@ -85,6 +85,24 @@ const TermsInfo = () => {
                     {t('TERMS_S4_TEXT')}
                   </p>
                 </div>
+                <div>
+                  <div className="text-blue-400 font-bold uppercase tracking-widest text-xs">{t('TERMS_S5_TITLE')}</div>
+                  <p className="mt-2 text-sm">
+                    {t('TERMS_S5_TEXT')}
+                  </p>
+                </div>
+                <div>
+                  <div className="text-blue-400 font-bold uppercase tracking-widest text-xs">{t('TERMS_S6_TITLE')}</div>
+                  <p className="mt-2 text-sm">
+                    {t('TERMS_S6_TEXT')}
+                  </p>
+                </div>
+                <div>
+                  <div className="text-blue-400 font-bold uppercase tracking-widest text-xs">{t('TERMS_S7_TITLE')}</div>
+                  <p className="mt-2 text-sm">
+                    {t('TERMS_S7_TEXT')}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
