@@ -13,7 +13,7 @@ import {
  } from 'lucide-react';
 
 const ManagerPanelPro = ({ user }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   
   // Функция форматирования размера файла
@@ -643,15 +643,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
   // Навигационные пункты для админа - только основные
   const navItems = [
-    { id: 'dashboard', label: 'Панель управления', icon: Home },
-    { id: 'chats', label: 'Чаты', icon: MessageCircle },
-    { id: 'orders', label: 'Заказы', icon: Package },
-    { id: 'clients', label: 'Клиенты', icon: Users },
-    { id: 'scripts', label: 'Скрипты', icon: Code }
+    { id: 'dashboard', labelKey: 'MP_DASHBOARD', icon: Home },
+    { id: 'chats', labelKey: 'MP_CHATS', icon: MessageCircle },
+    { id: 'orders', labelKey: 'MP_ORDERS', icon: Package },
+    { id: 'clients', labelKey: 'MP_CLIENTS', icon: Users },
+    { id: 'scripts', labelKey: 'MP_SCRIPTS', icon: Code }
   ];
 
 
   const brandGradient = "bg-gradient-to-r from-blue-600 to-cyan-500";
+  const changeLanguage = (e) => {
+    i18n.changeLanguage(e.target.value);
+  };
 
   // Загрузка данных
   const loadChats = async () => {
@@ -1348,12 +1351,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
           <div className="flex justify-between items-center h-16">
             {/* Логотип */}
             <div className="flex items-center space-x-4">
-              <div className={`w-10 h-10 rounded-xl ${brandGradient} flex items-center justify-center`}>
-                <Shield className="w-6 h-6 text-white" />
-              </div>
+              <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
               <div>
-                <h1 className="text-xl font-bold text-white">CONNECTOR</h1>
-                <p className="text-xs text-blue-400">Панель управления</p>
+                <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</h1>
+                <p className="text-xs text-blue-400">{t('MP_PANEL')}</p>
               </div>
             </div>
 
@@ -1382,7 +1383,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         {unseenNewOrdersCount}
                       </span>
                     )}
-                    <span>{item.label}</span>
+                    <span>{t(item.labelKey)}</span>
                   </button>
                 );
               })}
@@ -1401,12 +1402,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <span className="text-gray-300">{orders.filter(o => o.status === 'new').length}</span>
                 </div>
               </div>
+              <div className="hidden md:block">
+                <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-2 outline-none text-xs cursor-pointer">
+                  <option value="ru" className="bg-[#0a0a0a]">RU</option>
+                  <option value="en" className="bg-[#0a0a0a]">ENG</option>
+                  <option value="ka" className="bg-[#0a0a0a]">GEO</option>
+                </select>
+              </div>
 
               {/* Выход */}
               <button
                 onClick={() => { removeToken(); navigate('/'); }}
                 className="hidden lg:flex p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-                title="Выйти"
+                title={t('LOGOUT')}
               >
                 <LogOut className="w-4 h-4" />
               </button>
@@ -1431,8 +1439,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
               <div className="fixed left-0 right-0 top-16 z-40 px-4 py-6">
                 <div className="mx-auto max-w-sm bg-[#050a18]/95 border border-white/10 rounded-2xl p-4 shadow-2xl">
                   <div className="flex flex-col items-center gap-2 text-center">
-                    <div className="text-sm font-semibold text-white">Меню</div>
-                    <div className="text-xs text-white/60">Навигация по панели</div>
+                    <div className="text-sm font-semibold text-white">{t('MP_MENU')}</div>
+                    <div className="text-xs text-white/60">{t('MP_NAVIGATION')}</div>
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2">
@@ -1463,12 +1471,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               {unseenNewOrdersCount}
                             </span>
                           )}
-                          <span className="text-center">{item.label}</span>
+                          <span className="text-center">{t(item.labelKey)}</span>
                         </button>
                       );
                     })}
                   </div>
 
+                  <div className="mt-4">
+                    <select onChange={changeLanguage} value={i18n.language} className="w-full bg-transparent border border-blue-500/30 rounded-lg px-3 py-2 outline-none text-sm cursor-pointer">
+                      <option value="ru" className="bg-[#0a0a0a]">RU</option>
+                      <option value="en" className="bg-[#0a0a0a]">ENG</option>
+                      <option value="ka" className="bg-[#0a0a0a]">GEO</option>
+                    </select>
+                  </div>
                   <div className="mt-4 pt-4 border-t border-white/10">
                     <button
                       onClick={() => {
@@ -1477,10 +1492,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         navigate('/');
                       }}
                       className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-red-300 hover:text-red-200 hover:bg-red-500/10 border border-red-500/20"
-                      title="Выйти"
+                      title={t('LOGOUT')}
                     >
                       <LogOut className="w-5 h-5" />
-                      <span className="text-center">Выйти</span>
+                      <span className="text-center">{t('LOGOUT')}</span>
                     </button>
                   </div>
                 </div>
@@ -1523,7 +1538,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             {unseenNewOrdersCount}
                           </span>
                         )}
-                        <span className="text-xs">{item.label}</span>
+                        <span className="text-xs">{t(item.labelKey)}</span>
                       </button>
                     );
                   })}
