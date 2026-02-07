@@ -1424,7 +1424,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
               </button>
             </div>
           </div>
@@ -1444,37 +1444,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   </div>
 
                   <div className="mt-4 flex flex-col gap-2">
-                    {navItems.map((item) => {
-                      const Icon = item.icon;
-                      const isActive = activeSection === item.id;
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => {
-                            setActiveSection(item.id);
-                            setMobileMenuOpen(false);
-                          }}
-                          className={`w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base ${
-                            isActive
-                              ? 'bg-blue-600/20 text-blue-200 border border-blue-500/30'
-                              : 'text-gray-200 hover:text-white hover:bg-white/5 border border-white/10'
-                          }`}
-                        >
-                          <Icon className="w-5 h-5" />
-                          {item.id === 'chats' && unreadMessagesCount > 0 && (
-                            <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
-                              {unreadMessagesCount}
-                            </span>
-                          )}
-                          {item.id === 'orders' && unseenNewOrdersCount > 0 && (
-                            <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
-                              {unseenNewOrdersCount}
-                            </span>
-                          )}
-                          <span className="text-center">{t(item.labelKey)}</span>
-                        </button>
-                      );
-                    })}
+                    <button
+                      onClick={() => {
+                        setActiveSection('scripts');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 border border-purple-500/20"
+                    >
+                      <Code className="w-5 h-5" />
+                      <span className="text-center">{t('MP_SCRIPTS')}</span>
+                    </button>
                   </div>
 
                   <div className="mt-4">
@@ -1485,6 +1464,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </select>
                   </div>
                   <div className="mt-4 pt-4 border-t border-white/10">
+                    <button
+                      onClick={() => {
+                        setMobileMenuOpen(false);
+                        navigate('/auth');
+                      }}
+                      className="mb-2 w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
+                      title={t('Вход')}
+                    >
+                      <User className="w-5 h-5" />
+                      <span className="text-center">{t('Вход')}</span>
+                    </button>
                     <button
                       onClick={() => {
                         setMobileMenuOpen(false);
@@ -1506,44 +1496,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
       </nav>
 
       {/* Основной контент */}
-      <main className="flex-grow pt-16">
+      <main className="flex-grow pt-16 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           
           {/* Dashboard */}
           {activeSection === 'dashboard' && (
             <div className="space-y-4 sm:space-y-6">
-              {/* На мобилке показываем иконки меню (как в бургере) НАД обзором */}
-              <div className="lg:hidden">
-                <div className="grid grid-cols-2 gap-2">
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => setActiveSection(item.id)}
-                        className={`flex flex-col items-center space-y-1 p-3 rounded-lg text-sm transition-all ${
-                          activeSection === item.id
-                            ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
-                            : 'text-gray-300 hover:text-white hover:bg-white/5 border border-white/10'
-                        }`}
-                      >
-                        <Icon className="w-5 h-5" />
-                        {item.id === 'chats' && unreadMessagesCount > 0 && (
-                          <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
-                            {unreadMessagesCount}
-                          </span>
-                        )}
-                        {item.id === 'orders' && unseenNewOrdersCount > 0 && (
-                          <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
-                            {unseenNewOrdersCount}
-                          </span>
-                        )}
-                        <span className="text-xs">{t(item.labelKey)}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+             
 
               <button
                 onClick={() => setSystemOverviewOpen((v) => !v)}
@@ -3130,6 +3089,41 @@ const getAbsoluteFileUrl = (fileUrl) => {
           )}
         </div>
       </main>
+      <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
+        <div className="bg-[#050a18]/95 backdrop-blur-md border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-2">
+            {['dashboard','chats','orders','clients'].map((id) => {
+              const item = navItems.find(i => i.id === id);
+              const Icon = item.icon;
+              const isActive = activeSection === id;
+              return (
+                <button
+                  key={id}
+                  onClick={() => setActiveSection(id)}
+                  className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs transition-all ${
+                    isActive
+                      ? 'bg-blue-600/20 text-blue-200 border border-blue-500/30'
+                      : 'text-gray-200 hover:text-white hover:bg-white/5 border border-white/10'
+                  }`}
+                >
+                  <Icon className="w-5 h-5" />
+                  {id === 'chats' && unreadMessagesCount > 0 && (
+                    <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
+                      {unreadMessagesCount}
+                    </span>
+                  )}
+                  {id === 'orders' && unseenNewOrdersCount > 0 && (
+                    <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
+                      {unseenNewOrdersCount}
+                    </span>
+                  )}
+                  <span className="text-[10px]">{t(item.labelKey)}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
