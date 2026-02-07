@@ -773,8 +773,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
           socket.on('new-chat-message', (payload) => {
             console.log('=== NEW CHAT MESSAGE ===');
             console.log('Payload:', payload);
-            
-            loadChats();
             if (payload.chatId === activeId) {
               setMessages(prev => {
                 const exists = prev.find(m => (m._id || m.id) === (payload.message._id || payload.message.id));
@@ -1368,6 +1366,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     }`}
                   >
                     <Icon className="w-4 h-4" />
+                    {item.id === 'chats' && unreadMessagesCount > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
+                        {unreadMessagesCount}
+                      </span>
+                    )}
+                    {item.id === 'orders' && unseenNewOrdersCount > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
+                        {unseenNewOrdersCount}
+                      </span>
+                    )}
                     <span>{item.label}</span>
                   </button>
                 );
@@ -1439,6 +1447,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           }`}
                         >
                           <Icon className="w-5 h-5" />
+                          {item.id === 'chats' && unreadMessagesCount > 0 && (
+                            <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
+                              {unreadMessagesCount}
+                            </span>
+                          )}
+                          {item.id === 'orders' && unseenNewOrdersCount > 0 && (
+                            <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
+                              {unseenNewOrdersCount}
+                            </span>
+                          )}
                           <span className="text-center">{item.label}</span>
                         </button>
                       );
@@ -1489,6 +1507,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         }`}
                       >
                         <Icon className="w-5 h-5" />
+                        {item.id === 'chats' && unreadMessagesCount > 0 && (
+                          <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
+                            {unreadMessagesCount}
+                          </span>
+                        )}
+                        {item.id === 'orders' && unseenNewOrdersCount > 0 && (
+                          <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
+                            {unseenNewOrdersCount}
+                          </span>
+                        )}
                         <span className="text-xs">{item.label}</span>
                       </button>
                     );
@@ -1506,39 +1534,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
               </button>
 
               {systemOverviewOpen && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    onClick={() => setActiveSection('chats')}
-                    className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-gray-300">Новые сообщения</div>
-                        <div className="text-2xl font-bold text-white">{unreadMessagesCount}</div>
-                        <div className={`mt-1 text-xs ${unreadMessagesCount ? 'text-yellow-300' : 'text-green-300'}`}>
-                          {unreadMessagesCount ? 'Не просмотрено' : 'Просмотрено'}
-                        </div>
-                      </div>
-                      <Bell className={`w-7 h-7 ${unreadMessagesCount ? 'text-yellow-400' : 'text-green-400'}`} />
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => setActiveSection('orders')}
-                    className="text-left bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-sm text-gray-300">Новые заказы</div>
-                        <div className="text-2xl font-bold text-white">{newOrders.length}</div>
-                        <div className={`mt-1 text-xs ${unseenNewOrdersCount ? 'text-yellow-300' : 'text-green-300'}`}>
-                          {unseenNewOrdersCount ? `Не просмотрено: ${unseenNewOrdersCount}` : 'Просмотрено'}
-                        </div>
-                      </div>
-                      <Package className={`w-7 h-7 ${unseenNewOrdersCount ? 'text-yellow-400' : 'text-green-400'}`} />
-                    </div>
-                  </button>
-                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4"></div>
               )}
 
               {/* Desktop: большие карточки */}
@@ -1604,15 +1600,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </div>
                     <div className="mt-1 text-xs text-gray-300">Активные чаты</div>
                     <div className="text-[10px] text-green-400">+{Math.floor(Math.random() * 10)} за день</div>
-                  </div>
-
-                  <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <Package className="w-5 h-5 text-yellow-400" />
-                      <span className="text-lg font-bold text-white">{orders.filter(o => o.status === 'new').length}</span>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-300">Новые заказы</div>
-                    <div className="text-[10px] text-yellow-400">Требуют внимания</div>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-lg p-3">
