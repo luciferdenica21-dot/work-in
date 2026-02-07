@@ -278,8 +278,9 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-blue-500/40 text-white shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:bg-blue-500/10 active:scale-95 transition-all"
+                    className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-blue-500/40 text-white bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
               >
+                
                 {t('HOW_IT_WORKS_BTN')}
               </button>
             </div>
