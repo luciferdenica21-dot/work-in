@@ -155,7 +155,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 setIsOrderOpen={setIsOrderOpen} 
                 setIsAuthOpen={setIsAuthOpen}
                 onRequireAuth={handleRequireAuthForOrder}
-                className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
+                className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
               />
               
               
@@ -165,14 +165,14 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               <button
                 type="button"
                 onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-1 rounded-lg border border-blue-500/30 text-white text-[10px] font-extrabold uppercase tracking-widest bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
+                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-lg border border-blue-500/30 text-white text-[10px] font-extrabold uppercase tracking-widest bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
                 title={t('HOW_IT_WORKS_BTN')}
               >
                 {t('HOW_IT_WORKS_BTN')}
               </button>
               
               <div className="hidden md:block">
-                <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-1 outline-none text-xs cursor-pointer">
+                <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-2 outline-none text-xs cursor-pointer">
                   <option value="ru" className="bg-[#0a0a0a]">RU</option>
                   <option value="en" className="bg-[#0a0a0a]">ENG</option>
                   <option value="ka" className="bg-[#0a0a0a]">GEO</option>
@@ -182,20 +182,20 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               {user ? (
                 <>
                   {user.role !== 'admin' && (
-                    <button onClick={() => navigate('/dashboard')} className="hidden md:flex items-center gap-2 px-4 py-1 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
+                    <button onClick={() => navigate('/dashboard')} className="hidden md:flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
                       <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
                     </button>
                   )}
-                  <button onClick={handleLogout} className="hidden md:flex items-center gap-2 px-4 py-1 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-all group">
+                  <button onClick={handleLogout} className="hidden md:flex items-center gap-2 px-4 py-2 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-all group">
                     <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                   </button>
                 </>
               ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-1 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all group">
+                <button onClick={() => setIsAuthOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all group">
                   <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
