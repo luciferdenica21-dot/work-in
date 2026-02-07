@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
@@ -14,7 +13,6 @@ import {
 
 const ManagerPanelPro = ({ user }) => {
   const { t, i18n } = useTranslation();
-  const navigate = useNavigate();
   
   // Функция форматирования размера файла
   const formatFileSize = (bytes) => {
@@ -1350,7 +1348,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Логотип */}
-            <div className="flex items-center space-x-4 cursor-pointer" onClick={() => navigate('/manager')}>
+            <div className="flex items-center space-x-4 cursor-pointer" onClick={() => setActiveSection('dashboard')}>
               <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
               <div>
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</h1>
@@ -1412,7 +1410,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
               {/* Выход */}
               <button
-                onClick={() => { removeToken(); navigate('/'); }}
+                onClick={() => { removeToken(); window.location.href = '/'; }}
                 className="hidden lg:flex p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
                 title={t('LOGOUT')}
               >
@@ -1467,7 +1465,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       onClick={() => {
                         setMobileMenuOpen(false);
                         removeToken();
-                        navigate('/');
+                        window.location.href = '/';
                       }}
                       className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-red-300 hover:text-red-200 hover:bg-red-500/10 border border-red-500/20"
                       title={t('LOGOUT')}
