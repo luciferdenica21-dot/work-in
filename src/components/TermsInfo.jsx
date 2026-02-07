@@ -37,12 +37,12 @@ const TermsInfo = () => {
       {/* Floating icon removed; modal opens via global events */}
 
       {open && (
-        <div className="fixed inset-0 z-[350]">
+        <div className="fixed inset-0 z-[520]">
           <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-[360] mx-auto mt-12 md:mt-24 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[70vh] md:max-h-none overflow-hidden">
+          <div className="relative z-[530] mx-auto mt-12 md:mt-24 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[70vh] md:max-h-none overflow-hidden">
             <div className="p-6 md:p-8">
               <div className="flex items-start justify-between">
                 <div>
