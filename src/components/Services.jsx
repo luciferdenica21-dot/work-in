@@ -181,8 +181,8 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                       const next = !isOpen;
                       setIsOpen(next);
                       if (next) {
-                        setIsServicesOpen(true);
-                        setIsContactOpen(true);
+                        setIsServicesOpen(false);
+                        setIsContactOpen(false);
                       }
                     }}
                     className="md:hidden text-white p-2"
@@ -194,12 +194,12 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
             </div>
             {isOpen && (
               <div
-                className="md:hidden fixed top-20 left-0 right-0 bottom-0 bg-black/70 z-[510]"
+                className="md:hidden fixed top-20 left-0 right-0 bottom-16 bg-black/70 z-[510]"
                 onClick={() => setIsOpen(false)}
               />
             )}
 
-            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[520] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+            <div className={`md:hidden fixed left-0 right-0 top-20 bottom-16 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[520] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
               <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
                 <div>
                   <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
