@@ -1,7 +1,7 @@
 import './i18n';
 import { useState, useEffect } from 'react' 
 import { useTranslation } from 'react-i18next'; 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css'
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -22,6 +22,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
  useEffect(() => {
   const checkAuth = async () => {
@@ -60,6 +61,12 @@ function App() {
     setUser(null);
     setUserRole(null);
   };
+
+  useEffect(() => {
+    if (!loading && userRole === 'admin') {
+      navigate('/manager', { replace: true });
+    }
+  }, [loading, userRole, navigate]);
 
   if (loading) return (
     <div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
