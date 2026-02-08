@@ -86,6 +86,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
 
+// Простое отслеживание онлайн-пользователей (все роли)
+// Ключ: userId, Значение: количество активных соединений (вкладки/устройства)
+const onlineUsers = new Map();
+
 io.use((socket, next) => {
   const userId = socket.handshake.auth.userId;
   const role = socket.handshake.auth.role;
@@ -99,6 +103,16 @@ io.use((socket, next) => {
 
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.userId} (${socket.role})`);
+  
+  // Увеличиваем счетчик соединений пользователя
+  const current = onlineUsers.get(socket.userId) || 0;
+  onlineUsers.set(socket.userId, current + 1);
+  // Уведомляем о присутствии
+  io.emit('user-online', { userId: socket.userId });
+  // Админу отправляем снимок всех онлайн-пользователей
+  if (socket.role === 'admin') {
+    socket.emit('online-users', Array.from(onlineUsers.keys()));
+  }
 
   socket.on('join-chat', async (chatId) => {
     try {
@@ -157,6 +171,13 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.userId}`);
+    const current = onlineUsers.get(socket.userId) || 0;
+    if (current <= 1) {
+      onlineUsers.delete(socket.userId);
+      io.emit('user-offline', { userId: socket.userId });
+    } else {
+      onlineUsers.set(socket.userId, current - 1);
+    }
   });
 });
 

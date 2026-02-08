@@ -449,6 +449,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   });
   const [orderDetailsDraft, setOrderDetailsDraft] = useState({});
+  const [onlineUserIds, setOnlineUserIds] = useState(new Set());
 
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -673,10 +674,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   const isUserOnline = (user) => {
+    const id = user?._id || user?.id;
+    if (id && onlineUserIds.has(String(id))) return true;
     const now = new Date();
     const lastSeen = new Date(user.lastSeen || user.lastMessageTime || user.createdAt);
     const diffMinutes = (now - lastSeen) / (1000 * 60);
-    return diffMinutes < 5; // онлайн, если был активен менее 5 минут назад
+    return diffMinutes < 5;
   };
 
   const loadAllUsers = async () => {
@@ -771,6 +774,27 @@ const getAbsoluteFileUrl = (fileUrl) => {
         
         const socket = getSocket();
         if (socket) {
+          socket.on('online-users', (ids) => {
+            const list = Array.isArray(ids) ? ids : [];
+            const next = new Set(list.map(String));
+            setOnlineUserIds(next);
+          });
+          socket.on('user-online', ({ userId }) => {
+            if (!userId) return;
+            setOnlineUserIds(prev => {
+              const next = new Set(prev);
+              next.add(String(userId));
+              return next;
+            });
+          });
+          socket.on('user-offline', ({ userId }) => {
+            if (!userId) return;
+            setOnlineUserIds(prev => {
+              const next = new Set(prev);
+              next.delete(String(userId));
+              return next;
+            });
+          });
           socket.on('new-chat-message', (payload) => {
             console.log('=== NEW CHAT MESSAGE ===');
             console.log('Payload:', payload);
@@ -814,6 +838,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
     return () => {
       const socket = getSocket();
       if (socket) {
+        socket.off('online-users');
+        socket.off('user-online');
+        socket.off('user-offline');
         socket.off('new-chat-message');
         socket.off('message-deleted');
         socket.off('order-created');
