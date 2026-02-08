@@ -675,11 +675,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
   const isUserOnline = (user) => {
     const id = user?._id || user?.id;
-    if (id && onlineUserIds.has(String(id))) return true;
-    const now = new Date();
-    const lastSeen = new Date(user.lastSeen || user.lastMessageTime || user.createdAt);
-    const diffMinutes = (now - lastSeen) / (1000 * 60);
-    return diffMinutes < 5;
+    return id ? onlineUserIds.has(String(id)) : false;
   };
 
   const loadAllUsers = async () => {

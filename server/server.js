@@ -104,11 +104,12 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log(`User connected: ${socket.userId} (${socket.role})`);
   
-  // Увеличиваем счетчик соединений пользователя
-  const current = onlineUsers.get(socket.userId) || 0;
-  onlineUsers.set(socket.userId, current + 1);
-  // Уведомляем о присутствии
-  io.emit('user-online', { userId: socket.userId });
+  // Учитываем онлайн только для роли "user" (клиенты сайта)
+  if (socket.role === 'user') {
+    const current = onlineUsers.get(socket.userId) || 0;
+    onlineUsers.set(socket.userId, current + 1);
+    io.emit('user-online', { userId: socket.userId });
+  }
   // Админу отправляем снимок всех онлайн-пользователей
   if (socket.role === 'admin') {
     socket.emit('online-users', Array.from(onlineUsers.keys()));
@@ -171,12 +172,14 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.userId}`);
-    const current = onlineUsers.get(socket.userId) || 0;
-    if (current <= 1) {
-      onlineUsers.delete(socket.userId);
-      io.emit('user-offline', { userId: socket.userId });
-    } else {
-      onlineUsers.set(socket.userId, current - 1);
+    if (socket.role === 'user') {
+      const current = onlineUsers.get(socket.userId) || 0;
+      if (current <= 1) {
+        onlineUsers.delete(socket.userId);
+        io.emit('user-offline', { userId: socket.userId });
+      } else {
+        onlineUsers.set(socket.userId, current - 1);
+      }
     }
   });
 });
