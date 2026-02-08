@@ -24,6 +24,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(false);
+  const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
 
   const servicesList = [
     "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
@@ -44,6 +45,10 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
   const handleLogout = () => {
     if (onLogout) onLogout();
     navigate('/');
+  };
+  
+  const handleRequireAuthForOrder = () => {
+    setShowOrderAuthPrompt(true);
   };
 
   useEffect(() => {
@@ -161,11 +166,12 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                   </div>
 
         <OrderButton 
-  user={user} 
-  setIsOrderOpen={setIsOrderOpen} 
-  setIsAuthOpen={setIsAuthOpen} 
-  className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
-/>
+          user={user} 
+          setIsOrderOpen={setIsOrderOpen} 
+          setIsAuthOpen={setIsAuthOpen} 
+          onRequireAuth={handleRequireAuthForOrder}
+          className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
+        />
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
@@ -313,7 +319,13 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                 </div>
               )}
 
-              <OrderButton user={user} setIsOrderOpen={setIsOrderOpen} setIsAuthOpen={setIsAuthOpen} className="text-blue-400" />
+              <OrderButton 
+                user={user} 
+                setIsOrderOpen={setIsOrderOpen} 
+                setIsAuthOpen={setIsAuthOpen} 
+                onRequireAuth={handleRequireAuthForOrder}
+                className="text-blue-400" 
+              />
 
               <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -343,6 +355,41 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                   </svg>
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showOrderAuthPrompt && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            onClick={() => setShowOrderAuthPrompt(false)}
+          />
+          <div className="relative w-full max-w-[420px] bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="text-white text-sm font-bold uppercase tracking-widest">
+              {t('Уведомление')}
+            </div>
+            <div className="mt-3 text-white/70 text-sm leading-relaxed">
+              {t('Чтобы заказать услугу, сначала войдите')}
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowOrderAuthPrompt(false)}
+                className="px-4 py-2 rounded-xl border border-white/10 text-white/80 hover:bg-white/5 transition-colors"
+              >
+                {t('Отмена')}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowOrderAuthPrompt(false);
+                  if (typeof setIsAuthOpen === 'function') setIsAuthOpen(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              >
+                {t('Войти')}
+              </button>
             </div>
           </div>
         </div>
