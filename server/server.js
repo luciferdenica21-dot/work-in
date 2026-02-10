@@ -15,6 +15,7 @@ import orderRoutes from './routes/orders.js';
 import fileRoutes from './routes/files.js';
 import Message from './models/Message.js';
 import Chat from './models/Chat.js';
+import { sendTelegram } from './config/telegram.js';
 
 /* global process */
 
@@ -150,6 +151,13 @@ io.on('connection', (socket) => {
       if (socket.role !== 'admin') {
         io.emit('new-chat-message', { chatId, message: message.toObject() });
       }
+      const senderType = socket.role === 'admin' ? 'Менеджер' : 'Клиент';
+      sendTelegram([
+        '💬 Новое сообщение',
+        `От: ${senderType} (${socket.handshake.auth.email || socket.userId})`,
+        `Чат: ${chatId}`,
+        `Текст: ${text}`
+      ].join('\n'));
     } catch (error) {
       console.error('Send message error:', error);
       socket.emit('error', { message: 'Failed to send message' });

@@ -2,6 +2,7 @@ import express from 'express';
 import Message from '../models/Message.js';
 import Chat from '../models/Chat.js';
 import { protect } from '../middleware/auth.js';
+import { sendTelegram } from '../config/telegram.js';
 
 const router = express.Router();
 
@@ -43,6 +44,15 @@ router.post('/', protect, async (req, res) => {
       chat.unread = true; // User messages mark as unread for admin
     }
     await chat.save();
+
+    const senderType = req.user.role === 'admin' ? 'Менеджер' : 'Клиент';
+    const tgText = [
+      '💬 Новое сообщение',
+      `От: ${senderType} (${req.user.email || req.user._id})`,
+      `Чат: ${chatId}`,
+      `Текст: ${text}`
+    ].join('\n');
+    sendTelegram(tgText);
 
     res.status(201).json(message);
   } catch (error) {
