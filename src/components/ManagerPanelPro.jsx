@@ -450,6 +450,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   });
   const [orderDetailsDraft, setOrderDetailsDraft] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
+  const [installPromptEvent, setInstallPromptEvent] = useState(null);
+  const [showInstallModal, setShowInstallModal] = useState(false);
+  const installPromptHandlerRef = useRef(null);
 
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -770,6 +773,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
         
         const socket = getSocket();
         if (socket) {
+          // PWA: перехватываем системный beforeinstallprompt и сохраняем для ручной установки
+          const handleBeforeInstallPrompt = (e) => {
+            e.preventDefault();
+            setInstallPromptEvent(e);
+          };
+          installPromptHandlerRef.current = handleBeforeInstallPrompt;
+          window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
           socket.on('online-users', (ids) => {
             const list = Array.isArray(ids) ? ids : [];
             const next = new Set(list.map(String));
@@ -841,6 +851,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
         socket.off('message-deleted');
         socket.off('order-created');
       }
+      // Удаляем обработчик установки PWA
+      try {
+        if (installPromptHandlerRef.current) {
+          window.removeEventListener('beforeinstallprompt', installPromptHandlerRef.current);
+          installPromptHandlerRef.current = null;
+        }
+      } catch { void 0; }
       disconnectSocket();
     };
   }, [user._id, activeId]);
@@ -1473,6 +1490,22 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     >
                       <Code className="w-5 h-5" />
                       <span className="text-center">{t('MP_SCRIPTS')}</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (installPromptEvent) {
+                          installPromptEvent.prompt();
+                          installPromptEvent.userChoice.then(() => {
+                            setInstallPromptEvent(null);
+                          });
+                        } else {
+                          setShowInstallModal(true);
+                        }
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
+                    >
+                      <Download className="w-5 h-5" />
+                      <span className="text-center">{t('INSTALL_APP')}</span>
                     </button>
                   </div>
 
@@ -3097,6 +3130,29 @@ const getAbsoluteFileUrl = (fileUrl) => {
           )}
         </div>
       </main>
+      
+      {showInstallModal && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowInstallModal(false)} />
+          <div className="relative w-full max-w-[420px] bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="text-white text-sm font-bold uppercase tracking-widest">
+              {t('INSTALL_APP')}
+            </div>
+            <div className="mt-3 text-white/70 text-sm leading-relaxed">
+              {t('INSTALL_APP_DESC')}
+            </div>
+            <div className="mt-6 flex items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowInstallModal(false)}
+                className="px-4 py-2 rounded-xl border border-white/10 text-white/80 hover:bg-white/5 transition-colors"
+              >
+                {t('CANCEL')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
         <div className="bg-[#050a18]/95 backdrop-blur-md border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-2">
