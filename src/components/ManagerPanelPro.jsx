@@ -753,10 +753,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const loadUserStats = async (userId) => {
     try {
       const stats = await analyticsAPI.getUserStats(userId);
-      setUserStats(stats || null);
+      setUserStats(stats || {});
     } catch (error) {
       console.error('Error loading user stats:', error);
-      setUserStats(null);
+      setUserStats({});
     }
   };
 
@@ -2117,6 +2117,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     {when} — {ev.action || 'event'}
                                     {ev.section ? ` · ${ev.section}` : ''}
                                     {ev.element ? ` · ${ev.element}` : ''}
+                                    {ev.serviceKey ? ` · услуга: ${ev.serviceKey}` : ''}
                                   </span>
                                   <span className="text-white/60">{durS != null ? `${durS}с` : ''}</span>
                                 </div>

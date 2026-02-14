@@ -33,6 +33,15 @@ router.get('/user/:userId', protect, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     const userId = req.params.userId;
+    if (!mongoose.Types.ObjectId.isValid(userId)) {
+      return res.json({
+        visits: [],
+        clicksBySection: [],
+        timeBySection: [],
+        timeByService: [],
+        recentEvents: []
+      });
+    }
     const stats = await AnalyticsEvent.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {

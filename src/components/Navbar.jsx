@@ -129,7 +129,14 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                         key={sKey} 
                         href={`#services?service=${t(sKey)}`} 
                         className="block px-6 py-2 text-[10px] uppercase tracking-widest text-white/70 hover:text-blue-400 hover:bg-white/5 transition-colors"
-                        onClick={() => { window.location.hash = `services?service=${t(sKey)}`; }}
+                        data-service={sKey}
+                        onClick={() => { 
+                          try {
+                            const tracker = window.__analyticsTracker;
+                            if (tracker) tracker.serviceOpen(sKey);
+                          } catch { /* ignore */ }
+                          window.location.hash = `services?service=${t(sKey)}`;
+                        }}
                     >
                         {t(sKey)}
                     </a>
@@ -242,9 +249,14 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 <a 
                   key={sKey} 
                   href={`#services?service=${t(sKey)}`} 
-                    className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  data-service={sKey}
                   onClick={(e) => { 
                     handleMobileClick(e, '#services');
+                    try {
+                      const tracker = window.__analyticsTracker;
+                      if (tracker) tracker.serviceOpen(sKey);
+                    } catch { /* ignore */ }
                     window.location.hash = `services?service=${t(sKey)}`;
                   }}
                 >
