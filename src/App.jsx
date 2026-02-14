@@ -14,6 +14,7 @@ import ManagerPanel from './components/ManagerPanelPro';
 import ClientDashboard from './components/ClientDashboard';
 import TermsInfo from './components/TermsInfo';
 import { authAPI, getToken, removeToken } from './config/api';
+import { initAnalyticsTracker } from './config/analyticsTracker';
 
 function App() {
   const { i18n } = useTranslation(); 
@@ -50,6 +51,14 @@ function App() {
   checkAuth();
 }, []);
 
+ useEffect(() => {
+   try {
+     if (user) {
+       initAnalyticsTracker();
+     }
+   } catch { void 0; }
+ }, [user]);
+
   const handleAuthSuccess = (userData) => {
     setUser(userData);
     setUserRole(userData.role);
@@ -68,7 +77,7 @@ function App() {
   );
 
   const MainSite = () => (
-    <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'}`}>
+    <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'}`} data-section="site">
       <Navbar 
         setIsOrderOpen={setIsOrderOpen} 
         isOrderOpen={isOrderOpen} 

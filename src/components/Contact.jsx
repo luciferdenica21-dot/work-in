@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 const Contact = () => {
   const contacts = [
@@ -36,6 +36,17 @@ const Contact = () => {
     },
   ];
 
+  useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (tracker) tracker.sectionOpen('contact');
+      return () => {
+        const t = window.__analyticsTracker;
+        if (t) t.sectionClose('contact');
+      };
+    } catch { void 0; }
+  }, []);
+
   return (
     <>
       <style>
@@ -68,7 +79,7 @@ const Contact = () => {
         `}
       </style>
 
-      <section id="contact" className="relative bg-[#0a0a0a] py-4 md:py-32 px-4 overflow-hidden">
+      <section id="contact" className="relative bg-[#0a0a0a] py-4 md:py-32 px-4 overflow-hidden" data-section="contact">
         
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_50% 20%,rgba(56,189,248,0.08),transparent_70%)]"></div>
         

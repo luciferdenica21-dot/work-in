@@ -1,4 +1,4 @@
-/* global process, fetch */
+/* global process */
 export async function sendTelegram(text) {
   try {
     const token = process.env.TELEGRAM_BOT_TOKEN;
@@ -15,5 +15,5 @@ export async function sendTelegram(text) {
       })
     });
     await resp.text();
-  } catch {}
+  } catch { void 0; }
 }

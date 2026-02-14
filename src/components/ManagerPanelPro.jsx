@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
-import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI } from '../config/api';
+import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
@@ -649,7 +649,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
     { id: 'chats', labelKey: 'MP_CHATS', icon: MessageCircle },
     { id: 'orders', labelKey: 'MP_ORDERS', icon: Package },
     { id: 'clients', labelKey: 'MP_CLIENTS', icon: Users },
-    { id: 'scripts', labelKey: 'MP_SCRIPTS', icon: Code }
+    { id: 'scripts', labelKey: 'MP_SCRIPTS', icon: Code },
+    { id: 'stats', labelKey: 'MP_STATS', icon: Activity }
   ];
 
 
@@ -745,6 +746,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
     } catch (error) { 
       console.error('Error loading users:', error); 
       setAllUsers([]);
+    }
+  };
+
+  const [userStats, setUserStats] = useState(null);
+  const loadUserStats = async (userId) => {
+    try {
+      const stats = await analyticsAPI.getUserStats(userId);
+      setUserStats(stats || null);
+    } catch (error) {
+      console.error('Error loading user stats:', error);
+      setUserStats(null);
     }
   };
 
@@ -1493,6 +1505,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </button>
                     <button
                       onClick={() => {
+                        setActiveSection('stats');
+                        setMobileMenuOpen(false);
+                      }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/10 border border-cyan-500/20"
+                    >
+                      <Activity className="w-5 h-5" />
+                      <span className="text-center">{t('MP_STATS') || 'Статистика'}</span>
+                    </button>
+                    <button
+                      onClick={() => {
                         if (installPromptEvent) {
                           installPromptEvent.prompt();
                           installPromptEvent.userChoice.then(() => {
@@ -1906,6 +1928,180 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   </>
                 );
               })()}
+            </div>
+          )}
+
+          {/* Статистика */}
+          {activeSection === 'stats' && (
+            <div className="space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <h2 className="text-2xl font-bold text-white">Статистика пользователей</h2>
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                    <input
+                      type="text"
+                      placeholder="Поиск пользователей..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 w-64"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-white/10 text-white/80 text-sm">Пользователи</div>
+                  <div className="max-h-[50vh] overflow-y-auto">
+                    {(allUsers || [])
+                      .filter(u => 
+                        (u.firstName + ' ' + u.lastName).toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
+                      )
+                      .map(u => (
+                        <button
+                          key={u.id}
+                          onClick={() => { setSelectedClient(u); loadUserStats(u.id); }}
+                          className="w-full flex items-center justify-between px-4 py-3 border-b border-white/5 hover:bg-white/5 text-left"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-9 h-9 rounded-full ${brandGradient} flex items-center justify-center shrink-0`}>
+                              <User className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-sm font-semibold text-white truncate">
+                                {u.firstName} {u.lastName}
+                              </div>
+                              <div className="text-xs text-gray-400 truncate">{u.email}</div>
+                            </div>
+                          </div>
+                          <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                            isUserOnline(u) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                          }`}>
+                            {isUserOnline(u) ? 'Онлайн' : 'Офлайн'}
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+
+                <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
+                  <div className="p-4 border-b border-white/10 flex items-center justify-between">
+                    <div className="text-white font-semibold">
+                      {selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : 'Выберите пользователя'}
+                    </div>
+                    {selectedClient && (
+                      <button
+                        onClick={() => loadUserStats(selectedClient.id)}
+                        className="flex items-center gap-2 px-3 py-1 rounded-lg border border-white/20 text-white/80 hover:bg-white/10"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        Обновить
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="p-4">
+                    {!selectedClient && (
+                      <div className="text-gray-300 text-sm">Выберите пользователя слева, чтобы увидеть статистику</div>
+                    )}
+                    {selectedClient && !userStats && (
+                      <div className="text-gray-300 text-sm">Загрузка статистики...</div>
+                    )}
+                    {selectedClient && userStats && (
+                      <div className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                          <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-4">
+                            <div className="text-sm text-blue-300">Визиты</div>
+                            <div className="text-2xl font-bold text-white">{(userStats.visits?.[0]?.total) || 0}</div>
+                            <div className="text-xs text-blue-400 mt-1">
+                              Последний: {userStats.visits?.[0]?.lastVisit ? new Date(userStats.visits[0].lastVisit).toLocaleString() : '—'}
+                            </div>
+                          </div>
+                          <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-4">
+                            <div className="text-sm text-green-300">Клики</div>
+                            <div className="text-2xl font-bold text-white">
+                              {((userStats.clicksBySection || []).reduce((sum, x) => sum + x.count, 0)) || 0}
+                            </div>
+                            <div className="text-xs text-green-400 mt-1">по секциям сайта</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-4">
+                            <div className="text-sm text-purple-300">Время на сайте</div>
+                            <div className="text-2xl font-bold text-white">
+                              {(() => {
+                                const totalMs = (userStats.timeBySection || []).reduce((sum, x) => sum + (x.durationMs || 0), 0);
+                                const s = Math.floor(totalMs / 1000);
+                                const h = Math.floor(s / 3600);
+                                const m = Math.floor((s % 3600) / 60);
+                                const sec = s % 60;
+                                return `${h}ч ${m}м ${sec}с`;
+                              })()}
+                            </div>
+                            <div className="text-xs text-purple-400 mt-1">в сумме</div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                            <div className="text-white/80 mb-2">Клики по секциям</div>
+                            <div className="space-y-2">
+                              {(userStats.clicksBySection || []).map(row => (
+                                <div key={row._id} className="flex items-center justify-between text-sm text-gray-300">
+                                  <span>{row._id || '—'}</span>
+                                  <span className="text-white">{row.count}</span>
+                                </div>
+                              ))}
+                              {(userStats.clicksBySection || []).length === 0 && (
+                                <div className="text-gray-400 text-sm">Нет данных</div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                            <div className="text-white/80 mb-2">Время по секциям</div>
+                            <div className="space-y-2">
+                              {(userStats.timeBySection || []).map(row => {
+                                const s = Math.floor((row.durationMs || 0) / 1000);
+                                const m = Math.floor(s / 60);
+                                const sec = s % 60;
+                                return (
+                                  <div key={row._id} className="flex items-center justify-between text-sm text-gray-300">
+                                    <span>{row._id || '—'}</span>
+                                    <span className="text-white">{m}м {sec}с</span>
+                                  </div>
+                                );
+                              })}
+                              {(userStats.timeBySection || []).length === 0 && (
+                                <div className="text-gray-400 text-sm">Нет данных</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                          <div className="text-white/80 mb-2">Время по услугам</div>
+                          <div className="space-y-2">
+                            {(userStats.timeByService || []).map(row => {
+                              const s = Math.floor((row.durationMs || 0) / 1000);
+                              const m = Math.floor(s / 60);
+                              const sec = s % 60;
+                              return (
+                                <div key={row._id} className="flex items-center justify-between text-sm text-gray-300">
+                                  <span>{row._id || '—'}</span>
+                                  <span className="text-white">{m}м {sec}с</span>
+                                </div>
+                              );
+                            })}
+                            {(userStats.timeByService || []).length === 0 && (
+                              <div className="text-gray-400 text-sm">Нет данных</div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 

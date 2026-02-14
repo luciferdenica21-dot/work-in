@@ -32,6 +32,17 @@ const Hero = () => {
   const sectionRef = useRef(null);
 
   useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (tracker) tracker.sectionOpen('hero');
+      return () => {
+        const t = window.__analyticsTracker;
+        if (t) t.sectionClose('hero');
+      };
+    } catch { void 0; }
+  }, []);
+
+  useEffect(() => {
     const handleScroll = () => {
       setScrollY(window.scrollY);
     };
@@ -59,6 +70,7 @@ const Hero = () => {
     <header 
       ref={sectionRef} 
       className={`relative text-center text-white bg-[#050505] overflow-hidden min-h-[85vh] flex items-center transition-all duration-700 ease-in-out ${activeId ? "py-4 md:py-6" : "py-8 md:py-12"}`}
+      data-section="hero"
     >
       
       <div 

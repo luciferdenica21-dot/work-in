@@ -98,8 +98,41 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (tracker) tracker.sectionOpen('services');
+      return () => {
+        const t = window.__analyticsTracker;
+        if (t) t.sectionClose('services');
+      };
+    } catch { void 0; }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (!tracker) return;
+      if (selectedService && selectedService.title) {
+        tracker.serviceOpen(selectedService.title);
+      } else {
+        // Closing previously opened service
+        // We don't know key here reliably; send generic close is fine
+      }
+    } catch { void 0; }
+    // Close event when modal is closed
+    return () => {
+      try {
+        const t = window.__analyticsTracker;
+        if (t && selectedService?.title) {
+          t.serviceClose(selectedService.title);
+        }
+      } catch { void 0; }
+    };
+  }, [selectedService]);
+
   return (
-    <section id="services" className="relative py-24 px-4 bg-[#050505]">
+    <section id="services" className="relative py-24 px-4 bg-[#050505]" data-section="services">
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
         {servicesData.map((service, index) => (
           <div 

@@ -179,3 +179,11 @@ export const ordersAPI = {
     method: 'DELETE',
   }),
 };
+
+export const analyticsAPI = {
+  sendEvent: (payload) => apiRequest('/analytics/events', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  getUserStats: (userId) => apiRequest(`/analytics/user/${userId}`),
+};

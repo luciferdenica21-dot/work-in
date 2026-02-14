@@ -12,6 +12,7 @@ import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chats.js';
 import messageRoutes from './routes/messages.js';
 import orderRoutes from './routes/orders.js';
+import analyticsRoutes from './routes/analytics.js';
 import fileRoutes from './routes/files.js';
 import Message from './models/Message.js';
 import Chat from './models/Chat.js';
@@ -82,6 +83,7 @@ app.use('/api/chats', chatRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/files', fileRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
