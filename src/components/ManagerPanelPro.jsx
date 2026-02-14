@@ -2105,6 +2105,28 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             )}
                           </div>
                         </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                          <div className="text-white/80 mb-2">Последние события</div>
+                          <div className="space-y-2">
+                            {(userStats.recentEvents || []).slice(0, 50).map(ev => {
+                              const when = ev?.timestamp ? new Date(ev.timestamp).toLocaleString() : '';
+                              const durS = ev?.durationMs ? Math.floor((ev.durationMs || 0) / 1000) : null;
+                              return (
+                                <div key={ev._id} className="flex items-center justify-between text-xs text-gray-300">
+                                  <span className="min-w-0 truncate">
+                                    {when} — {ev.action || 'event'}
+                                    {ev.section ? ` · ${ev.section}` : ''}
+                                    {ev.element ? ` · ${ev.element}` : ''}
+                                  </span>
+                                  <span className="text-white/60">{durS != null ? `${durS}с` : ''}</span>
+                                </div>
+                              );
+                            })}
+                            {(userStats.recentEvents || []).length === 0 && (
+                              <div className="text-gray-400 text-sm">Нет данных</div>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -3329,7 +3351,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
               <h3 className="text-xl font-semibold text-white mb-2">
                 {navItems.find(item => item.id === activeSection)?.label}
               </h3>
-              <p className="text-gray-400">Раздел в разработке...</p>
+              <p className="text-gray-400"></p>
             </div>
           )}
         </div>
