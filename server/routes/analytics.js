@@ -5,7 +5,7 @@ import { protect } from '../middleware/auth.js';
 
 const router = express.Router();
 
-router.post('/events', protect, async (req, res) => {
+router.post('/events', async (req, res) => {
   try {
     const { sessionId, action, path, section, element, serviceKey, details, durationMs, timestamp } = req.body || {};
     if (!action) return res.status(400).json({ message: 'action is required' });

@@ -1,4 +1,4 @@
-import { analyticsAPI } from './api';
+import { analyticsAPI, authAPI } from './api';
 
 const genSessionId = () => {
   try {
@@ -22,11 +22,21 @@ export const initAnalyticsTracker = () => {
         sessionId,
         path,
         ...payload
-      }).catch(() => {});
+      }).catch((err) => { 
+        try { console.warn('Analytics send failed:', err?.message || err); } catch {}
+      });
     } catch { void 0; }
   };
 
   send({ action: 'visit', timestamp: new Date().toISOString() });
+
+  try {
+    authAPI.me().then((user) => {
+      if (user && user._id) {
+        analyticsAPI.bindSession(sessionId).catch(() => {});
+      }
+    }).catch(() => {});
+  } catch { void 0; }
 
   const sectionTimers = new Map();
   const serviceTimers = new Map();

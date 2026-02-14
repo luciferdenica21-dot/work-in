@@ -53,8 +53,17 @@ function App() {
 
  useEffect(() => {
    try {
-     if (user) {
-       initAnalyticsTracker();
+     initAnalyticsTracker();
+   } catch { void 0; }
+ }, []);
+
+ useEffect(() => {
+   try {
+     const sid = sessionStorage.getItem('session_id');
+     if (user && sid) {
+       import('./config/api').then(({ analyticsAPI }) => {
+         analyticsAPI.bindSession(sid).catch(() => {});
+       });
      }
    } catch { void 0; }
  }, [user]);
