@@ -694,6 +694,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }
 
       const usersMap = new Map();
+      const emailToId = new Map();
+      (realUsers || []).forEach(u => {
+        const id = u?._id || u?.id;
+        const email = (u?.email || '').toLowerCase();
+        if (email) emailToId.set(email, id);
+      });
       
       // Добавляем реальных пользователей
       realUsers.forEach(user => {
@@ -714,9 +720,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
       
       // Добавляем пользователей из чатов
       chats.forEach(chat => {
-        if (chat.userId && !usersMap.has(chat.userId)) {
-          usersMap.set(chat.userId, {
-            id: chat.userId,
+        const emailKey = (chat.userEmail || '').toLowerCase();
+        const resolvedId = usersMap.has(chat.userId)
+          ? chat.userId
+          : (emailToId.get(emailKey) || chat.userId);
+        if (resolvedId && !usersMap.has(resolvedId)) {
+          usersMap.set(resolvedId, {
+            id: resolvedId,
             email: chat.userEmail || 'unknown@example.com',
             firstName: chat.userEmail?.split('@')[0] || 'User',
             lastName: '',
@@ -733,8 +743,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
       // Обновляем статистику из заказов
       orders.forEach(order => {
-        if (order.userId && usersMap.has(order.userId)) {
-          const user = usersMap.get(order.userId);
+        const resolvedOrderUserId = usersMap.has(order.userId)
+          ? order.userId
+          : null;
+        if (resolvedOrderUserId && usersMap.has(resolvedOrderUserId)) {
+          const user = usersMap.get(resolvedOrderUserId);
           user.firstName = order.firstName || user.firstName;
           user.lastName = order.lastName || user.lastName;
           user.phone = order.contact || user.phone;

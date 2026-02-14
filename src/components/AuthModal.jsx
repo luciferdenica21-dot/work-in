@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { authAPI, setToken } from '../config/api';
+import { authAPI, setToken, analyticsAPI } from '../config/api';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
@@ -50,6 +50,12 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         onClose();
 
         fullUserData = await authAPI.me();
+        try {
+          const sid = sessionStorage.getItem('session_id');
+          if (sid) {
+            await analyticsAPI.bindSession(sid);
+          }
+        } catch { /* ignore */ }
         
         if (userData.role === 'admin') {
           navigate('/manager');
@@ -85,6 +91,12 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         onClose();
 
         fullUserData = await authAPI.me();
+        try {
+          const sid = sessionStorage.getItem('session_id');
+          if (sid) {
+            await analyticsAPI.bindSession(sid);
+          }
+        } catch { /* ignore */ }
         
         if (onAuthSuccess) {
           onAuthSuccess(fullUserData);

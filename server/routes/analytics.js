@@ -27,6 +27,20 @@ router.post('/events', protect, async (req, res) => {
   }
 });
 
+router.post('/bind-session', protect, async (req, res) => {
+  try {
+    const { sessionId } = req.body || {};
+    if (!sessionId) return res.status(400).json({ message: 'sessionId is required' });
+    const result = await AnalyticsEvent.updateMany(
+      { sessionId, $or: [{ userId: { $exists: false } }, { userId: null }] },
+      { $set: { userId: req.user._id } }
+    );
+    res.json({ success: true, matched: result.matchedCount || result.nMatched, modified: result.modifiedCount || result.nModified });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 router.get('/user/:userId', protect, async (req, res) => {
   try {
     if (req.user.role !== 'admin' && req.user._id.toString() !== req.params.userId) {

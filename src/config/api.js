@@ -186,4 +186,8 @@ export const analyticsAPI = {
     body: JSON.stringify(payload),
   }),
   getUserStats: (userId) => apiRequest(`/analytics/user/${userId}`),
+  bindSession: (sessionId) => apiRequest('/analytics/bind-session', {
+    method: 'POST',
+    body: JSON.stringify({ sessionId }),
+  }),
 };
