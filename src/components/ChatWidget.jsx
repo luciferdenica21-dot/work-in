@@ -45,6 +45,16 @@ const ChatWidget = ({ user }) => {
   useEffect(() => {
     window.dispatchEvent(new Event(isOpen ? 'chatwidget:open' : 'chatwidget:close'));
   }, [isOpen]);
+  useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (isOpen && tracker) tracker.sectionOpen('chat');
+      return () => {
+        const t = window.__analyticsTracker;
+        if (t && isOpen) t.sectionClose('chat');
+      };
+    } catch { void 0; }
+  }, [isOpen]);
   const normalizeMessage = (msg) => {
     if (!msg) return msg;
 
@@ -521,6 +531,7 @@ const ChatWidget = ({ user }) => {
       {isOpen && (
         <div 
           ref={widgetRef}
+          data-section="chat"
           className={`
             ${isMobile 
               ? 'fixed inset-0 w-full h-full rounded-none' 

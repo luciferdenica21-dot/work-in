@@ -80,7 +80,17 @@ const OrderSidebar = ({
       };
       
       loadUserData();
+      try {
+        const tracker = window.__analyticsTracker;
+        if (tracker) tracker.sectionOpen('order');
+      } catch { void 0; }
     }
+    return () => {
+      try {
+        const t = window.__analyticsTracker;
+        if (t && isOrderOpen) t.sectionClose('order');
+      } catch { void 0; }
+    };
   }, [isOrderOpen, user, authAPI]);
 
   const services = [
@@ -254,7 +264,7 @@ const handleSubmit = async (e) => {
   if (!isOrderOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex justify-end">
+    <div className="fixed inset-0 z-[200] flex justify-end" data-section="order">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={() => setIsOrderOpen(false)}

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { authAPI, setToken } from '../config/api';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -19,6 +19,17 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    try {
+      const tracker = window.__analyticsTracker;
+      if (isOpen && tracker) tracker.sectionOpen('auth');
+      return () => {
+        const t = window.__analyticsTracker;
+        if (t && isOpen) t.sectionClose('auth');
+      };
+    } catch { void 0; }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -106,7 +117,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-999 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-999 flex items-center justify-center p-4" data-section="auth">
       <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={onClose} />
       <div className="relative bg-[#0a0f1d] border border-white/10 w-full max-w-md rounded-4xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
         <h2 className="text-xl font-light text-white mb-8 text-center uppercase tracking-[0.3em]">

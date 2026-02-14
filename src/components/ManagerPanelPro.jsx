@@ -761,6 +761,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   useEffect(() => {
+    if (activeSection === 'stats' && !selectedClient && (allUsers || []).length > 0) {
+      const first = allUsers[0];
+      setSelectedClient(first);
+      loadUserStats(first.id);
+    }
+  }, [activeSection, allUsers]);
+
+  useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
@@ -1598,7 +1606,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     <div>
                       <p className="text-sm text-green-300">Активные чаты</p>
                       <p className="text-3xl font-bold text-white">{chats.filter(c => c.status === 'active').length}</p>
-                      <p className="text-xs text-green-400 mt-1">+{Math.floor(Math.random() * 10)} за день</p>
+                      <p className="text-xs text-green-400 mt-1">активных сегодня</p>
                     </div>
                     <MessageSquare className="w-10 h-10 text-green-400" />
                   </div>
@@ -1643,7 +1651,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <span className="text-lg font-bold text-white">{chats.filter(c => c.status === 'active').length}</span>
                     </div>
                     <div className="mt-1 text-xs text-gray-300">Активные чаты</div>
-                    <div className="text-[10px] text-green-400">+{Math.floor(Math.random() * 10)} за день</div>
+                    <div className="text-[10px] text-green-400">активные сегодня</div>
                   </div>
 
                   <div className="bg-white/5 border border-white/10 rounded-lg p-3">
