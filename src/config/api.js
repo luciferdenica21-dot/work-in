@@ -55,7 +55,7 @@ export const chatsAPI = {
   getAll: () => apiRequest('/chats'),
   getMyChat: () => apiRequest('/chats/my-chat'), // Исправлено на /my-chat
   getById: (chatId) => apiRequest(`/chats/${chatId}`),
-  getMessages: (chatId) => messagesAPI.getByChatId(chatId),
+  getMessages: (chatId) => apiRequest(`/chats/${chatId}/messages`),
   startChat: (userId) => apiRequest('/chats/start', {
     method: 'POST',
     body: JSON.stringify({ userId }),

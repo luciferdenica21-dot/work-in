@@ -1,5 +1,5 @@
 import './i18n';
-import { useState, useEffect } from 'react' 
+import { useState, useEffect, lazy, Suspense } from 'react' 
 import { useTranslation } from 'react-i18next'; 
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css'
@@ -10,7 +10,7 @@ import Contact from './components/Contact';
 import OrderSidebar from './components/OrderSidebar';
 import AuthModal from './components/AuthModal';
 import ChatWidget from './components/ChatWidget';
-import ManagerPanel from './components/ManagerPanelPro';
+const ManagerPanel = lazy(() => import('./components/ManagerPanelPro'));
 import ClientDashboard from './components/ClientDashboard';
 import TermsInfo from './components/TermsInfo';
 import { authAPI, getToken, removeToken } from './config/api';
@@ -139,12 +139,12 @@ function App() {
       path="/manager" 
       element={
         loading ? (
-          /* Пока идет загрузка, ничего не рендерим или показываем спиннер */
-          null 
+          null
         ) : user && userRole === 'admin' ? (
-          <ManagerPanel user={user} />
+          <Suspense fallback={<div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div></div>}>
+            <ManagerPanel user={user} />
+          </Suspense>
         ) : (
-          /* Только если загрузка завершена и юзера нет — редирект */
           <Navigate to="/" replace />
         )
       } 
