@@ -7,7 +7,7 @@ import {
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
-  BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
+  BookOpen, Users, Home, Package, Code, Shield, Database, Menu,
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
  } from 'lucide-react';
 
@@ -426,14 +426,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [filterStatus, setFilterStatus] = useState('all'); 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
-  useEffect(() => {
-    try {
-      if (activeSection === 'chats' && activeId) {
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-      }
-    } catch { void 0; }
-  }, [messages.length, activeId, activeSection]);
-  
   const [activeSection, setActiveSection] = useState('dashboard'); 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileChatListOpen, setMobileChatListOpen] = useState(true);
@@ -461,6 +453,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [showInstallModal, setShowInstallModal] = useState(false);
   const installPromptHandlerRef = useRef(null);
 
+  useEffect(() => {
+    try {
+      if (activeSection === 'chats' && activeId) {
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }
+    } catch { void 0; }
+  }, [messages.length, activeId, activeSection]);
+  
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
     heroTitle: 'PROMYSHLENNOE KACHESTVO DLYA VASHIH ZADACH',
@@ -870,7 +870,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
           } catch { /* ignore */ }
         }
-            try { /* sound disabled in manager */ } catch {}
+            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => {}); } catch {}
           });
           
           socket.on('message-deleted', ({ messageId }) => {
@@ -880,7 +880,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
           socket.on('order-created', ({ chatId, order }) => {
             console.log('=== ORDER CREATED ===', chatId, order);
             loadOrders();
-            try { /* sound disabled in manager */ } catch {}
+            try { import('../utils/sound').then(m => m.playSound('adminOrder')).catch(() => {}); } catch {}
           });
         }
       } catch (error) {
