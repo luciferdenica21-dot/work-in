@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
+import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square } from 'lucide-react';
 
 const ChatWidget = ({ user }) => {
@@ -290,6 +291,9 @@ const ChatWidget = ({ user }) => {
         });
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
  
+        if (incoming?.senderId === 'manager') {
+          try { playSound('chat'); } catch {}
+        }
         if (!isOpen && (incoming?.senderId === 'manager')) {
           setHasNewMessage(true);
         }

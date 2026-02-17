@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ordersAPI, authAPI, filesAPI } from '../config/api';
+import { playSound } from '../utils/sound';
 
 const OrderSidebar = ({ 
   isOrderOpen, 
@@ -244,6 +245,7 @@ const handleSubmit = async (e) => {
       console.log('Order created successfully:', result);
       
       setShowSuccess(true);
+      try { playSound('order'); } catch {}
       setChosenServices([]);
       setTempSelection([]);
       setComment("");

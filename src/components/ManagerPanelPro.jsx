@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
+import { playSound } from '../utils/sound';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, 
@@ -857,6 +858,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 return [...prev, message];
               });
             }
+            try { playSound('adminMsg'); } catch {}
           });
           
           socket.on('message-deleted', ({ messageId }) => {
@@ -866,6 +868,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
           socket.on('order-created', ({ chatId, order }) => {
             console.log('=== ORDER CREATED ===', chatId, order);
             loadOrders();
+            try { playSound('adminOrder'); } catch {}
           });
         }
       } catch (error) {
