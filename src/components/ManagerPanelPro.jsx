@@ -3,16 +3,15 @@ import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
-import * as Icons from 'lucide-react';
-const { 
+import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
-  Plus, Trash2, FileText, Info, Settings, MessageSquare: MsgIcon,
-  CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock,
+  Plus, Trash2, FileText, Info, Settings, MessageSquare, 
+  CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
   BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
-} = Icons;
+ } from 'lucide-react';
 
-const ManagerPanelPro = ({ user }) => {
+function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
   
   // Функция форматирования размера файла
@@ -3453,6 +3452,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
       </div>
     </div>
   );
-};
+}
 
 export default ManagerPanelPro;
