@@ -3,12 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
-const IconStub = (props) => <span {...props} />;
-const LogOut = IconStub, Send = IconStub, ChevronLeft = IconStub, User = IconStub, Mail = IconStub, Phone = IconStub, MapPin = IconStub, Edit = IconStub, Save = IconStub, X = IconStub;
-const Plus = IconStub, Trash2 = IconStub, FileText = IconStub, Info = IconStub, Settings = IconStub, MessageSquare = IconStub;
-const CheckCircle = IconStub, XCircle = IconStub, Download = IconStub, Paperclip = IconStub, Bell = IconStub, Search = IconStub, Filter = IconStub, Clock = IconStub;
-const BookOpen = IconStub, Users = IconStub, Home = IconStub, Package = IconStub, MessageCircle = IconStub, Code = IconStub, Shield = IconStub, Database = IconStub, Menu = IconStub;
-const Eye = IconStub, EyeOff = IconStub, Upload = IconStub, RefreshCw = IconStub, AlertCircle = IconStub, TrendingUp = IconStub, Activity = IconStub, Calendar = IconStub, ChevronDown = IconStub, Pin = IconStub, CheckSquare = IconStub, Square = IconStub;
+import { 
+  LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
+  Plus, Trash2, FileText, Info, Settings, MessageSquare, 
+  CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
+  BookOpen, Users, Home, Package, MessageCircle, Code, Shield, Database, Menu,
+  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
+ } from 'lucide-react';
 
 function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
