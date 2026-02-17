@@ -536,15 +536,16 @@ const ChatWidget = ({ user }) => {
             ${isMobile 
               ? 'fixed inset-0 w-full h-full rounded-none' 
               : isMaximized 
-                ? 'fixed inset-4 md:inset-8 rounded-4xl' 
-                : 'absolute bottom-20 right-0 rounded-4xl'
+                ? 'fixed inset-4 md:left-8 md:right-8 md:bottom-8 md:top-24 rounded-4xl' 
+                : 'fixed top-24 right-4 md:right-8 rounded-4xl'
             } 
             bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-fadeIn
           `}
           style={
             !isMobile && !isMaximized ? {
               width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`
+              height: `${dimensions.height}px`,
+              maxHeight: 'calc(100vh - 8rem)'
             } : {}
           }
         >
