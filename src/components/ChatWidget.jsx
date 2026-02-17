@@ -48,6 +48,13 @@ const ChatWidget = ({ user }) => {
   }, [isOpen]);
   useEffect(() => {
     try {
+      if (isOpen) {
+        setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }
+    } catch { void 0; }
+  }, [isOpen]);
+  useEffect(() => {
+    try {
       const tracker = window.__analyticsTracker;
       if (isOpen && tracker) tracker.sectionOpen('chat');
       return () => {
@@ -343,6 +350,14 @@ const ChatWidget = ({ user }) => {
       loadMessages();
     }
   }, [isOpen, chatId]);
+
+  useEffect(() => {
+    try {
+      if (isOpen) {
+        setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 30);
+      }
+    } catch { void 0; }
+  }, [messages.length, isOpen]);
 
   useEffect(() => {
     if (!chatId) return;

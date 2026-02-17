@@ -427,6 +427,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [filterStatus, setFilterStatus] = useState('all'); 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  useEffect(() => {
+    try {
+      if (activeSection === 'chats' && activeId) {
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+      }
+    } catch { void 0; }
+  }, [messages.length, activeId, activeSection]);
   
   const [activeSection, setActiveSection] = useState('dashboard'); 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -858,6 +865,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 return [...prev, message];
               });
             }
+        // Автопрокрутка вниз, если открыта активная переписка
+        if (payload.chatId === activeId) {
+          try {
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
+          } catch { /* ignore */ }
+        }
             try { playSound('adminMsg'); } catch {}
           });
           
@@ -952,6 +965,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
         
         console.log('Processed messages:', processedMessages);
         setMessages(processedMessages);
+          try {
+            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 60);
+          } catch { /* ignore */ }
         
         // Отмечаем как прочитанные
         await chatsAPI.markAsRead(activeId);
@@ -997,6 +1013,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
       // Обновляем список чатов
       loadChats();
+        try {
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
+        } catch { /* ignore */ }
     } catch (err) { 
       console.error('Error sending message:', err);
       alert('Ошибка отправки сообщения');
