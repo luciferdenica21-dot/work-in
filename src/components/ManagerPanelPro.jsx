@@ -5,7 +5,7 @@ import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } fro
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
-  Plus, Trash2, FileText, Info, Settings, MessageSquare, 
+  Plus, Trash2, FileText, Info, Settings, MessageSquare, MessageCircle,
   CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
   BookOpen, Users, Home, Package, Code, Shield, Database, Menu,
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
