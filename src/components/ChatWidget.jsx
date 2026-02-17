@@ -275,11 +275,21 @@ const ChatWidget = ({ user }) => {
         const incoming = normalizeMessage(newMsg?.message || newMsg);
         setMessages((prev) => {
           const id = incoming?._id || incoming?.id;
-          if (id && prev.some((m) => (m._id || m.id) === id)) return prev;
-          return [...prev, incoming];
+          // Удаляем оптимистичное временное сообщение пользователя с таким же текстом
+          const withoutTemps = prev.filter((m) => {
+            const mid = m._id || m.id;
+            const isTemp = typeof mid === 'string' && mid.startsWith('temp_');
+            if (!isTemp) return true;
+            const mine = isUserMessage(m);
+            const sameText = (m?.text || '') === (incoming?.text || '');
+            return !(mine && sameText);
+          });
+          // Если такое серверное сообщение уже есть — не добавляем повторно
+          if (id && withoutTemps.some((m) => (m._id || m.id) === id)) return withoutTemps;
+          return [...withoutTemps, incoming];
         });
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
-
+ 
         if (!isOpen && (incoming?.senderId === 'manager')) {
           setHasNewMessage(true);
         }
@@ -366,15 +376,16 @@ const ChatWidget = ({ user }) => {
 
       if (socket && socket.connected) {
         socket.emit('send-message', { chatId, text });
-        // Fallback refresh to avoid missing echo from server
+        // Fallback refresh, но только если не пришел echo в разумный срок
         setTimeout(async () => {
           try {
+            // Подстраховка: удалим временную запись, если она ещё осталась
             const msgs = await messagesAPI.getByChatId(chatId);
             setMessages((msgs || []).map(normalizeMessage));
           } catch {
             // ignore
           }
-        }, 400);
+        }, 800);
       } else {
         await messagesAPI.send(chatId, text);
         const msgs = await messagesAPI.getByChatId(chatId);
