@@ -515,6 +515,41 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   }, [scripts]);
 
+  useEffect(() => {
+    try {
+      const srv = Array.isArray(user?.quickScripts) ? user.quickScripts : null;
+      if (srv && srv.length > 0) {
+        const local = Array.isArray(scripts) ? scripts : [];
+        const same =
+          srv.length === local.length &&
+          srv.every((s, i) => s.title === local[i]?.title && s.text === local[i]?.text);
+        if (!same) {
+          setScripts(srv.map(s => ({ id: String(s.id || Date.now()), title: s.title, text: s.text })));
+        }
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const sync = async () => {
+      try {
+        if (user?.role === 'admin') {
+          const payload = (Array.isArray(scripts) ? scripts : []).map(s => ({
+            id: String(s.id || Date.now()),
+            title: String(s.title || ''),
+            text: String(s.text || '')
+          }));
+          await authAPI.updateProfile({ quickScripts: payload });
+        }
+      } catch { /* ignore */ }
+    };
+    sync();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scripts]);
+
   const getClientChat = (clientId) => {
     if (!clientId) return null;
     return chats.find((c) => String(c?.userId) === String(clientId)) || null;

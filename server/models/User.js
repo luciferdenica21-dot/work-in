@@ -41,6 +41,16 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  quickScripts: {
+    type: [
+      {
+        id: { type: String, required: true },
+        title: { type: String, required: true },
+        text: { type: String, required: true }
+      }
+    ],
+    default: []
+  },
   createdAt: {
     type: Date,
     default: Date.now

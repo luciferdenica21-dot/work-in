@@ -97,7 +97,7 @@ router.get('/me', protect, async (req, res) => {
 // ОБНОВЛЕНИЕ ПРОФИЛЯ (данные о себе)
 router.put('/me', protect, async (req, res) => {
   try {
-    const { firstName, lastName, phone, city } = req.body;
+    const { firstName, lastName, phone, city, quickScripts } = req.body;
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -108,6 +108,15 @@ router.put('/me', protect, async (req, res) => {
     user.lastName = lastName ?? user.lastName;
     user.phone = phone ?? user.phone;
     user.city = city ?? user.city;
+    if (Array.isArray(quickScripts)) {
+      user.quickScripts = quickScripts
+        .filter(s => s && typeof s.title === 'string' && typeof s.text === 'string')
+        .map(s => ({
+          id: String(s.id || Date.now().toString(36)),
+          title: String(s.title),
+          text: String(s.text)
+        }));
+    }
 
     await user.save();
 
