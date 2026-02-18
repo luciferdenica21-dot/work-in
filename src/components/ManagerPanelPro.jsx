@@ -1407,8 +1407,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const renderChatMessageAvatar = (isManagerSender) => {
     if (isManagerSender) {
       return (
-        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
-          <img src="/img/logo.png" alt="logo" className="w-full h-full object-contain p-1" />
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
+          {(String(adminLabel)[0] || 'A').toUpperCase()}
         </div>
       );
     }
@@ -2273,10 +2273,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <div className="flex items-center gap-2 px-2 py-1 rounded-lg bg-white/5 border border-white/10">
-                            <Shield className="w-4 h-4 text-blue-300" />
-                            <span className="text-xs text-white/80 max-w-[120px] truncate">{adminLabel}</span>
-                          </div>
 
                           <div className="relative">
                             <button
@@ -2505,7 +2501,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 </div>
                               </>
                             )}
-                            {!msg.isUploading && (
+                            {!msg.isUploading && selectedMessages.size > 0 && selectedMessages.has(msg._id || msg.id) && (
                               <div className="flex items-center gap-1 ml-2">
                                 <button
                                   onClick={() => toggleMessageSelection(msg._id || msg.id)}
