@@ -1,7 +1,7 @@
 import './i18n';
 import { useState, useEffect, lazy, Suspense } from 'react' 
 import { useTranslation } from 'react-i18next'; 
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useRef } from 'react';
 import './App.css'
 import Navbar from './components/Navbar';
@@ -70,33 +70,44 @@ function App() {
    } catch { void 0; }
  }, [user]);
 
- useEffect(() => {
-   const isCoarse = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-   if (!isCoarse) return;
-   const onTouchStart = (e) => {
-     const t = e.touches && e.touches[0];
-     if (!t) return;
-     touchStart.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-   };
-   const onTouchEnd = (e) => {
-     const t = e.changedTouches && e.changedTouches[0];
-     if (!t) return;
-     const dx = t.clientX - touchStart.current.x;
-     const dy = t.clientY - touchStart.current.y;
-     const dt = Date.now() - touchStart.current.t;
-     if (dt < 600 && Math.abs(dy) < 80 && dx < -60) {
-       if (window.history.length > 1) {
-         window.history.back();
+ const MobileSwipeBack = () => {
+   const navigate = useNavigate();
+   const location = useLocation();
+   const startRef = useRef({ x: 0, y: 0, t: 0 });
+   const enabled = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+   useEffect(() => {
+     if (!enabled) return;
+     const onStart = (e) => {
+       const t = e.touches && e.touches[0];
+       if (!t) return;
+       // Игнорируем край у экрана (системные жесты)
+       if (t.clientX < 24 || (window.innerWidth - t.clientX) < 24) return;
+       startRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
+     };
+     const onEnd = (e) => {
+       const t = e.changedTouches && e.changedTouches[0];
+       if (!t) return;
+       const dx = t.clientX - startRef.current.x;
+       const dy = t.clientY - startRef.current.y;
+       const dt = Date.now() - startRef.current.t;
+       // Свайп влево: короткий, почти горизонтальный
+       if (dt < 500 && Math.abs(dy) < 70 && dx < -60) {
+         const idx = (window.history && window.history.state && typeof window.history.state.idx === 'number') ? window.history.state.idx : 0;
+         if (idx > 0) {
+           e.preventDefault?.();
+           try { navigate(-1); } catch { /* ignore */ }
+         }
        }
-     }
-   };
-   document.addEventListener('touchstart', onTouchStart, { passive: true });
-   document.addEventListener('touchend', onTouchEnd, { passive: true });
-   return () => {
-     document.removeEventListener('touchstart', onTouchStart);
-     document.removeEventListener('touchend', onTouchEnd);
-   };
- }, []);
+     };
+     document.addEventListener('touchstart', onStart, { passive: true });
+     document.addEventListener('touchend', onEnd, { passive: false });
+     return () => {
+       document.removeEventListener('touchstart', onStart);
+       document.removeEventListener('touchend', onEnd);
+     };
+   }, [navigate, location.pathname, enabled]);
+   return null;
+ };
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
@@ -156,6 +167,7 @@ function App() {
 
   return (
    <Router>
+     <MobileSwipeBack />
   <Routes>
     <Route 
       path="/" 
