@@ -77,6 +77,29 @@ function App() {
    const enabled = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
    useEffect(() => {
      if (!enabled) return;
+     const pushGuard = () => {
+       try {
+         const url = location.pathname + location.search + location.hash;
+         window.history.pushState({ guard: true }, '', url);
+       } catch { /* ignore */ }
+     };
+     // Добавляем защитный слой от выхода из сайта кнопкой/жестом "назад" на мобильных
+     pushGuard();
+     const onPop = () => {
+       const idx = (window.history && window.history.state && typeof window.history.state.idx === 'number') ? window.history.state.idx : 0;
+       // Если в истории роутера ещё есть шаги — позволяем обычный back.
+       // Если это край и браузер хочет выйти с сайта — возвращаем защитный state.
+       if (idx <= 0) {
+         pushGuard();
+       }
+     };
+     window.addEventListener('popstate', onPop);
+     return () => {
+       window.removeEventListener('popstate', onPop);
+     };
+   }, [enabled, location.pathname, location.search, location.hash]);
+   useEffect(() => {
+     if (!enabled) return;
      const onStart = (e) => {
        const t = e.touches && e.touches[0];
        if (!t) return;
