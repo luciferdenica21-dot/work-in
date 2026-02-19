@@ -322,6 +322,185 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
+  // ===== РЕЗЕРВНОЕ КОПИРОВАНИЕ ЧАТОВ И ЗАКАЗОВ =====
+  const generatePdfFromTextLines = (title, lines) => {
+    const escapePdf = (s) => String(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
+    const pageHeight = 792;
+    const pageWidth = 612;
+    const left = 50;
+    const topStart = 742;
+    const lineHeight = 14;
+    const maxLinesPerPage = Math.floor((topStart - 50) / lineHeight);
+    const pages = [];
+    const header = `${title} — ${new Date().toLocaleString()}`;
+    let buffer = [];
+    for (let i = 0; i < lines.length; i++) {
+      buffer.push(lines[i]);
+      if (buffer.length >= maxLinesPerPage) {
+        pages.push(buffer);
+        buffer = [];
+      }
+    }
+    if (buffer.length) pages.push(buffer);
+    if (pages.length === 0) pages.push(['(пусто)']);
+
+    const objects = [];
+    const obj = (s) => { objects.push(s); return objects.length; };
+    const fontObjId = obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+    const pageObjIds = [];
+    for (let p = 0; p < pages.length; p++) {
+      const linesOnPage = pages[p];
+      let content = 'BT\n/F1 10 Tf\n';
+      content += `${left} ${topStart + 18} Td\n/F1 12 Tf\n(${escapePdf(header)} (стр. ${p + 1}/${pages.length})) Tj\n/F1 10 Tf\n`;
+      let y = topStart;
+      for (let i = 0; i < linesOnPage.length; i++) {
+        const text = escapePdf(linesOnPage[i]);
+        content += `1 0 0 1 ${left} ${y} Tm\n(${text}) Tj\n`;
+        y -= lineHeight;
+      }
+      content += 'ET';
+      const stream = `<< /Length ${content.length} >>\nstream\n${content}\nendstream`;
+      const contentObjId = obj(stream);
+      const pageObjId = obj(`<< /Type /Page /Parent 0 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjId} 0 R >> >> /Contents ${contentObjId} 0 R >>`);
+      pageObjIds.push(pageObjId);
+    }
+    const kids = pageObjIds.map((id) => `${id} 0 R`).join(' ');
+    const pagesObjId = obj(`<< /Type /Pages /Kids [ ${kids} ] /Count ${pageObjIds.length} >>`);
+    for (let i = 0; i < objects.length; i++) {
+      if (objects[i].includes('/Type /Page') && objects[i].includes('/Parent 0 0 R')) {
+        objects[i] = objects[i].replace('/Parent 0 0 R', `/Parent ${pagesObjId} 0 R`);
+      }
+    }
+    const catalogObjId = obj(`<< /Type /Catalog /Pages ${pagesObjId} 0 R >>`);
+    let pdf = '%PDF-1.4\n';
+    const xref = [];
+    const count = objects.length;
+    const addObj = (id, body) => {
+      xref[id] = pdf.length;
+      pdf += `${id} 0 obj\n${body}\nendobj\n`;
+    };
+    for (let i = 1; i <= count; i++) addObj(i, objects[i - 1]);
+    const xrefStart = pdf.length;
+    pdf += `xref\n0 ${count + 1}\n`;
+    pdf += '0000000000 65535 f \n';
+    for (let i = 1; i <= count; i++) {
+      const pos = String(xref[i]).padStart(10, '0');
+      pdf += `${pos} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${count + 1} /Root ${catalogObjId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
+    return new Blob([pdf], { type: 'application/pdf' });
+  };
+
+  const buildBackupSnapshot = async () => {
+    const snapshot = {
+      createdAt: new Date().toISOString(),
+      users: [],
+      totals: { chats: 0, messages: 0, orders: 0 }
+    };
+    try {
+      const chatList = Array.isArray(chats) ? chats : [];
+      const ordersList = await ordersAPI.getAll().catch(() => []);
+      snapshot.totals.chats = chatList.length;
+      const perChat = await Promise.all(
+        chatList.map(async (c) => {
+          const msgs = await messagesAPI.getByChatId(c.chatId).catch(() => []);
+          const userOrders = (ordersList || []).filter(o => String(o.chatId) === String(c.chatId));
+          snapshot.totals.messages += msgs.length;
+          snapshot.totals.orders += userOrders.length;
+          return {
+            chatId: c.chatId,
+            userEmail: c.userEmail || '',
+            messages: msgs.map(m => ({
+              id: m._id || m.id || '',
+              at: m.createdAt || '',
+              from: m.senderId || m.senderRole || '',
+              text: m.text || '',
+              attachments: (m.attachments || []).map(a => ({
+                originalName: a.originalName || a.filename || '',
+                mimetype: a.mimetype || '',
+                size: a.size || 0,
+                url: a.url || ''
+              }))
+            })),
+            orders: userOrders.map(o => ({
+              orderIndex: o.orderIndex,
+              status: o.status,
+              priceGel: o.priceGel,
+              priceUsd: o.priceUsd,
+              priceEur: o.priceEur,
+              managerComment: o.managerComment || '',
+              managerDate: o.managerDate || ''
+            }))
+          };
+        })
+      );
+      snapshot.users = perChat;
+    } catch (err) {
+      console.error('Backup build error:', err);
+    }
+    return snapshot;
+  };
+
+  const handleMakeBackup = async () => {
+    const snapshot = await buildBackupSnapshot();
+    try {
+      localStorage.setItem('manager_backup_last', JSON.stringify(snapshot));
+      alert('Резервная копия сохранена локально');
+    } catch {
+      alert('Не удалось сохранить резервную копию');
+    }
+  };
+
+  const handleDownloadBackup = async () => {
+    let raw = null;
+    try { raw = localStorage.getItem('manager_backup_last'); } catch { /* ignore */ }
+    if (!raw) {
+      alert('Резервная копия не найдена. Сначала выполните резервное копирование.');
+      return;
+    }
+    let snapshot = null;
+    try { snapshot = JSON.parse(raw); } catch { /* ignore */ }
+    if (!snapshot) {
+      alert('Повреждённые данные резервной копии');
+      return;
+    }
+    const lines = [];
+    lines.push('ОТЧЁТ: РЕЗЕРВНАЯ КОПИЯ ДАННЫХ');
+    lines.push(`Дата: ${new Date(snapshot.createdAt).toLocaleString()}`);
+    lines.push(`Всего чатов: ${snapshot.totals.chats}, сообщений: ${snapshot.totals.messages}, заказов: ${snapshot.totals.orders}`);
+    lines.push('------------------------------------------------------------');
+    for (const u of snapshot.users) {
+      lines.push(`Пользователь: ${u.userEmail} (chatId: ${u.chatId})`);
+      lines.push(`Сообщения: ${u.messages.length}`);
+      for (const m of u.messages) {
+        const t = m.at ? new Date(m.at).toLocaleString() : '';
+        const who = m.from === 'manager' ? 'Менеджер' : 'Клиент';
+        lines.push(`[${t}] ${who}: ${m.text}`);
+        if (m.attachments && m.attachments.length) {
+          m.attachments.forEach((a, idx) => {
+            lines.push(`  ▸ Файл #${idx + 1}: ${a.originalName} (${a.mimetype}, ${formatFileSize(a.size)})`);
+          });
+        }
+      }
+      lines.push(`Заказы: ${u.orders.length}`);
+      for (const o of u.orders) {
+        lines.push(`  ▸ Заказ #${o.orderIndex} | Статус: ${o.status || '—'} | Цена: GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`);
+        if (o.managerComment) lines.push(`    Комментарий: ${o.managerComment}`);
+        if (o.managerDate) lines.push(`    Дата: ${o.managerDate}`);
+      }
+      lines.push('------------------------------------------------------------');
+    }
+    const blob = generatePdfFromTextLines('Резервная копия', lines);
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `backup_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  };
+
   const renderFileContent = (msg) => {
     const url = getAbsoluteFileUrl(msg.fileUrl);
     if (!url) return null;
@@ -1572,6 +1751,20 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
                   <div className="mt-4 flex flex-col gap-2">
                     <button
+                      onClick={() => { setMobileMenuOpen(false); handleMakeBackup(); }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-green-300 hover:text-green-200 hover:bg-green-500/10 border border-green-500/20"
+                    >
+                      <Save className="w-5 h-5" />
+                      <span className="text-center">Резервное копирование</span>
+                    </button>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); handleDownloadBackup(); }}
+                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
+                    >
+                      <Download className="w-5 h-5" />
+                      <span className="text-center">Скачать данные</span>
+                    </button>
+                    <button
                       onClick={() => {
                         setActiveSection('scripts');
                         setMobileMenuOpen(false);
@@ -1640,6 +1833,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
       {/* Основной контент */}
       <main className="flex-grow pt-16 pb-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Кнопки резервного копирования на ПК (под навигацией) */}
+          <div className="hidden lg:flex items-center gap-3 mb-4">
+            <button
+              onClick={handleMakeBackup}
+              className="px-4 py-2 rounded-lg bg-green-600/20 border border-green-500/30 text-green-200 hover:bg-green-600/30 transition"
+            >
+              Резервное копирование
+            </button>
+            <button
+              onClick={handleDownloadBackup}
+              className="px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/30 transition"
+            >
+              Скачать данные
+            </button>
+          </div>
           
           {/* Dashboard */}
           {activeSection === 'dashboard' && (
