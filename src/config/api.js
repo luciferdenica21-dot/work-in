@@ -180,6 +180,17 @@ export const ordersAPI = {
   }),
 };
 
+export const backupsAPI = {
+  create: (snapshot) => apiRequest('/backups', {
+    method: 'POST',
+    body: JSON.stringify(snapshot),
+  }),
+  list: () => apiRequest('/backups'),
+  latest: () => apiRequest('/backups/latest'),
+  getById: (id) => apiRequest(`/backups/${id}`),
+  delete: (id) => apiRequest(`/backups/${id}`, { method: 'DELETE' }),
+};
+
 export const analyticsAPI = {
   sendEvent: (payload) => apiRequest('/analytics/events', {
     method: 'POST',

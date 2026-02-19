@@ -15,6 +15,7 @@ import orderRoutes from './routes/orders.js';
 import analyticsRoutes from './routes/analytics.js';
 import fileRoutes from './routes/files.js';
 import Message from './models/Message.js';
+import backupRoutes from './routes/backups.js';
 import Chat from './models/Chat.js';
 import { sendTelegram } from './config/telegram.js';
 
@@ -56,7 +57,7 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
@@ -84,6 +85,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/backups', backupRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
-import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI } from '../config/api';
+import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
@@ -457,9 +457,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const snapshot = await buildBackupSnapshot();
     try {
       localStorage.setItem('manager_backup_last', JSON.stringify(snapshot));
-      alert('Резервная копия сохранена локально');
-    } catch {
-      alert('Не удалось сохранить резервную копию');
+    } catch {}
+    try {
+      await backupsAPI.create(snapshot);
+      alert('Резервная копия сохранена в базе');
+    } catch (e) {
+      alert('Не удалось сохранить в базе, сохранено локально');
     }
   };
 
@@ -541,16 +544,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   const handleDownloadBackup = async () => {
-    let raw = null;
-    try { raw = localStorage.getItem('manager_backup_last'); } catch { /* ignore */ }
-    if (!raw) {
-      alert('Резервная копия не найдена. Сначала выполните резервное копирование.');
-      return;
-    }
     let snapshot = null;
-    try { snapshot = JSON.parse(raw); } catch { /* ignore */ }
+    try {
+      snapshot = await backupsAPI.latest();
+    } catch {}
     if (!snapshot) {
-      alert('Повреждённые данные резервной копии');
+      let raw = null;
+      try { raw = localStorage.getItem('manager_backup_last'); } catch {}
+      if (raw) {
+        try { snapshot = JSON.parse(raw); } catch {}
+      }
+    }
+    if (!snapshot) {
+      alert('Резервная копия не найдена. Сначала выполните резервное копирование.');
       return;
     }
     const html = buildBackupPrintableHtml(snapshot);
