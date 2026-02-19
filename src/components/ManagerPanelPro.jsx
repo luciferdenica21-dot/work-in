@@ -451,6 +451,73 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
+  const buildBackupPrintableHtml = (snapshot) => {
+    const head = `
+      <!doctype html>
+      <html lang="ru">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Резервная копия</title>
+        <style>
+          * { box-sizing: border-box; }
+          body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", "Liberation Sans", "Segoe UI Emoji", "Apple Color Emoji", "Segoe UI Symbol"; color: #111; background: #fff; }
+          .wrap { padding: 16px; }
+          h1 { margin: 0 0 8px 0; font-size: 18px; }
+          .meta { font-size: 12px; color: #555; margin-bottom: 14px; }
+          .user { page-break-inside: avoid; margin-bottom: 16px; }
+          .user h2 { margin: 0 0 6px 0; font-size: 15px; }
+          .block-title { font-size: 13px; font-weight: 600; margin: 8px 0 6px 0; }
+          .msg, .order { font-size: 12px; line-height: 1.45; margin: 4px 0; white-space: pre-wrap; word-break: break-word; }
+          .msg .t { color: #555; margin-right: 6px; }
+          .msg .w { font-weight: 600; margin-right: 6px; }
+          .att { font-size: 11px; color: #444; margin-left: 14px; }
+          .divider { margin: 14px 0; height: 1px; background: #eee; }
+          @media print { .wrap { padding: 10mm; } }
+        </style>
+      </head>
+      <body><div class="wrap">
+    `;
+    const intro = `
+      <h1>Отчёт: резервная копия данных</h1>
+      <div class="meta">Дата: ${escapeHtml(new Date(snapshot.createdAt).toLocaleString())}</div>
+      <div class="meta">Всего чатов: ${escapeHtml(String(snapshot.totals.chats))}, сообщений: ${escapeHtml(String(snapshot.totals.messages))}, заказов: ${escapeHtml(String(snapshot.totals.orders))}</div>
+      <div class="divider"></div>
+    `;
+    const usersHtml = (snapshot.users || [])
+      .map((u) => {
+        const header = `<div class="user"><h2>Пользователь: ${escapeHtml(u.userEmail || '')} (chatId: ${escapeHtml(String(u.chatId || ''))})</h2>`;
+        const msgsTitle = `<div class="block-title">Сообщения: ${escapeHtml(String((u.messages || []).length))}</div>`;
+        const msgs = (u.messages || [])
+          .map((m) => {
+            const t = m.at ? new Date(m.at).toLocaleString() : '';
+            const who = m.from === 'manager' ? 'Менеджер' : 'Клиент';
+            const text = escapeHtml(m.text || '');
+            const atts = (m.attachments || []).map((a, idx) => `• ${escapeHtml(a.originalName || '')} (${escapeHtml(a.mimetype || '')}, ${escapeHtml(formatFileSize(a.size || 0))})`).join('<br/>');
+            const attBlock = atts ? `<div class="att">${atts}</div>` : '';
+            return `<div class="msg"><span class="t">[${escapeHtml(t)}]</span><span class="w">${escapeHtml(who)}:</span>${text}${attBlock}</div>`;
+          })
+          .join('');
+        const ordersTitle = `<div class="block-title">Заказы: ${escapeHtml(String((u.orders || []).length))}</div>`;
+        const orders = (u.orders || [])
+          .map((o) => {
+            const line = [
+              `Заказ #${o.orderIndex}`,
+              `Статус: ${o.status || '—'}`,
+              `Цена: GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`,
+              o.managerComment ? `Комментарий: ${o.managerComment}` : '',
+              o.managerDate ? `Дата: ${o.managerDate}` : ''
+            ].filter(Boolean).join(' | ');
+            return `<div class="order">${escapeHtml(line)}</div>`;
+          })
+          .join('');
+        return `${header}${msgsTitle}${msgs}${ordersTitle}${orders}</div><div class="divider"></div>`;
+      })
+      .join('');
+    const tail = `</div></body></html>`;
+    return head + intro + usersHtml + tail;
+  };
+
   const handleDownloadBackup = async () => {
     let raw = null;
     try { raw = localStorage.getItem('manager_backup_last'); } catch { /* ignore */ }
@@ -464,41 +531,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
       alert('Повреждённые данные резервной копии');
       return;
     }
-    const lines = [];
-    lines.push('ОТЧЁТ: РЕЗЕРВНАЯ КОПИЯ ДАННЫХ');
-    lines.push(`Дата: ${new Date(snapshot.createdAt).toLocaleString()}`);
-    lines.push(`Всего чатов: ${snapshot.totals.chats}, сообщений: ${snapshot.totals.messages}, заказов: ${snapshot.totals.orders}`);
-    lines.push('------------------------------------------------------------');
-    for (const u of snapshot.users) {
-      lines.push(`Пользователь: ${u.userEmail} (chatId: ${u.chatId})`);
-      lines.push(`Сообщения: ${u.messages.length}`);
-      for (const m of u.messages) {
-        const t = m.at ? new Date(m.at).toLocaleString() : '';
-        const who = m.from === 'manager' ? 'Менеджер' : 'Клиент';
-        lines.push(`[${t}] ${who}: ${m.text}`);
-        if (m.attachments && m.attachments.length) {
-          m.attachments.forEach((a, idx) => {
-            lines.push(`  ▸ Файл #${idx + 1}: ${a.originalName} (${a.mimetype}, ${formatFileSize(a.size)})`);
-          });
-        }
-      }
-      lines.push(`Заказы: ${u.orders.length}`);
-      for (const o of u.orders) {
-        lines.push(`  ▸ Заказ #${o.orderIndex} | Статус: ${o.status || '—'} | Цена: GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`);
-        if (o.managerComment) lines.push(`    Комментарий: ${o.managerComment}`);
-        if (o.managerDate) lines.push(`    Дата: ${o.managerDate}`);
-      }
-      lines.push('------------------------------------------------------------');
+    const html = buildBackupPrintableHtml(snapshot);
+    const w = window.open('', '_blank', 'noopener,noreferrer');
+    if (w && w.document) {
+      w.document.open('text/html', 'replace');
+      w.document.write(html);
+      w.document.close();
+      setTimeout(() => {
+        try { w.print(); } catch { /* ignore */ }
+      }, 300);
+    } else {
+      const name = `backup_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.html`;
+      downloadTextFile(name, html, 'text/html;charset=utf-8');
     }
-    const blob = generatePdfFromTextLines('Резервная копия', lines);
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `backup_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.pdf`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1500);
   };
 
   const renderFileContent = (msg) => {
