@@ -425,9 +425,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
             orders: userOrders.map(o => ({
               orderIndex: o.orderIndex,
               status: o.status,
-              priceGel: o.priceGel,
-              priceUsd: o.priceUsd,
-              priceEur: o.priceEur,
+              createdAt: o.createdAt || '',
+              firstName: o.firstName || '',
+              lastName: o.lastName || '',
+              contact: o.contact || '',
+              services: Array.isArray(o.services) ? o.services : [],
+              comment: o.comment || '',
+              files: Array.isArray(o.files) ? o.files.map(f => ({
+                name: f.name || '',
+                type: f.type || '',
+                size: f.size || 0,
+                url: f.url || ''
+              })) : [],
+              priceGel: o.priceGel ?? 0,
+              priceUsd: o.priceUsd ?? 0,
+              priceEur: o.priceEur ?? 0,
               managerComment: o.managerComment || '',
               managerDate: o.managerDate || ''
             }))
@@ -501,14 +513,24 @@ const getAbsoluteFileUrl = (fileUrl) => {
         const ordersTitle = `<div class="block-title">Заказы: ${escapeHtml(String((u.orders || []).length))}</div>`;
         const orders = (u.orders || [])
           .map((o) => {
-            const line = [
-              `Заказ #${o.orderIndex}`,
-              `Статус: ${o.status || '—'}`,
-              `Цена: GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`,
-              o.managerComment ? `Комментарий: ${o.managerComment}` : '',
-              o.managerDate ? `Дата: ${o.managerDate}` : ''
-            ].filter(Boolean).join(' | ');
-            return `<div class="order">${escapeHtml(line)}</div>`;
+            const created = o.createdAt ? new Date(o.createdAt).toLocaleString() : '';
+            const client = [o.firstName, o.lastName].filter(Boolean).join(' ');
+            const prices = `GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`;
+            const files = (o.files || []).map((f, idx) => `• ${escapeHtml(f.name || '')} (${escapeHtml(f.type || '')}, ${escapeHtml(formatFileSize(f.size || 0))}) ${f.url ? `— ${escapeHtml(f.url)}` : ''}`).join('<br/>');
+            const services = (o.services || []).join(', ');
+            return `
+              <div class="order">
+                <div><strong>Заказ #${escapeHtml(String(o.orderIndex))}</strong> | Статус: ${escapeHtml(o.status || '—')} | Создан: ${escapeHtml(created)}</div>
+                ${client ? `<div>Клиент: ${escapeHtml(client)}</div>` : ''}
+                ${o.contact ? `<div>Контакт: ${escapeHtml(o.contact)}</div>` : ''}
+                ${services ? `<div>Услуги: ${escapeHtml(services)}</div>` : ''}
+                ${o.comment ? `<div>Комментарий клиента: ${escapeHtml(o.comment)}</div>` : ''}
+                <div>Цена: ${escapeHtml(prices)}</div>
+                ${o.managerComment ? `<div>Примечание менеджера: ${escapeHtml(o.managerComment)}</div>` : ''}
+                ${o.managerDate ? `<div>Дата менеджера: ${escapeHtml(new Date(o.managerDate).toLocaleDateString())}</div>` : ''}
+                ${files ? `<div class="att">${files}</div>` : ''}
+              </div>
+            `;
           })
           .join('');
         return `${header}${msgsTitle}${msgs}${ordersTitle}${orders}</div><div class="divider"></div>`;
