@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { filesAPI, signaturesAPI } from '../config/api';
 
 const SignaturePad = ({ onChange }) => {
@@ -78,12 +78,18 @@ const SignaturePad = ({ onChange }) => {
   );
 };
 
-export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
+export default function SignatureRequestComposer({ chatId, onClose, onSent, onSaveToScripts }) {
   const [file, setFile] = useState(null);
   const [uploaded, setUploaded] = useState(null);
   const [signData, setSignData] = useState('');
   const [loading, setLoading] = useState(false);
   const canSend = !!uploaded?.url && !!signData;
+  const previewUrl = useMemo(() => (uploaded?.url ? filesAPI.getFileUrl(uploaded.url) : ''), [uploaded]);
+  const isPdf = useMemo(() => {
+    const t = String(uploaded?.type || '');
+    return t.includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf');
+  }, [uploaded, previewUrl]);
+  const isImage = useMemo(() => String(uploaded?.type || '').startsWith('image/'), [uploaded]);
   const onFileChange = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -110,6 +116,13 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
       setLoading(false);
     }
   };
+  const saveAsQuickScript = () => {
+    if (!canSend) return;
+    const payload = { file: uploaded, managerSignatureDataUrl: signData };
+    const text = `__SIGNREQ__:${JSON.stringify(payload)}`;
+    const title = uploaded?.name ? `Подписать: ${uploaded.name}` : 'Подписать документ';
+    onSaveToScripts?.({ title, text });
+  };
   return (
     <div className="fixed inset-0 z-[10000]">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
@@ -126,11 +139,26 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
               <div className="text-xs text-white/60 break-all">Файл: {uploaded.name} • {uploaded.type} • {Math.round((uploaded.size||0)/1024)} KB</div>
             )}
           </div>
+          {uploaded?.url && (
+            <div className="space-y-2">
+              <div className="text-white/80 text-sm">Предпросмотр</div>
+              <div className="bg-white/5 border border-white/10 rounded-lg p-2">
+                {isPdf ? (
+                  <iframe title="doc" src={previewUrl} className="w-full h-[50vh] bg-white rounded" />
+                ) : isImage ? (
+                  <img alt="doc" src={previewUrl} className="max-w-full rounded bg-white" />
+                ) : (
+                  <a href={previewUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
+                )}
+              </div>
+            </div>
+          )}
           <div className="space-y-2">
             <div className="text-white/80 text-sm">Подпись менеджера</div>
             <SignaturePad onChange={setSignData} />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <button disabled={!canSend || loading} onClick={saveAsQuickScript} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить в быстрые скрипты</button>
             <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
             <button disabled={!canSend || loading} onClick={send} className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60">Отправить клиенту</button>
           </div>

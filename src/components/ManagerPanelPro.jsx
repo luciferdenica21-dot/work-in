@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
-import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI } from '../config/api';
+import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI, signaturesAPI } from '../config/api';
 import SignatureRequestComposer from './SignatureRequestComposer';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { 
@@ -615,6 +615,36 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
 
     return null;
+  };
+
+  const SIGNATURE_MARKER = '__SIGNREQ__:';
+  const isSignatureScript = (script) => typeof script?.text === 'string' && script.text.startsWith(SIGNATURE_MARKER);
+  const parseSignatureScript = (script) => {
+    try {
+      const raw = script.text.slice(SIGNATURE_MARKER.length);
+      const obj = JSON.parse(raw);
+      if (obj?.file?.url && obj?.managerSignatureDataUrl) return obj;
+    } catch { /* ignore */ }
+    return null;
+  };
+  const sendSignatureScript = async (script) => {
+    if (!activeId) {
+      setActiveSection('chats');
+      alert('Сначала выберите чат');
+      return;
+    }
+    const payload = parseSignatureScript(script);
+    if (!payload) return;
+    try {
+      const res = await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl });
+      if (res?.id) {
+        const link = `${window.location.origin}/sign/${res.id}`;
+        await messagesAPI.send(activeId, `Документ на подпись: ${link}`);
+        setActiveSection('chats');
+      }
+    } catch {
+      alert('Не удалось создать запрос подписи');
+    }
   };
 
   const renderOrderFile = (file) => {
@@ -3310,32 +3340,57 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
               <div className="lg:hidden">
                 <div className="space-y-3">
-                  {(scripts || []).map((script) => (
-                    <div key={script.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="text-base font-semibold text-white truncate">{script.title}</div>
-                          <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
-                        </div>
-                        <div className="shrink-0 flex items-center gap-2">
-                          <button
-                            onClick={() => openEditScript(script)}
-                            className="p-2 rounded-xl bg-white/5 border border-white/10 text-blue-300 hover:bg-white/10"
-                            aria-label="Редактировать"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteScript(script.id)}
-                            className="p-2 rounded-xl bg-white/5 border border-white/10 text-red-300 hover:bg-white/10"
-                            aria-label="Удалить"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                  {(scripts || []).map((script) => {
+                    const isSig = isSignatureScript(script);
+                    const payload = isSig ? parseSignatureScript(script) : null;
+                    const fileUrl = payload?.file?.url ? filesAPI.getFileUrl(payload.file.url) : '';
+                    const isPdf = isSig && (String(payload?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf'));
+                    const isImage = isSig && String(payload?.file?.type || '').startsWith('image/');
+                    return (
+                      <div key={script.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0 w-full">
+                            <div className="text-base font-semibold text-white truncate">{script.title}</div>
+                            {!isSig ? (
+                              <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                            ) : (
+                              <div className="mt-2 space-y-2">
+                                <div className="text-xs text-white/70">Шаблон подписи</div>
+                                <div className="bg-white/5 border border-white/10 rounded p-2">
+                                  {isPdf ? (
+                                    <iframe title="doc" src={fileUrl} className="w-full h-48 bg-white rounded" />
+                                  ) : isImage ? (
+                                    <img alt="doc" src={fileUrl} className="max-w-full rounded bg-white" />
+                                  ) : (
+                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
+                                  )}
+                                </div>
+                                <div className="flex justify-end">
+                                  <button onClick={() => sendSignatureScript(script)} className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600">Отправить на подпись</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="shrink-0 flex items-center gap-2">
+                            <button
+                              onClick={() => openEditScript(script)}
+                              className="p-2 rounded-xl bg-white/5 border border-white/10 text-blue-300 hover:bg-white/10"
+                              aria-label="Редактировать"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteScript(script.id)}
+                              className="p-2 rounded-xl bg-white/5 border border-white/10 text-red-300 hover:bg-white/10"
+                              aria-label="Удалить"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {(scripts || []).length === 0 && (
                     <div className="text-center py-10 text-white/60">
@@ -3452,28 +3507,53 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
               {/* Список скриптов */}
               <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-4">
-                {scripts.map(script => (
-                  <div key={script.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h4 className="font-medium text-white">{script.title}</h4>
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEditScript(script)}
-                          className="text-blue-400 hover:text-blue-300"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteScript(script.id)}
-                          className="text-red-400 hover:text-red-300"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                {scripts.map(script => {
+                  const isSig = isSignatureScript(script);
+                  const payload = isSig ? parseSignatureScript(script) : null;
+                  const fileUrl = payload?.file?.url ? filesAPI.getFileUrl(payload.file.url) : '';
+                  const isPdf = isSig && (String(payload?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf'));
+                  const isImage = isSig && String(payload?.file?.type || '').startsWith('image/');
+                  return (
+                    <div key={script.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-medium text-white">{script.title}</h4>
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEditScript(script)}
+                            className="text-blue-400 hover:text-blue-300"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteScript(script.id)}
+                            className="text-red-400 hover:text-red-300"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
+                      {!isSig ? (
+                        <p className="text-sm text-gray-300">{script.text}</p>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="text-xs text-white/70">Шаблон подписи</div>
+                          <div className="bg-white/5 border border-white/10 rounded p-2">
+                            {isPdf ? (
+                              <iframe title="doc" src={fileUrl} className="w-full h-56 bg-white rounded" />
+                            ) : isImage ? (
+                              <img alt="doc" src={fileUrl} className="max-w-full rounded bg-white" />
+                            ) : (
+                              <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
+                            )}
+                          </div>
+                          <div className="flex justify-end">
+                            <button onClick={() => sendSignatureScript(script)} className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600">Отправить на подпись</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <p className="text-sm text-gray-300">{script.text}</p>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}
@@ -3482,6 +3562,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
             <SignatureRequestComposer
               chatId={activeId}
               onClose={() => setSignatureComposerOpen(false)}
+              onSaveToScripts={({ title, text }) => {
+                const id = String(Date.now());
+                const next = [{ id, title, text }, ...scripts];
+                setScripts(next);
+                setSignatureComposerOpen(false);
+                alert('Сохранено в быстрые скрипты');
+              }}
               onSent={async (res) => {
                 try {
                   if (res?.id) {
