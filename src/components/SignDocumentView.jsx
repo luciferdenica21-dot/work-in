@@ -59,17 +59,20 @@ export default function SignDocumentView() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [sig, setSig] = useState('');
+  const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
+  const previewRef = useRef(null);
   useEffect(() => {
     let active = true;
-    signaturesAPI.get(id).then(d => { if (active) { setData(d); setLoading(false); } }).catch(() => { setLoading(false); });
+    signaturesAPI.get(id).then(d => { if (active) { setData(d); setSignPos(d?.managerSignPos || null); setLoading(false); } }).catch(() => { setLoading(false); });
     return () => { active = false; };
   }, [id]);
   const submit = async () => {
     if (!sig) return;
     setSending(true);
     try {
-      await signaturesAPI.clientSign(id, sig);
+      // рассчитываем абсолютные пиксели не нужны: отправим те же нормализованные координаты
+      await signaturesAPI.clientSign(id, sig, signPos || null);
       alert('Документ подписан и отправлен менеджеру');
       navigate('/dashboard');
     } catch {
@@ -87,19 +90,31 @@ export default function SignDocumentView() {
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="text-xl font-semibold">Подписание документа</div>
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-          {isPdf ? (
-            <iframe title="doc" src={fileUrl} className="w-full h-[70vh] bg-white rounded" />
-          ) : isImage ? (
-            <img alt="doc" src={fileUrl} className="max-w-full rounded bg-white" />
-          ) : (
-            <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
-          )}
-          {data?.managerSignatureUrl && (
-            <div className="mt-3">
-              <div className="text-sm text-white/70 mb-2">Подпись менеджера</div>
-              <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="bg-white rounded inline-block max-h-32" />
-            </div>
-          )}
+          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
+            {isPdf ? (
+              <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
+            ) : isImage ? (
+              <img alt="doc" src={fileUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+            ) : (
+              <a href={fileUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">Открыть документ</a>
+            )}
+            {data?.managerSignatureUrl && signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
+              <div
+                className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
+                style={{
+                  left: `${(signPos.x - signPos.w / 2) * 100}%`,
+                  top: `${(signPos.y - signPos.h / 2) * 100}%`,
+                  width: `${signPos.w * 100}%`,
+                  height: `${signPos.h * 100}%`
+                }}
+              >
+                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
+                  Место подписи
+                </div>
+                <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />
+              </div>
+            )}
+          </div>
         </div>
         {!data?.clientSignatureUrl ? (
           <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">

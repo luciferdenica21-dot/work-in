@@ -636,7 +636,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const payload = parseSignatureScript(script);
     if (!payload) return;
     try {
-      const res = await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl });
+      const res = await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl, managerSignPos: payload.managerSignPos || null });
       if (res?.id) {
         const link = `${window.location.origin}/sign/${res.id}`;
         await messagesAPI.send(activeId, `Документ на подпись: ${link}`);

@@ -201,9 +201,9 @@ export const signaturesAPI = {
     method: 'POST',
     body: JSON.stringify({ signatureDataUrl: dataUrl }),
   }),
-  clientSign: (id, dataUrl) => apiRequest(`/signatures/${id}/client-sign`, {
+  clientSign: (id, dataUrl, clientSignPos = null) => apiRequest(`/signatures/${id}/client-sign`, {
     method: 'POST',
-    body: JSON.stringify({ signatureDataUrl: dataUrl }),
+    body: JSON.stringify({ signatureDataUrl: dataUrl, clientSignPos }),
   }),
 };
 

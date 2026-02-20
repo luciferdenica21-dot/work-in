@@ -11,6 +11,21 @@ const signatureRequestSchema = new mongoose.Schema({
   },
   managerSignatureUrl: { type: String, default: '' },
   clientSignatureUrl: { type: String, default: '' },
+  finalPdfUrl: { type: String, default: '' },
+  managerSignPos: {
+    x: { type: Number, default: null }, // нормализованные координаты 0..1 относительно предпросмотра
+    y: { type: Number, default: null },
+    w: { type: Number, default: null },
+    h: { type: Number, default: null },
+    page: { type: Number, default: 1 }
+  },
+  clientSignPos: {
+    x: { type: Number, default: null },
+    y: { type: Number, default: null },
+    w: { type: Number, default: null },
+    h: { type: Number, default: null },
+    page: { type: Number, default: 1 }
+  },
   status: { type: String, enum: ['created', 'manager_signed', 'completed'], default: 'created', index: true },
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now }
