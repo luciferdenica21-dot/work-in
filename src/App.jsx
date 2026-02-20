@@ -14,6 +14,7 @@ import ChatWidget from './components/ChatWidget';
 const ManagerPanel = lazy(() => import('./components/ManagerPanelPro'));
 import ClientDashboard from './components/ClientDashboard';
 import TermsInfo from './components/TermsInfo';
+import SignDocumentView from './components/SignDocumentView';
 import { authAPI, getToken, removeToken } from './config/api';
 import { initAnalyticsTracker } from './config/analyticsTracker';
 
@@ -229,6 +230,7 @@ function App() {
         )
       } 
     />
+    <Route path="/sign/:id" element={<SignDocumentView />} />
   </Routes>
 </Router>
   );

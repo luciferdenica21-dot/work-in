@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI } from '../config/api';
+import SignatureRequestComposer from './SignatureRequestComposer';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
@@ -755,6 +756,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [showScriptMenu, setShowScriptMenu] = useState(false);
   const [scriptSearch, setScriptSearch] = useState('');
   const [scriptEditorOpen, setScriptEditorOpen] = useState(false);
+  const [signatureComposerOpen, setSignatureComposerOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [orderDetailsEditorOpen, setOrderDetailsEditorOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
@@ -3282,6 +3284,29 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <span>Добавить скрипт</span>
                 </button>
               </div>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-white/90">Отправка документа на подпись</div>
+                  <button
+                    onClick={() => setSignatureComposerOpen(true)}
+                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
+                  >
+                    Отправить на подпись
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+                  <div className="text-white/90">Отправка документа на подпись</div>
+                  <button
+                    onClick={() => setSignatureComposerOpen(true)}
+                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
+                  >
+                    Отправить на подпись
+                  </button>
+                </div>
+              </div>
 
               <div className="lg:hidden">
                 <div className="space-y-3">
@@ -3451,6 +3476,23 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 ))}
               </div>
             </div>
+          )}
+
+          {signatureComposerOpen && (
+            <SignatureRequestComposer
+              chatId={activeId}
+              onClose={() => setSignatureComposerOpen(false)}
+              onSent={async (res) => {
+                try {
+                  if (res?.id) {
+                    const link = `${window.location.origin}/sign/${res.id}`;
+                    await messagesAPI.send(activeId, `Документ на подпись: ${link}`);
+                  }
+                } catch {}
+                setSignatureComposerOpen(false);
+                setActiveSection('chats');
+              }}
+            />
           )}
 
           {/* Управление сайтом */}

@@ -191,6 +191,22 @@ export const backupsAPI = {
   delete: (id) => apiRequest(`/backups/${id}`, { method: 'DELETE' }),
 };
 
+export const signaturesAPI = {
+  create: (payload) => apiRequest('/signatures', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
+  get: (id) => apiRequest(`/signatures/${id}`),
+  managerSign: (id, dataUrl) => apiRequest(`/signatures/${id}/manager-sign`, {
+    method: 'POST',
+    body: JSON.stringify({ signatureDataUrl: dataUrl }),
+  }),
+  clientSign: (id, dataUrl) => apiRequest(`/signatures/${id}/client-sign`, {
+    method: 'POST',
+    body: JSON.stringify({ signatureDataUrl: dataUrl }),
+  }),
+};
+
 export const analyticsAPI = {
   sendEvent: (payload) => apiRequest('/analytics/events', {
     method: 'POST',
