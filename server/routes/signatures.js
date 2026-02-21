@@ -31,6 +31,15 @@ const buildPathFromUrl = (urlPath) => {
   return path.join(__dirname, '..', fname);
 };
 
+const sanitizeName = (s) => {
+  try {
+    const n = (s || '').normalize('NFC');
+    return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ\.\-_\(\)\s]/g, '').trim() || 'document';
+  } catch {
+    return 'document';
+  }
+};
+
 const composeFinalPdf = async (doc) => {
   try {
     const { PDFDocument } = await import('pdf-lib');
@@ -128,7 +137,7 @@ router.post('/', protect, admin, async (req, res) => {
     const text = `Документ на подпись: ${link}`;
     const attachment = {
       filename: path.basename(doc.file.url),
-      originalName: doc.file.name || 'document',
+      originalName: sanitizeName(doc.file.name || 'document'),
       mimetype: doc.file.type || '',
       size: doc.file.size || 0,
       url: doc.file.url

@@ -460,7 +460,15 @@ const ChatWidget = ({ user }) => {
     const attUrl = att?.url || att?.fileUrl || att?.path || att?.filename;
     const fileUrl = getFileUrl(attUrl);
     const mime = att?.mimetype || att?.type || '';
-    const name = att?.originalName || att?.name || att?.filename || 'Файл';
+    const sanitize = (s) => {
+      try {
+        const n = (s || '').normalize('NFC');
+        return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ\.\-_\(\)\s]/g, '').trim() || 'Файл';
+      } catch {
+        return 'Файл';
+      }
+    };
+    const name = sanitize(att?.originalName || att?.name || att?.filename || 'Файл');
 
     if (mime.startsWith('image/')) {
       return (
@@ -1039,60 +1047,58 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale 
           className="w-40 accent-purple-600"
         />
       </div>
-      <div
-        ref={ref}
-        onClick={place}
-        className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-hidden"
-        style={{ touchAction: 'manipulation' }}
-      >
-        {isPdf ? (
-          <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }} />
-        ) : isImg ? (
-          <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }} />
-        ) : previewUrl ? (
-          <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
-            Открыть документ
-          </a>
-        ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
-        )}
-        {pos && (
-          <div
-            className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
-            style={{
-              left: `${(pos.x - pos.w / 2) * 100}%`,
-              top: `${(pos.y - pos.h / 2) * 100}%`,
-              width: `${pos.w * 100}%`,
-              height: `${pos.h * 100}%`
-            }}
-          >
-            <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
-              Место подписи
+      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
+        <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          {isPdf ? (
+            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white pointer-events-none" />
+          ) : isImg ? (
+            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white pointer-events-none" />
+          ) : previewUrl ? (
+            <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
+              Открыть документ
+            </a>
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
+          )}
+          <div onClick={place} className="absolute inset-0 z-10" />
+          {pos && (
+            <div
+              className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
+              style={{
+                left: `${(pos.x - pos.w / 2) * 100}%`,
+                top: `${(pos.y - pos.h / 2) * 100}%`,
+                width: `${pos.w * 100}%`,
+                height: `${pos.h * 100}%`
+              }}
+            >
+              <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
+                Место подписи
+              </div>
+              <div className="absolute inset-0 p-1 flex items-center justify-center">
+                <canvas
+                  ref={canvasRef}
+                  width={400}
+                  height={160}
+                  onMouseDown={start}
+                  onMouseMove={move}
+                  onMouseUp={end}
+                  onMouseLeave={end}
+                  onTouchStart={start}
+                  onTouchMove={move}
+                  onTouchEnd={end}
+                  className="w-full h-full bg-white rounded"
+                />
+                <button
+                  type="button"
+                  onClick={clearCanvas}
+                  className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
+                >
+                  Очистить
+                </button>
+              </div>
             </div>
-            <div className="absolute inset-0 p-1 flex items-center justify-center">
-              <canvas
-                ref={canvasRef}
-                width={400}
-                height={160}
-                onMouseDown={start}
-                onMouseMove={move}
-                onMouseUp={end}
-                onMouseLeave={end}
-                onTouchStart={start}
-                onTouchMove={move}
-                onTouchEnd={end}
-                className="w-full h-full bg-white rounded"
-              />
-              <button
-                type="button"
-                onClick={clearCanvas}
-                className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
-              >
-                Очистить
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
       <div className="text-xs text-white/60 mt-1">Нажмите по документу, чтобы указать место подписи</div>
     </div>

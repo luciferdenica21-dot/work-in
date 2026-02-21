@@ -11,6 +11,15 @@ const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
+const sanitizeName = (s) => {
+  try {
+    const n = (s || '').normalize('NFC');
+    return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ\.\-_\(\)\s]/g, '').trim() || 'document';
+  } catch {
+    return 'document';
+  }
+};
+
 // Upload file to message
 router.post('/upload', protect, upload.single('file'), async (req, res) => {
   try {
@@ -53,7 +62,7 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
       const fileUrl = `/uploads/${req.file.filename}`;
       message.attachments.push({
         filename: req.file.filename,
-        originalName: req.file.originalname,
+        originalName: sanitizeName(req.file.originalname),
         mimetype: req.file.mimetype,
         size: req.file.size,
         url: fileUrl
@@ -88,12 +97,12 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
       const message = await Message.create({
         chatId: parsedChatId,
-        text: `📎 Отправлен файл: ${req.file.originalname}`,
+        text: `📎 Отправлен файл: ${sanitizeName(req.file.originalname)}`,
         senderId,
         senderEmail: req.user.email,
         attachments: [{
           filename: req.file.filename,
-          originalName: req.file.originalname,
+          originalName: sanitizeName(req.file.originalname),
           mimetype: req.file.mimetype,
           size: req.file.size,
           url: fileUrl
