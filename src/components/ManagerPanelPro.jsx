@@ -636,12 +636,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const payload = parseSignatureScript(script);
     if (!payload) return;
     try {
-      const res = await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl, managerSignPos: payload.managerSignPos || null });
-      if (res?.id) {
-        const link = `${window.location.origin}/sign/${res.id}`;
-        await messagesAPI.send(activeId, `Документ на подпись: ${link}`);
-        setActiveSection('chats');
-      }
+      await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl, managerSignPos: payload.managerSignPos || null });
+      setActiveSection('chats');
     } catch {
       alert('Не удалось создать запрос подписи');
     }
@@ -3570,12 +3566,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 alert('Сохранено в быстрые скрипты');
               }}
               onSent={async (res) => {
-                try {
-                  if (res?.id) {
-                    const link = `${window.location.origin}/sign/${res.id}`;
-                    await messagesAPI.send(activeId, `Документ на подпись: ${link}`);
-                  }
-                } catch {}
                 setSignatureComposerOpen(false);
                 setActiveSection('chats');
               }}

@@ -123,6 +123,32 @@ router.post('/', protect, admin, async (req, res) => {
       managerSignPos: managerSignPos || null,
       status: sigUrl ? 'manager_signed' : 'created'
     });
+    // Create a chat message with the document as attachment and clickable link
+    const link = `${process.env.CLIENT_URL || ''}/sign/${doc._id}`;
+    const text = `Документ на подпись: ${link}`;
+    const attachment = {
+      filename: path.basename(doc.file.url),
+      originalName: doc.file.name || 'document',
+      mimetype: doc.file.type || '',
+      size: doc.file.size || 0,
+      url: doc.file.url
+    };
+    const message = await Message.create({
+      chatId,
+      text,
+      senderId: 'manager',
+      senderEmail: req.user.email,
+      attachments: [attachment]
+    });
+    chat.unread = true;
+    chat.lastMessage = text;
+    chat.lastUpdate = new Date();
+    await chat.save();
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${chatId}`).emit('new-message', message);
+      io.emit('new-chat-message', { chatId: chatId.toString(), message: message.toObject() });
+    }
     res.status(201).json({ id: doc._id, link: `/sign/${doc._id}` });
   } catch (e) {
     res.status(500).json({ message: e.message });
