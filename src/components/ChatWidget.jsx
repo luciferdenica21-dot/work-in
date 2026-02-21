@@ -779,7 +779,7 @@ const ChatWidget = ({ user }) => {
                   const mime = att?.mimetype || att?.type || '';
                   return mime.startsWith('image/') || mime.startsWith('video/');
                 });
-              const showText = !hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText);
+              const showText = (!hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText)) && !extractSignLink(msg?.text || '');
               return (
                 <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
                   <div className={`flex items-start gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -842,14 +842,34 @@ const ChatWidget = ({ user }) => {
                         </div>
                       )}
                       {extractSignLink(msg?.text || '') && (
-                        <div className="mt-2 flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() => openSignPosModal(msg)}
-                            className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 text-[11px]"
-                          >
-                            Указать место подписи
-                          </button>
+                        <div className="mt-2">
+                          <div className="rounded-xl border border-white/10 bg-white/5 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div className="min-w-0">
+                                <div className="text-xs text-white/80 font-medium">Документ на подпись</div>
+                                <div className="text-[11px] text-white/60 truncate max-w-[260px]">
+                                  Файл приложен к сообщению ниже
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <a
+                                  href={extractSignLink(msg.text).url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 text-[11px]"
+                                >
+                                  Открыть
+                                </a>
+                                <button
+                                  type="button"
+                                  onClick={() => openSignPosModal(msg)}
+                                  className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 text-[11px]"
+                                >
+                                  Подписать
+                                </button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -931,18 +951,15 @@ const ChatWidget = ({ user }) => {
               <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
             </div>
             <div className="space-y-3">
-              <div className="text-white/80 text-sm">
-                {signPosModal.pos ? 'Менеджер указал место подписи' : 'Нажмите по документу, чтобы указать место подписи'}
-              </div>
+              <div className="text-white/80 text-sm">Нарисуйте подпись внутри рамки и отправьте</div>
               <SignPosPreview
                 previewUrl={signPosModal.previewUrl}
                 scale={signPosModal.scale}
                 onScaleChange={(scale) => setSignPosModal(s => ({ ...s, scale }))}
-                onPick={(pos) => setSignPosModal(s => ({ ...s, pos }))}
                 signature={signPosModal.signDataUrl}
                 onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
                 value={signPosModal.pos}
-                disablePick={!!signPosModal.pos}
+                disablePick={true}
               />
               <div className="flex justify-end gap-2">
                 <button
