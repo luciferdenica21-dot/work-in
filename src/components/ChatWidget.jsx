@@ -583,6 +583,22 @@ const ChatWidget = ({ user }) => {
     });
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        if (signPosModal.open && signPosModal.requestId && !signPosModal.pos) {
+          const { signaturesAPI } = await import('../config/api');
+          const doc = await signaturesAPI.get(signPosModal.requestId);
+          if (!cancelled && doc?.managerSignPos) {
+            setSignPosModal(s => ({ ...s, pos: doc.managerSignPos }));
+          }
+        }
+      } catch {/* ignore */}
+    })();
+    return () => { cancelled = true; };
+  }, [signPosModal.open, signPosModal.requestId]);
+
   
 
   const handleMouseDown = (e) => {
@@ -915,7 +931,9 @@ const ChatWidget = ({ user }) => {
               <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
             </div>
             <div className="space-y-3">
-              <div className="text-white/80 text-sm">Нажмите по документу, чтобы указать место подписи</div>
+              <div className="text-white/80 text-sm">
+                {signPosModal.pos ? 'Менеджер указал место подписи' : 'Нажмите по документу, чтобы указать место подписи'}
+              </div>
               <SignPosPreview
                 previewUrl={signPosModal.previewUrl}
                 scale={signPosModal.scale}
@@ -923,6 +941,8 @@ const ChatWidget = ({ user }) => {
                 onPick={(pos) => setSignPosModal(s => ({ ...s, pos }))}
                 signature={signPosModal.signDataUrl}
                 onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
+                value={signPosModal.pos}
+                disablePick={!!signPosModal.pos}
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -964,7 +984,7 @@ const ChatWidget = ({ user }) => {
 
 export default ChatWidget;
 
-const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, signature, onDraw }) {
+const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, signature, onDraw, value, disablePick = false }) {
   const ref = React.useRef(null);
   const [pos, setPos] = React.useState(null);
   const [isPdf, setIsPdf] = React.useState(false);
@@ -977,6 +997,11 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale 
     setIsPdf(url.endsWith('.pdf'));
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
   }, [previewUrl]);
+  React.useEffect(() => {
+    if (value && typeof value.x === 'number') {
+      setPos(value);
+    }
+  }, [value]);
   const place = (e) => {
     if (!ref.current) return;
     const r = ref.current.getBoundingClientRect();
@@ -1066,7 +1091,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale 
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
           )}
-          <div onClick={place} className="absolute inset-0 z-10" />
+          {!disablePick && <div onClick={place} className="absolute inset-0 z-10" />}
           {pos && (
             <div
               className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"

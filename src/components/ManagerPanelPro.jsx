@@ -3322,18 +3322,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 </div>
               </div>
 
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div className="text-white/90">Отправка документа на подпись</div>
-                  <button
-                    onClick={() => setSignatureComposerOpen(true)}
-                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
-                  >
-                    Отправить на подпись
-                  </button>
-                </div>
-              </div>
-
               <div className="lg:hidden">
                 <div className="space-y-3">
                   {(scripts || []).map((script) => {
