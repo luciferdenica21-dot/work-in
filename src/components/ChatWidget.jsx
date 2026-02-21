@@ -509,6 +509,12 @@ const ChatWidget = ({ user }) => {
 
   const renderTextWithLinks = (text) => {
     if (typeof text !== 'string') return text;
+    const sanitize = (s) => {
+      try {
+        // Разрешаем: латиницу, кириллицу, грузинский, цифры, базовую пунктуацию и пробелы
+        return s.replace(/[^\u0009\u000A\u000D\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F\u2010-\u206F]/g, '');
+      } catch { return s; }
+    };
     const parts = text.split(/(https?:\/\/[^\s]+)/g);
     return parts.map((part, idx) => {
       if (part.match(/^https?:\/\//)) {
@@ -518,7 +524,7 @@ const ChatWidget = ({ user }) => {
           </a>
         );
       }
-      return <span key={idx}>{part}</span>;
+      return <span key={idx}>{sanitize(part)}</span>;
     });
   };
 
@@ -535,6 +541,10 @@ const ChatWidget = ({ user }) => {
     requestId: null,
     previewUrl: null,
     pos: null,
+    scale: 1,
+    drawing: false,
+    signDataUrl: '',
+    sending: false,
   });
 
   const openSignPosModal = (msg) => {
@@ -552,6 +562,10 @@ const ChatWidget = ({ user }) => {
       requestId: sign.id,
       previewUrl: fileUrl,
       pos: null,
+      scale: 1,
+      drawing: false,
+      signDataUrl: '',
+      sending: false,
     });
   };
 
@@ -890,7 +904,11 @@ const ChatWidget = ({ user }) => {
               <div className="text-white/80 text-sm">Нажмите по документу, чтобы указать место подписи</div>
               <SignPosPreview
                 previewUrl={signPosModal.previewUrl}
+                scale={signPosModal.scale}
+                onScaleChange={(scale) => setSignPosModal(s => ({ ...s, scale }))}
                 onPick={(pos) => setSignPosModal(s => ({ ...s, pos }))}
+                signature={signPosModal.signDataUrl}
+                onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -900,17 +918,27 @@ const ChatWidget = ({ user }) => {
                 >
                   Отмена
                 </button>
-                <a
-                  href={
-                    signPosModal.link +
-                    (signPosModal.pos
-                      ? `?x=${signPosModal.pos.x}&y=${signPosModal.pos.y}&w=${signPosModal.pos.w}&h=${signPosModal.pos.h}`
-                      : '')
-                  }
-                  className={`px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 ${!signPosModal.link ? 'pointer-events-none opacity-60' : ''}`}
+                <button
+                  type="button"
+                  disabled={!signPosModal.requestId || !signPosModal.signDataUrl || !signPosModal.pos || signPosModal.sending}
+                  onClick={async () => {
+                    try {
+                      setSignPosModal(s => ({ ...s, sending: true }));
+                      await messagesAPI.getByChatId; // no-op to keep ESLint calm
+                      await import('../config/api'); // ensure dynamic import chunk
+                      const { signaturesAPI } = await import('../config/api');
+                      await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos);
+                      alert('Документ подписан и отправлен менеджеру');
+                      setSignPosModal(s => ({ ...s, open: false, sending: false }));
+                    } catch (e) {
+                      alert('Не удалось отправить подпись');
+                      setSignPosModal(s => ({ ...s, sending: false }));
+                    }
+                  }}
+                  className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60"
                 >
-                  Перейти к подписи
-                </a>
+                  Подписать и отправить
+                </button>
               </div>
             </div>
           </div>
@@ -922,11 +950,14 @@ const ChatWidget = ({ user }) => {
 
 export default ChatWidget;
 
-const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick }) {
+const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, signature, onDraw }) {
   const ref = React.useRef(null);
   const [pos, setPos] = React.useState(null);
   const [isPdf, setIsPdf] = React.useState(false);
   const [isImg, setIsImg] = React.useState(false);
+  const canvasRef = React.useRef(null);
+  const drawingRef = React.useRef(false);
+  const lastRef = React.useRef({ x: 0, y: 0 });
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
     setIsPdf(url.endsWith('.pdf'));
@@ -945,8 +976,69 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick }) {
     setPos(next);
     onPick?.(next);
   };
+  React.useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+  }, []);
+  const start = (e) => {
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
+    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
+    drawingRef.current = true;
+    lastRef.current = { x, y };
+  };
+  const move = (e) => {
+    if (!drawingRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
+    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(lastRef.current.x, lastRef.current.y);
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    lastRef.current = { x, y };
+  };
+  const end = () => {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    const c = canvasRef.current;
+    if (!c) return;
+    const data = c.toDataURL('image/png');
+    onDraw?.(data);
+  };
+  const clearCanvas = () => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    onDraw?.('');
+  };
   return (
     <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-white/70 text-xs">Масштаб</div>
+        <input
+          type="range"
+          min="0.6"
+          max="2"
+          step="0.05"
+          value={scale}
+          onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
+          className="w-40 accent-purple-600"
+        />
+      </div>
       <div
         ref={ref}
         onClick={place}
@@ -954,9 +1046,9 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick }) {
         style={{ touchAction: 'manipulation' }}
       >
         {isPdf ? (
-          <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+          <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }} />
         ) : isImg ? (
-          <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+          <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" style={{ transform: `scale(${scale})`, transformOrigin: 'top left' }} />
         ) : previewUrl ? (
           <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
             Открыть документ
@@ -976,6 +1068,28 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick }) {
           >
             <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
               Место подписи
+            </div>
+            <div className="absolute inset-0 p-1 flex items-center justify-center">
+              <canvas
+                ref={canvasRef}
+                width={400}
+                height={160}
+                onMouseDown={start}
+                onMouseMove={move}
+                onMouseUp={end}
+                onMouseLeave={end}
+                onTouchStart={start}
+                onTouchMove={move}
+                onTouchEnd={end}
+                className="w-full h-full bg-white rounded"
+              />
+              <button
+                type="button"
+                onClick={clearCanvas}
+                className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
+              >
+                Очистить
+              </button>
             </div>
           </div>
         )}

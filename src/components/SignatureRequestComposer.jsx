@@ -84,7 +84,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
   const [signData, setSignData] = useState('');
   const [loading, setLoading] = useState(false);
   const [signBox, setSignBox] = useState(null); // {x,y,w,h} в нормализованных координатах 0..1
-  const canSend = !!uploaded?.url && !!signData;
+  const canSend = !!uploaded?.url; // разрешаем отправку даже без подписи менеджера
   const previewUrl = useMemo(() => (uploaded?.url ? filesAPI.getFileUrl(uploaded.url) : ''), [uploaded]);
   const isPdf = useMemo(() => {
     const t = String(uploaded?.type || '');
@@ -110,7 +110,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
     if (!canSend) return;
     setLoading(true);
     try {
-      const payload = { chatId, file: uploaded, managerSignatureDataUrl: signData, managerSignPos: signBox || null };
+      const payload = { chatId, file: uploaded, managerSignatureDataUrl: signData || undefined, managerSignPos: signBox || null };
       const res = await signaturesAPI.create(payload);
       onSent?.(res);
     } catch {
@@ -119,8 +119,8 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
     }
   };
   const saveAsQuickScript = () => {
-    if (!canSend) return;
-    const payload = { file: uploaded, managerSignatureDataUrl: signData, managerSignPos: signBox || null };
+    if (!uploaded?.url) return;
+    const payload = { file: uploaded, ...(signData ? { managerSignatureDataUrl: signData } : {}), managerSignPos: signBox || null };
     const text = `__SIGNREQ__:${JSON.stringify(payload)}`;
     const title = uploaded?.name ? `Подписать: ${uploaded.name}` : 'Подписать документ';
     onSaveToScripts?.({ title, text });
@@ -194,9 +194,9 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
             <SignaturePad onChange={setSignData} />
           </div>
           <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <button disabled={!canSend || loading} onClick={saveAsQuickScript} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить в быстрые скрипты</button>
+            <button disabled={!uploaded?.url || loading} onClick={saveAsQuickScript} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить в быстрые скрипты</button>
             <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
-            <button disabled={!canSend || loading} onClick={send} className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60">Отправить клиенту</button>
+            <button disabled={!uploaded?.url || loading} onClick={send} className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60">Отправить клиенту</button>
           </div>
         </div>
       </div>
