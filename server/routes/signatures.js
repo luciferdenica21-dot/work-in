@@ -6,7 +6,7 @@ import SignatureRequest from '../models/SignatureRequest.js';
 import Chat from '../models/Chat.js';
 import Message from '../models/Message.js';
 import { protect, admin } from '../middleware/auth.js';
-import { PDFDocument } from 'pdf-lib';
+// lazy import in composeFinalPdf to avoid startup failure if dependency is missing
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +33,7 @@ const buildPathFromUrl = (urlPath) => {
 
 const composeFinalPdf = async (doc) => {
   try {
+    const { PDFDocument } = await import('pdf-lib');
     if (!doc?.file?.url) return null;
     const srcPath = buildPathFromUrl(doc.file.url);
     if (!fs.existsSync(srcPath)) return null;

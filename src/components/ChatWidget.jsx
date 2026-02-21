@@ -507,6 +507,21 @@ const ChatWidget = ({ user }) => {
     );
   };
 
+  const renderTextWithLinks = (text) => {
+    if (typeof text !== 'string') return text;
+    const parts = text.split(/(https?:\/\/[^\s]+)/g);
+    return parts.map((part, idx) => {
+      if (part.match(/^https?:\/\//)) {
+        return (
+          <a key={idx} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-300 underline break-all">
+            {part}
+          </a>
+        );
+      }
+      return <span key={idx}>{part}</span>;
+    });
+  };
+
   const handleMouseDown = (e) => {
     if (isMobile) return;
     setIsDragging(true);
@@ -736,7 +751,7 @@ const ChatWidget = ({ user }) => {
                       )}
 
                       {showText && (
-                        <p className="whitespace-pre-wrap break-words">{replyMeta?.bodyText ?? msg.text}</p>
+                        <p className="whitespace-pre-wrap break-words">{renderTextWithLinks(replyMeta?.bodyText ?? msg.text)}</p>
                       )}
                       {hasAttachments && (
                         <div className="mt-2 space-y-2">

@@ -62,6 +62,17 @@ export default function SignDocumentView() {
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
   const previewRef = useRef(null);
+  const placeBox = (e) => {
+    if (!previewRef.current) return;
+    const r = previewRef.current.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    const py = e.clientY - r.top;
+    const nx = Math.max(0, Math.min(1, px / r.width));
+    const ny = Math.max(0, Math.min(1, py / r.height));
+    const nw = Math.min(0.35, 140 / r.width);
+    const nh = Math.min(0.2, 40 / r.height);
+    setSignPos({ x: nx, y: ny, w: nw, h: nh, page: 1 });
+  };
   useEffect(() => {
     let active = true;
     signaturesAPI.get(id).then(d => { if (active) { setData(d); setSignPos(d?.managerSignPos || null); setLoading(false); } }).catch(() => { setLoading(false); });
@@ -90,7 +101,7 @@ export default function SignDocumentView() {
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="text-xl font-semibold">Подписание документа</div>
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
+          <div ref={previewRef} onClick={placeBox} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
               <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
             ) : isImage ? (
@@ -112,6 +123,9 @@ export default function SignDocumentView() {
                   Место подписи
                 </div>
                 <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />
+                {sig && (
+                  <img alt="client-sign" src={sig} className="absolute inset-0 w-full h-full object-contain opacity-90" />
+                )}
               </div>
             )}
           </div>
