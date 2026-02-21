@@ -522,6 +522,8 @@ const ChatWidget = ({ user }) => {
     });
   };
 
+  
+
   const handleMouseDown = (e) => {
     if (isMobile) return;
     setIsDragging(true);
