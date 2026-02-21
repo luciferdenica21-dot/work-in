@@ -468,7 +468,13 @@ const ChatWidget = ({ user }) => {
         return 'Файл';
       }
     };
-    const name = sanitize(att?.originalName || att?.name || att?.filename || 'Файл');
+    const baseName = sanitize(att?.originalName || att?.name || att?.filename || '');
+    const prettify = (s, url) => {
+      let b = s && s.length > 0 ? s : decodeURIComponent((url || '').split('/').pop() || 'Файл');
+      b = b.replace(/^[a-f0-9]{8,}[_-]/i, '');
+      return b || 'Файл';
+    };
+    const name = prettify(baseName, fileUrl);
 
     if (mime.startsWith('image/')) {
       return (

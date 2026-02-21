@@ -3,19 +3,20 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 
-const SignaturePad = ({ onChange }) => {
+const useDrawing = (onChange) => {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
   useEffect(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
     ctx.strokeStyle = '#111';
     ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     const getPos = (e) => {
-      const r = canvas.getBoundingClientRect();
+      const r = c.getBoundingClientRect();
       if (e.touches && e.touches[0]) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
       return { x: e.clientX - r.left, y: e.clientY - r.top };
     };
@@ -25,32 +26,35 @@ const SignaturePad = ({ onChange }) => {
       const p = getPos(e);
       ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y); ctx.stroke();
       last.current = p;
-      onChange?.(canvas.toDataURL('image/png'));
+      onChange?.(c.toDataURL('image/png'));
     };
-    const end = () => { drawing.current = false; onChange?.(canvas.toDataURL('image/png')); };
+    const end = () => { drawing.current = false; onChange?.(c.toDataURL('image/png')); };
     const preventScroll = (e) => { if (drawing.current) e.preventDefault(); };
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', move);
+    c.addEventListener('mousedown', start);
+    c.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
-    canvas.addEventListener('touchstart', start, { passive: true });
-    canvas.addEventListener('touchmove', move, { passive: false });
+    c.addEventListener('touchstart', start, { passive: true });
+    c.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('touchend', end);
-    canvas.addEventListener('touchmove', preventScroll, { passive: false });
+    c.addEventListener('touchmove', preventScroll, { passive: false });
     return () => {
-      canvas.removeEventListener('mousedown', start);
-      canvas.removeEventListener('mousemove', move);
+      c.removeEventListener('mousedown', start);
+      c.removeEventListener('mousemove', move);
       window.removeEventListener('mouseup', end);
-      canvas.removeEventListener('touchstart', start);
-      canvas.removeEventListener('touchmove', move);
+      c.removeEventListener('touchstart', start);
+      c.removeEventListener('touchmove', move);
       window.removeEventListener('touchend', end);
-      canvas.removeEventListener('touchmove', preventScroll);
+      c.removeEventListener('touchmove', preventScroll);
     };
   }, [onChange]);
-  return (
-    <div className="border border-gray-300 rounded bg-white">
-      <canvas ref={canvasRef} width={600} height={200} />
-    </div>
-  );
+  const clear = () => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    onChange?.('');
+  };
+  return { canvasRef, clear };
 };
 
 export default function SignDocumentView() {
@@ -63,6 +67,7 @@ export default function SignDocumentView() {
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
   const previewRef = useRef(null);
+  const { canvasRef, clear } = useDrawing(setSig);
   useEffect(() => {
     try {
       const sp = new URLSearchParams(location.search || '');
@@ -122,7 +127,7 @@ export default function SignDocumentView() {
             ) : (
               <a href={fileUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">Открыть документ</a>
             )}
-            {data?.managerSignatureUrl && signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
+            {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
               <div
                 className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
                 style={{
@@ -135,21 +140,31 @@ export default function SignDocumentView() {
                 <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
                   Место подписи
                 </div>
-                <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />
-                {sig && (
-                  <img alt="client-sign" src={sig} className="absolute inset-0 w-full h-full object-contain opacity-90" />
+                {data?.managerSignatureUrl && (
+                  <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />
                 )}
+                <div className="absolute inset-0 p-1 flex items-center justify-center">
+                  <canvas
+                    ref={canvasRef}
+                    width={400}
+                    height={160}
+                    className="w-full h-full bg-white rounded"
+                  />
+                  <button
+                    type="button"
+                    onClick={clear}
+                    className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
+                  >
+                    Очистить
+                  </button>
+                </div>
               </div>
             )}
           </div>
         </div>
         {!data?.clientSignatureUrl ? (
-          <div className="bg-white/5 border border-white/10 rounded-lg p-3 space-y-3">
-            <div className="text-sm text-white/80">Ваша подпись</div>
-            <SignaturePad onChange={setSig} />
-            <div className="flex justify-end">
-              <button disabled={!sig || sending} onClick={submit} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">Подписать и отправить</button>
-            </div>
+          <div className="flex justify-end">
+            <button disabled={!sig || sending} onClick={submit} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">Подписать и отправить</button>
           </div>
         ) : (
           <div className="text-green-300">Документ уже подписан</div>
