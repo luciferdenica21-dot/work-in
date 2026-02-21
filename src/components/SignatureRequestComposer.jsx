@@ -187,6 +187,77 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                 </div>
                 <div className="text-xs text-white/60 mt-1">Нажмите по предпросмотру, чтобы указать место подписи</div>
               </div>
+              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+                <div className="col-span-1">
+                  <label className="block text-[11px] text-white/60 mb-1">X (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={signBox ? Math.round(signBox.x * 100) : ''}
+                    onChange={(e) => {
+                      const v = Math.min(100, Math.max(0, Number(e.target.value || 0)));
+                      setSignBox((sb) => sb ? { ...sb, x: v / 100 } : { x: v / 100, y: 0.5, w: 0.2, h: 0.1, page: 1 });
+                    }}
+                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[11px] text-white/60 mb-1">Y (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={signBox ? Math.round(signBox.y * 100) : ''}
+                    onChange={(e) => {
+                      const v = Math.min(100, Math.max(0, Number(e.target.value || 0)));
+                      setSignBox((sb) => sb ? { ...sb, y: v / 100 } : { x: 0.5, y: v / 100, w: 0.2, h: 0.1, page: 1 });
+                    }}
+                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[11px] text-white/60 mb-1">Ширина (%)</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={80}
+                    step={1}
+                    value={signBox ? Math.round(signBox.w * 100) : ''}
+                    onChange={(e) => {
+                      const v = Math.min(80, Math.max(5, Number(e.target.value || 0)));
+                      setSignBox((sb) => sb ? { ...sb, w: v / 100 } : { x: 0.5, y: 0.5, w: v / 100, h: 0.1, page: 1 });
+                    }}
+                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-[11px] text-white/60 mb-1">Высота (%)</label>
+                  <input
+                    type="number"
+                    min={3}
+                    max={40}
+                    step={1}
+                    value={signBox ? Math.round(signBox.h * 100) : ''}
+                    onChange={(e) => {
+                      const v = Math.min(40, Math.max(3, Number(e.target.value || 0)));
+                      setSignBox((sb) => sb ? { ...sb, h: v / 100 } : { x: 0.5, y: 0.5, w: 0.2, h: v / 100, page: 1 });
+                    }}
+                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                  />
+                </div>
+                <div className="col-span-2 flex items-end justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSignBox(null)}
+                    className="px-3 py-2 rounded bg-white/10 border border-white/20 text-white hover:bg-white/15"
+                  >
+                    Сбросить место
+                  </button>
+                </div>
+              </div>
             </div>
           )}
           <div className="space-y-2">
