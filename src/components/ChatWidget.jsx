@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
@@ -522,6 +522,39 @@ const ChatWidget = ({ user }) => {
     });
   };
 
+  const extractSignLink = (text) => {
+    if (typeof text !== 'string') return null;
+    const m = text.match(/https?:\/\/[^\s]*\/sign\/([a-fA-F0-9]{24})/);
+    if (!m) return null;
+    return { url: m[0], id: m[1] };
+  };
+
+  const [signPosModal, setSignPosModal] = useState({
+    open: false,
+    link: null,
+    requestId: null,
+    previewUrl: null,
+    pos: null,
+  });
+
+  const openSignPosModal = (msg) => {
+    const sign = extractSignLink(msg?.text || '');
+    if (!sign) return;
+    // берем первый подходящий attachment (pdf/image)
+    const att = (msg.attachments || []).find(a => {
+      const mime = a?.mimetype || a?.type || '';
+      return mime.includes('pdf') || mime.startsWith('image/');
+    }) || (msg.attachments || [])[0];
+    const fileUrl = att ? getFileUrl(att?.url || att?.fileUrl || att?.filename) : null;
+    setSignPosModal({
+      open: true,
+      link: sign.url,
+      requestId: sign.id,
+      previewUrl: fileUrl,
+      pos: null,
+    });
+  };
+
   
 
   const handleMouseDown = (e) => {
@@ -764,6 +797,17 @@ const ChatWidget = ({ user }) => {
                           ))}
                         </div>
                       )}
+                      {extractSignLink(msg?.text || '') && (
+                        <div className="mt-2 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => openSignPosModal(msg)}
+                            className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 text-[11px]"
+                          >
+                            Указать место подписи
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -834,8 +878,109 @@ const ChatWidget = ({ user }) => {
           </form>
         </div>
       )}
+      {signPosModal.open && (
+        <div className="fixed inset-0 z-[10000]">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setSignPosModal(s => ({ ...s, open: false }))} />
+          <div className="absolute inset-x-0 top-0 sm:top-8 mx-auto w-full max-w-3xl bg-[#0b1020] border border-white/10 rounded-none sm:rounded-2xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-white font-semibold">Выбор места подписи</div>
+              <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
+            </div>
+            <div className="space-y-3">
+              <div className="text-white/80 text-sm">Нажмите по документу, чтобы указать место подписи</div>
+              <SignPosPreview
+                previewUrl={signPosModal.previewUrl}
+                onPick={(pos) => setSignPosModal(s => ({ ...s, pos }))}
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSignPosModal(s => ({ ...s, open: false }))}
+                  className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
+                >
+                  Отмена
+                </button>
+                <a
+                  href={
+                    signPosModal.link +
+                    (signPosModal.pos
+                      ? `?x=${signPosModal.pos.x}&y=${signPosModal.pos.y}&w=${signPosModal.pos.w}&h=${signPosModal.pos.h}`
+                      : '')
+                  }
+                  className={`px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 ${!signPosModal.link ? 'pointer-events-none opacity-60' : ''}`}
+                >
+                  Перейти к подписи
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default ChatWidget;
+
+const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick }) {
+  const ref = React.useRef(null);
+  const [pos, setPos] = React.useState(null);
+  const [isPdf, setIsPdf] = React.useState(false);
+  const [isImg, setIsImg] = React.useState(false);
+  React.useEffect(() => {
+    const url = String(previewUrl || '').toLowerCase();
+    setIsPdf(url.endsWith('.pdf'));
+    setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
+  }, [previewUrl]);
+  const place = (e) => {
+    if (!ref.current) return;
+    const r = ref.current.getBoundingClientRect();
+    const px = e.clientX - r.left;
+    const py = e.clientY - r.top;
+    const nx = Math.max(0, Math.min(1, px / r.width));
+    const ny = Math.max(0, Math.min(1, py / r.height));
+    const nw = Math.min(0.35, 140 / r.width);
+    const nh = Math.min(0.2, 40 / r.height);
+    const next = { x: nx, y: ny, w: nw, h: nh, page: 1 };
+    setPos(next);
+    onPick?.(next);
+  };
+  return (
+    <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
+      <div
+        ref={ref}
+        onClick={place}
+        className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-hidden"
+        style={{ touchAction: 'manipulation' }}
+      >
+        {isPdf ? (
+          <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+        ) : isImg ? (
+          <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+        ) : previewUrl ? (
+          <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
+            Открыть документ
+          </a>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
+        )}
+        {pos && (
+          <div
+            className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
+            style={{
+              left: `${(pos.x - pos.w / 2) * 100}%`,
+              top: `${(pos.y - pos.h / 2) * 100}%`,
+              width: `${pos.w * 100}%`,
+              height: `${pos.h * 100}%`
+            }}
+          >
+            <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
+              Место подписи
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="text-xs text-white/60 mt-1">Нажмите по документу, чтобы указать место подписи</div>
+    </div>
+  );
+});

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 
@@ -56,12 +56,25 @@ const SignaturePad = ({ onChange }) => {
 export default function SignDocumentView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [sig, setSig] = useState('');
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
   const previewRef = useRef(null);
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(location.search || '');
+      const qx = sp.get('x'); const qy = sp.get('y'); const qw = sp.get('w'); const qh = sp.get('h');
+      if (qx && qy && qw && qh) {
+        const nx = parseFloat(qx); const ny = parseFloat(qy); const nw = parseFloat(qw); const nh = parseFloat(qh);
+        if (Number.isFinite(nx) && Number.isFinite(ny) && Number.isFinite(nw) && Number.isFinite(nh)) {
+          setSignPos({ x: nx, y: ny, w: nw, h: nh, page: 1 });
+        }
+      }
+    } catch { /* ignore */ }
+  }, [location.search]);
   const placeBox = (e) => {
     if (!previewRef.current) return;
     const r = previewRef.current.getBoundingClientRect();
