@@ -2,6 +2,8 @@ import express from 'express';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import process from 'node:process';
+import { Buffer } from 'buffer';
 import SignatureRequest from '../models/SignatureRequest.js';
 import Chat from '../models/Chat.js';
 import Message from '../models/Message.js';
@@ -34,7 +36,7 @@ const buildPathFromUrl = (urlPath) => {
 const sanitizeName = (s) => {
   try {
     const n = (s || '').normalize('NFC');
-    return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ\.\-_\(\)\s]/g, '').trim() || 'document';
+    return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ.\-_()\s]/g, '').trim() || 'document';
   } catch {
     return 'document';
   }
@@ -170,6 +172,26 @@ router.post('/', protect, admin, async (req, res) => {
       }
     }
     res.status(201).json({ id: doc._id, link: `/sign/${doc._id}`, status: doc.status, saveOnly: !!saveOnly });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.get('/', protect, admin, async (req, res) => {
+  try {
+    const { status, limit = 100 } = req.query || {};
+    const q = { ownerId: req.user._id };
+    if (status) {
+      if (status === 'pending') {
+        q.status = { $in: ['created', 'manager_signed'] };
+      } else if (['created', 'manager_signed', 'completed', 'rejected'].includes(status)) {
+        q.status = status;
+      }
+    }
+    const items = await SignatureRequest.find(q)
+      .sort({ createdAt: -1 })
+      .limit(Math.max(1, Math.min(500, Number(limit) || 100)));
+    res.json(items);
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

@@ -32,5 +32,5 @@ export function playSound(kind = 'chat') {
     o.start(now);
     o.stop(now + d + 0.02);
     if (audio.state === 'suspended') audio.resume().catch(() => {});
-  } catch {}
+  } catch { void 0; }
 }

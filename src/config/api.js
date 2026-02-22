@@ -196,6 +196,13 @@ export const signaturesAPI = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+  list: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.status) q.set('status', params.status);
+    if (params.limit) q.set('limit', String(params.limit));
+    const qs = q.toString();
+    return apiRequest(`/signatures${qs ? `?${qs}` : ''}`);
+  },
   get: (id) => apiRequest(`/signatures/${id}`),
   managerSign: (id, dataUrl) => apiRequest(`/signatures/${id}/manager-sign`, {
     method: 'POST',

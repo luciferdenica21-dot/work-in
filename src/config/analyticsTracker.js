@@ -23,7 +23,7 @@ export const initAnalyticsTracker = () => {
         path,
         ...payload
       }).catch((err) => { 
-        try { console.warn('Analytics send failed:', err?.message || err); } catch {}
+        try { console.warn('Analytics send failed:', err?.message || err); } catch { void 0; }
       });
     } catch { void 0; }
   };

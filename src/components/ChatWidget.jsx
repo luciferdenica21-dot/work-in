@@ -299,7 +299,7 @@ const ChatWidget = ({ user }) => {
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
  
         if (incoming?.senderId === 'manager') {
-          try { playSound('chat'); } catch {}
+          try { playSound('chat'); } catch { void 0; }
         }
         if (!isOpen && (incoming?.senderId === 'manager')) {
           setHasNewMessage(true);
@@ -463,7 +463,7 @@ const ChatWidget = ({ user }) => {
     const sanitize = (s) => {
       try {
         const n = (s || '').normalize('NFC');
-        return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ\.\-_\(\)\s]/g, '').trim() || 'Файл';
+        return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ.\-_()\s]/g, '').trim() || 'Файл';
       } catch {
         return 'Файл';
       }
@@ -526,7 +526,7 @@ const ChatWidget = ({ user }) => {
     const sanitize = (s) => {
       try {
         // Разрешаем: латиницу, кириллицу, грузинский, цифры, базовую пунктуацию и пробелы
-        return s.replace(/[^\u0009\u000A\u000D\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F\u2010-\u206F]/g, '');
+        return s.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F\u2010-\u206F]/g, '');
       } catch { return s; }
     };
     const parts = text.split(/(https?:\/\/[^\s]+)/g);
@@ -981,7 +981,7 @@ const ChatWidget = ({ user }) => {
                       await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos);
                       alert('Документ подписан и отправлен менеджеру');
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
-                    } catch (e) {
+                    } catch {
                       alert('Не удалось отправить подпись');
                       setSignPosModal(s => ({ ...s, sending: false }));
                     }
@@ -1001,7 +1001,7 @@ const ChatWidget = ({ user }) => {
 
 export default ChatWidget;
 
-const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, signature, onDraw, value, disablePick = false }) {
+const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, onDraw, value, disablePick = false }) {
   const ref = React.useRef(null);
   const [pos, setPos] = React.useState(null);
   const [isPdf, setIsPdf] = React.useState(false);

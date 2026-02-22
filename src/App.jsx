@@ -25,7 +25,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const touchStart = useRef({ x: 0, y: 0, t: 0 });
+  // removed unused touchStart
 
  useEffect(() => {
   const checkAuth = async () => {

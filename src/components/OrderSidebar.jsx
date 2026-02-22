@@ -245,7 +245,7 @@ const handleSubmit = async (e) => {
       console.log('Order created successfully:', result);
       
       setShowSuccess(true);
-      try { playSound('order'); } catch {}
+      try { playSound('order'); } catch { void 0; }
       setChosenServices([]);
       setTempSelection([]);
       setComment("");

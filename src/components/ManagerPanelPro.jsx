@@ -324,73 +324,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   // ===== РЕЗЕРВНОЕ КОПИРОВАНИЕ ЧАТОВ И ЗАКАЗОВ =====
-  const generatePdfFromTextLines = (title, lines) => {
-    const escapePdf = (s) => String(s).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)');
-    const pageHeight = 792;
-    const pageWidth = 612;
-    const left = 50;
-    const topStart = 742;
-    const lineHeight = 14;
-    const maxLinesPerPage = Math.floor((topStart - 50) / lineHeight);
-    const pages = [];
-    const header = `${title} — ${new Date().toLocaleString()}`;
-    let buffer = [];
-    for (let i = 0; i < lines.length; i++) {
-      buffer.push(lines[i]);
-      if (buffer.length >= maxLinesPerPage) {
-        pages.push(buffer);
-        buffer = [];
-      }
-    }
-    if (buffer.length) pages.push(buffer);
-    if (pages.length === 0) pages.push(['(пусто)']);
-
-    const objects = [];
-    const obj = (s) => { objects.push(s); return objects.length; };
-    const fontObjId = obj('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
-    const pageObjIds = [];
-    for (let p = 0; p < pages.length; p++) {
-      const linesOnPage = pages[p];
-      let content = 'BT\n/F1 10 Tf\n';
-      content += `${left} ${topStart + 18} Td\n/F1 12 Tf\n(${escapePdf(header)} (стр. ${p + 1}/${pages.length})) Tj\n/F1 10 Tf\n`;
-      let y = topStart;
-      for (let i = 0; i < linesOnPage.length; i++) {
-        const text = escapePdf(linesOnPage[i]);
-        content += `1 0 0 1 ${left} ${y} Tm\n(${text}) Tj\n`;
-        y -= lineHeight;
-      }
-      content += 'ET';
-      const stream = `<< /Length ${content.length} >>\nstream\n${content}\nendstream`;
-      const contentObjId = obj(stream);
-      const pageObjId = obj(`<< /Type /Page /Parent 0 0 R /MediaBox [0 0 ${pageWidth} ${pageHeight}] /Resources << /Font << /F1 ${fontObjId} 0 R >> >> /Contents ${contentObjId} 0 R >>`);
-      pageObjIds.push(pageObjId);
-    }
-    const kids = pageObjIds.map((id) => `${id} 0 R`).join(' ');
-    const pagesObjId = obj(`<< /Type /Pages /Kids [ ${kids} ] /Count ${pageObjIds.length} >>`);
-    for (let i = 0; i < objects.length; i++) {
-      if (objects[i].includes('/Type /Page') && objects[i].includes('/Parent 0 0 R')) {
-        objects[i] = objects[i].replace('/Parent 0 0 R', `/Parent ${pagesObjId} 0 R`);
-      }
-    }
-    const catalogObjId = obj(`<< /Type /Catalog /Pages ${pagesObjId} 0 R >>`);
-    let pdf = '%PDF-1.4\n';
-    const xref = [];
-    const count = objects.length;
-    const addObj = (id, body) => {
-      xref[id] = pdf.length;
-      pdf += `${id} 0 obj\n${body}\nendobj\n`;
-    };
-    for (let i = 1; i <= count; i++) addObj(i, objects[i - 1]);
-    const xrefStart = pdf.length;
-    pdf += `xref\n0 ${count + 1}\n`;
-    pdf += '0000000000 65535 f \n';
-    for (let i = 1; i <= count; i++) {
-      const pos = String(xref[i]).padStart(10, '0');
-      pdf += `${pos} 00000 n \n`;
-    }
-    pdf += `trailer\n<< /Size ${count + 1} /Root ${catalogObjId} 0 R >>\nstartxref\n${xrefStart}\n%%EOF`;
-    return new Blob([pdf], { type: 'application/pdf' });
-  };
 
   const buildBackupSnapshot = async () => {
     const snapshot = {
@@ -458,11 +391,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const snapshot = await buildBackupSnapshot();
     try {
       localStorage.setItem('manager_backup_last', JSON.stringify(snapshot));
-    } catch {}
+    } catch { void 0; }
     try {
       await backupsAPI.create(snapshot);
       alert('Резервная копия сохранена в базе');
-    } catch (e) {
+    } catch {
       alert('Не удалось сохранить в базе, сохранено локально');
     }
   };
@@ -509,7 +442,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             const t = m.at ? new Date(m.at).toLocaleString() : '';
             const who = m.from === 'manager' ? 'Менеджер' : 'Клиент';
             const text = escapeHtml(m.text || '');
-            const atts = (m.attachments || []).map((a, idx) => `• ${escapeHtml(a.originalName || '')} (${escapeHtml(a.mimetype || '')}, ${escapeHtml(formatFileSize(a.size || 0))})`).join('<br/>');
+      const atts = (m.attachments || []).map((a) => `• ${escapeHtml(a.originalName || '')} (${escapeHtml(a.mimetype || '')}, ${escapeHtml(formatFileSize(a.size || 0))})`).join('<br/>');
             const attBlock = atts ? `<div class="att">${atts}</div>` : '';
             return `<div class="msg"><span class="t">[${escapeHtml(t)}]</span><span class="w">${escapeHtml(who)}:</span>${text}${attBlock}</div>`;
           })
@@ -520,7 +453,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             const created = o.createdAt ? new Date(o.createdAt).toLocaleString() : '';
             const client = [o.firstName, o.lastName].filter(Boolean).join(' ');
             const prices = `GEL ${o.priceGel ?? 0}, USD ${o.priceUsd ?? 0}, EUR ${o.priceEur ?? 0}`;
-            const files = (o.files || []).map((f, idx) => `• ${escapeHtml(f.name || '')} (${escapeHtml(f.type || '')}, ${escapeHtml(formatFileSize(f.size || 0))}) ${f.url ? `— ${escapeHtml(f.url)}` : ''}`).join('<br/>');
+            const files = (o.files || []).map((f) => `• ${escapeHtml(f.name || '')} (${escapeHtml(f.type || '')}, ${escapeHtml(formatFileSize(f.size || 0))}) ${f.url ? `— ${escapeHtml(f.url)}` : ''}`).join('<br/>');
             const services = (o.services || []).join(', ');
             return `
               <div class="order">
@@ -548,12 +481,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
     let snapshot = null;
     try {
       snapshot = await backupsAPI.latest();
-    } catch {}
+    } catch { void 0; }
     if (!snapshot) {
       let raw = null;
-      try { raw = localStorage.getItem('manager_backup_last'); } catch {}
+      try { raw = localStorage.getItem('manager_backup_last'); } catch { void 0; }
       if (raw) {
-        try { snapshot = JSON.parse(raw); } catch {}
+        try { snapshot = JSON.parse(raw); } catch { void 0; }
       }
     }
     if (!snapshot) {
@@ -786,6 +719,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [editingService, setEditingService] = useState(null);
   const [orderDetailsEditorOpen, setOrderDetailsEditorOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
+  const [signatureDrafts, setSignatureDrafts] = useState([]);
+  const [signedDocs, setSignedDocs] = useState([]);
+  const [signaturesLoading, setSignaturesLoading] = useState(false);
 
   useEffect(() => {
     try {
@@ -812,7 +748,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
   }, [user]);
 
   useEffect(() => {
-    let cancelled = false;
     const sync = async () => {
       try {
         if (user?.role === 'admin') {
@@ -826,7 +761,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       } catch { /* ignore */ }
     };
     sync();
-    return () => { cancelled = true; };
+    return () => { };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);
 
@@ -972,6 +907,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     { id: 'orders', labelKey: 'MP_ORDERS', icon: Package },
     { id: 'clients', labelKey: 'MP_CLIENTS', icon: Users },
     { id: 'scripts', labelKey: 'MP_SCRIPTS', icon: Code },
+    { id: 'signatures', labelKey: 'MP_SIGNATURES', icon: FileText },
     { id: 'stats', labelKey: 'MP_STATS', icon: Activity }
   ];
 
@@ -998,6 +934,25 @@ const getAbsoluteFileUrl = (fileUrl) => {
       setOrders([]);
     }
   };
+
+  const loadSignatures = async () => {
+    setSignaturesLoading(true);
+    try {
+      const [pending, completed] = await Promise.all([
+        signaturesAPI.list({ status: 'pending', limit: 200 }).catch(() => []),
+        signaturesAPI.list({ status: 'completed', limit: 200 }).catch(() => []),
+      ]);
+      setSignatureDrafts(Array.isArray(pending) ? pending : []);
+      setSignedDocs(Array.isArray(completed) ? completed : []);
+    } catch { void 0; }
+    setSignaturesLoading(false);
+  };
+
+  useEffect(() => {
+    if (activeSection === 'signatures') {
+      loadSignatures();
+    }
+  }, [activeSection]);
 
   const isUserOnline = (user) => {
     const id = user?._id || user?.id;
@@ -1185,7 +1140,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
           } catch { /* ignore */ }
         }
-            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => {}); } catch {}
+            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
           });
           
           socket.on('message-deleted', ({ messageId }) => {
@@ -1195,7 +1150,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
           socket.on('order-created', ({ chatId, order }) => {
             console.log('=== ORDER CREATED ===', chatId, order);
             loadOrders();
-            try { import('../utils/sound').then(m => m.playSound('adminOrder')).catch(() => {}); } catch {}
+            try { import('../utils/sound').then(m => m.playSound('adminOrder')).catch(() => { void 0; }); } catch { void 0; }
           });
         }
       } catch (error) {
@@ -1923,6 +1878,117 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <LogOut className="w-5 h-5" />
                       <span className="text-center">{t('LOGOUT')}</span>
                     </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Подписи */}
+          {activeSection === 'signatures' && (
+            <div className="space-y-6" data-section="signatures">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <h2 className="text-2xl font-bold text-white">Подписи</h2>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={loadSignatures}
+                    className="px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/30 transition"
+                  >
+                    Обновить
+                  </button>
+                  <button
+                    onClick={() => setSignatureComposerOpen(true)}
+                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
+                  >
+                    Отправить на подпись
+                  </button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-white">Ожидают подписи</h3>
+                    {signaturesLoading && <span className="text-xs text-white/60">Загрузка…</span>}
+                  </div>
+                  <div className="space-y-3">
+                    {(signatureDrafts || []).map((doc) => {
+                      const chat = (chats || []).find(c => String(c.chatId) === String(doc.chatId));
+                      const fileUrl = getAbsoluteFileUrl(doc?.file?.url);
+                      const isPdf = String(doc?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf');
+                      const isImage = String(doc?.file?.type || '').startsWith('image/');
+                      return (
+                        <div key={doc._id || doc.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-white font-medium truncate">{doc?.file?.name || 'Документ'}</div>
+                              <div className="text-xs text-white/60 mt-0.5">
+                                {new Date(doc.createdAt).toLocaleString()} • {chat?.userEmail || chat?.email || 'чат'}
+                              </div>
+                              <div className="mt-2 rounded overflow-hidden bg-white">
+                                {isPdf ? (
+                                  <iframe title="preview" src={fileUrl} className="w-full h-56 sm:h-64 rounded" />
+                                ) : isImage ? (
+                                  <img alt="preview" src={fileUrl} className="w-full max-h-64 object-contain rounded" />
+                                ) : (
+                                  <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
+                                )}
+                              </div>
+                            </div>
+                            <div className="shrink-0">
+                              <a
+                                href={`/sign/${doc._id || doc.id}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 block"
+                              >
+                                Открыть ссылку
+                              </a>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(signatureDrafts || []).length === 0 && (
+                      <div className="text-sm text-white/60">Нет ожидающих подписи</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-white">Готовые PDF</h3>
+                    {signaturesLoading && <span className="text-xs text-white/60">Загрузка…</span>}
+                  </div>
+                  <div className="space-y-3">
+                    {(signedDocs || []).map((doc) => {
+                      const chat = (chats || []).find(c => String(c.chatId) === String(doc.chatId));
+                      const pdfUrl = getAbsoluteFileUrl(doc?.finalPdfUrl || '');
+                      if (!pdfUrl) return null;
+                      return (
+                        <div key={doc._id || doc.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                          <div className="text-white font-medium truncate">{doc?.file?.name || 'Подписанный документ'}</div>
+                          <div className="text-xs text-white/60 mt-0.5">
+                            {new Date(doc.updatedAt || doc.createdAt).toLocaleString()} • {chat?.userEmail || chat?.email || 'чат'}
+                          </div>
+                          <div className="mt-2 rounded overflow-hidden bg-white">
+                            <iframe title="final" src={pdfUrl} className="w-full h-56 sm:h-64 rounded" />
+                          </div>
+                          <div className="mt-2 flex justify-end">
+                            <a
+                              href={pdfUrl}
+                              download
+                              className="px-3 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
+                            >
+                              Скачать PDF
+                            </a>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {(signedDocs || []).filter(d => d?.finalPdfUrl).length === 0 && (
+                      <div className="text-sm text-white/60">Нет готовых документов</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -3553,7 +3619,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 setSignatureComposerOpen(false);
                 alert('Сохранено в быстрые скрипты');
               }}
-              onSent={async (res) => {
+              onSent={async () => {
                 setSignatureComposerOpen(false);
                 setActiveSection('chats');
               }}
@@ -3836,8 +3902,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
       )}
       <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
         <div className="bg-[#050a18]/95 backdrop-blur-md border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-2">
-            {['dashboard','chats','orders','clients'].map((id) => {
+          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-5 gap-2">
+            {['dashboard','chats','orders','signatures','clients'].map((id) => {
               const item = navItems.find(i => i.id === id);
               const Icon = item.icon;
               const isActive = activeSection === id;
