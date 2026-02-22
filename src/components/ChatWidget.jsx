@@ -844,7 +844,7 @@ const ChatWidget = ({ user }) => {
                       {extractSignLink(msg?.text || '') && (
                         <div className="mt-2">
                           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                            <div className="flex items-center justify-between gap-3">
+                          <div className="flex items-center justify-between gap-3">
                               <div className="min-w-0">
                                 <div className="text-xs text-white/80 font-medium">Документ на подпись</div>
                                 <div className="text-[11px] text-white/60 truncate max-w-[260px]">
@@ -852,20 +852,12 @@ const ChatWidget = ({ user }) => {
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <a
-                                  href={extractSignLink(msg.text).url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 text-[11px]"
-                                >
-                                  Открыть
-                                </a>
                                 <button
                                   type="button"
                                   onClick={() => openSignPosModal(msg)}
-                                  className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 text-[11px]"
+                                  className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 text-[11px]"
                                 >
-                                  Подписать
+                                  Открыть
                                 </button>
                               </div>
                             </div>
