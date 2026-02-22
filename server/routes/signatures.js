@@ -232,6 +232,12 @@ router.post('/:id/manager-sign', protect, admin, async (req, res) => {
     const finalPdfUrl = await composeFinalPdf(doc);
     if (finalPdfUrl) {
       doc.finalPdfUrl = finalPdfUrl;
+      doc.file = {
+        name: 'Подписанный документ.pdf',
+        type: 'application/pdf',
+        size: 0,
+        url: finalPdfUrl
+      };
     }
     await doc.save();
     res.json({ ok: true, finalPdfUrl: doc.finalPdfUrl || '' });
@@ -262,6 +268,12 @@ router.post('/:id/client-sign', protect, async (req, res) => {
     const finalPdfUrl = await composeFinalPdf(doc);
     if (finalPdfUrl) {
       doc.finalPdfUrl = finalPdfUrl;
+      doc.file = {
+        name: 'Подписанный документ.pdf',
+        type: 'application/pdf',
+        size: 0,
+        url: finalPdfUrl
+      };
     }
     await doc.save();
     const message = await Message.create({
