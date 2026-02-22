@@ -967,7 +967,7 @@ const ChatWidget = ({ user }) => {
                       await messagesAPI.getByChatId; // no-op to keep ESLint calm
                       await import('../config/api'); // ensure dynamic import chunk
                       const { signaturesAPI } = await import('../config/api');
-                      await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, null);
+                      await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos || null);
                       alert('Документ подписан и отправлен менеджеру');
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {
@@ -1068,9 +1068,9 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
       <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
         <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
           {isPdf ? (
-            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white pointer-events-none" />
+            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
           ) : isImg ? (
-            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white pointer-events-none" />
+            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : previewUrl ? (
             <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
               Открыть документ
