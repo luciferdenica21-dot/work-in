@@ -138,14 +138,13 @@ const composeFinalPdf = async (doc) => {
         page.drawRectangle({ x, y, width: w, height: h, borderColor: { r: 0.8, g: 0.1, b: 0.9 }, borderWidth: 0.5, opacity: 0.3 });
       } catch { /* ignore */ }
     };
-    if (doc.managerSignatureUrl && doc.managerSignPos) {
-      await placeImage(doc.managerSignatureUrl, doc.managerSignPos);
+    if (doc.managerSignatureUrl) {
+      const mpos = doc.managerSignPos || { x: 0.1, y: 0.88, w: 0.3, h: 0.1, page: (pdfDoc.getPageCount ? pdfDoc.getPageCount() : 1) };
+      await placeImage(doc.managerSignatureUrl, mpos);
     }
     if (doc.clientSignatureUrl) {
-      const cpos = doc.clientSignPos || doc.managerSignPos || null;
-      if (cpos) {
-        await placeImage(doc.clientSignatureUrl, cpos);
-      }
+      const cpos = doc.clientSignPos || doc.managerSignPos || { x: 0.1, y: 0.88, w: 0.3, h: 0.1, page: (pdfDoc.getPageCount ? pdfDoc.getPageCount() : 1) };
+      await placeImage(doc.clientSignatureUrl, cpos);
     }
     const outBytes = await pdfDoc.save();
     await fs.promises.writeFile(outPath, outBytes);
