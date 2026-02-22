@@ -142,9 +142,10 @@ export const filesAPI = {
       cleanFilename = `/${cleanFilename}`;
     }
 
-    // Отдаём прямую ссылку на /uploads (бекенд отдает статику по /uploads и /api/files):
+    // VPS/nginx часто проксирует только /api, а /uploads может не отдаваться напрямую.
+    // Backend кладет url как /uploads/<filename>, поэтому переписываем на /api/files/uploads/<filename>
     if (cleanFilename.startsWith('/uploads/')) {
-      return `${origin}${cleanFilename}`;
+      return `${origin}/api/files${cleanFilename}`;
     }
     // Если url уже содержит /api/files, оставляем как есть
     if (cleanFilename.startsWith('/api/files/')) {
