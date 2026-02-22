@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 
@@ -60,37 +60,15 @@ const useDrawing = (onChange) => {
 export default function SignDocumentView() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
   const [sig, setSig] = useState('');
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
+  const [showSignModal, setShowSignModal] = useState(false);
   const previewRef = useRef(null);
   const { canvasRef, clear } = useDrawing(setSig);
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(location.search || '');
-      const qx = sp.get('x'); const qy = sp.get('y'); const qw = sp.get('w'); const qh = sp.get('h');
-      if (qx && qy && qw && qh) {
-        const nx = parseFloat(qx); const ny = parseFloat(qy); const nw = parseFloat(qw); const nh = parseFloat(qh);
-        if (Number.isFinite(nx) && Number.isFinite(ny) && Number.isFinite(nw) && Number.isFinite(nh)) {
-          setSignPos({ x: nx, y: ny, w: nw, h: nh, page: 1 });
-        }
-      }
-    } catch { /* ignore */ }
-  }, [location.search]);
-  const placeBox = (e) => {
-    if (!previewRef.current) return;
-    const r = previewRef.current.getBoundingClientRect();
-    const px = e.clientX - r.left;
-    const py = e.clientY - r.top;
-    const nx = Math.max(0, Math.min(1, px / r.width));
-    const ny = Math.max(0, Math.min(1, py / r.height));
-    const nw = Math.min(0.35, 140 / r.width);
-    const nh = Math.min(0.2, 40 / r.height);
-    setSignPos({ x: nx, y: ny, w: nw, h: nh, page: 1 });
-  };
+  // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
     let active = true;
     signaturesAPI.get(id).then(d => { if (active) { setData(d); setSignPos(d?.managerSignPos || null); setLoading(false); } }).catch(() => { setLoading(false); });
@@ -105,6 +83,20 @@ export default function SignDocumentView() {
       alert('Документ подписан и отправлен менеджеру');
       navigate('/dashboard');
     } catch {
+      void 0;
+    } finally {
+      setSending(false);
+      setShowSignModal(false);
+    }
+  };
+  const reject = async () => {
+    setSending(true);
+    try {
+      await signaturesAPI.reject(id);
+      alert('Вы отклонили документ. Менеджер уведомлён.');
+      navigate('/dashboard');
+    } catch {
+      void 0;
     } finally {
       setSending(false);
     }
@@ -117,9 +109,20 @@ export default function SignDocumentView() {
   return (
     <div className="min-h-screen bg-[#050a18] text-white p-4">
       <div className="max-w-4xl mx-auto space-y-4">
-        <div className="text-xl font-semibold">Подписание документа</div>
+        <div className="flex items-center justify-between">
+          <div className="text-xl font-semibold">Подписание документа</div>
+          <div className="flex gap-2">
+            <a href={fileUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Просмотреть</a>
+            {!data?.clientSignatureUrl && (
+              <>
+                <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Подписать</button>
+                <button onClick={reject} disabled={sending} className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">Отклонить</button>
+              </>
+            )}
+          </div>
+        </div>
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-          <div ref={previewRef} onClick={placeBox} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
+          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
               <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
             ) : isImage ? (
@@ -137,39 +140,32 @@ export default function SignDocumentView() {
                   height: `${signPos.h * 100}%`
                 }}
               >
-                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
-                  Место подписи
-                </div>
-                {data?.managerSignatureUrl && (
-                  <img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />
-                )}
-                <div className="absolute inset-0 p-1 flex items-center justify-center">
-                  <canvas
-                    ref={canvasRef}
-                    width={400}
-                    height={160}
-                    className="w-full h-full bg-white rounded"
-                  />
-                  <button
-                    type="button"
-                    onClick={clear}
-                    className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
-                  >
-                    Очистить
-                  </button>
-                </div>
+                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">Место подписи</div>
+                {data?.managerSignatureUrl && (<img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
               </div>
             )}
           </div>
         </div>
-        {!data?.clientSignatureUrl ? (
-          <div className="flex justify-end">
-            <button disabled={!sig || sending} onClick={submit} className="px-4 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">Подписать и отправить</button>
-          </div>
-        ) : (
+        {data?.clientSignatureUrl ? (
           <div className="text-green-300">Документ уже подписан</div>
-        )}
+        ) : null}
       </div>
+      {showSignModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setShowSignModal(false)} />
+          <div className="relative w-full max-w-xl bg-[#0a0f1f] border border-white/10 rounded-2xl p-4">
+            <div className="text-white font-semibold mb-2">Подпишите</div>
+            <div className="relative border border-white/10 rounded bg-white">
+              <canvas ref={canvasRef} width={800} height={240} className="w-full h-48" />
+              <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">Очистить</button>
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
+              <button disabled={!sig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">Подписать</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

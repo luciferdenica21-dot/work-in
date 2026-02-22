@@ -51,13 +51,13 @@ const composeFinalPdf = async (doc) => {
     const srcBytes = await fs.promises.readFile(srcPath);
     const isPdf = String(doc.file.type || '').includes('pdf') || srcPath.toLowerCase().endsWith('.pdf');
     let pdfDoc;
-    let page;
+    let defaultPage;
     if (isPdf) {
       pdfDoc = await PDFDocument.load(srcBytes);
-      page = pdfDoc.getPage(0);
+      defaultPage = pdfDoc.getPage(0);
     } else {
       pdfDoc = await PDFDocument.create();
-      page = pdfDoc.addPage();
+      defaultPage = pdfDoc.addPage();
       // try embed image as background
       const isImg = String(doc.file.type || '').startsWith('image/') || /\.(png|jpg|jpeg)$/i.test(srcPath);
       if (isImg) {
@@ -69,15 +69,13 @@ const composeFinalPdf = async (doc) => {
           img = await pdfDoc.embedJpg(imgBytes);
         }
         const { width, height } = img.size();
-        page.setSize(width, height);
-        page.drawImage(img, { x: 0, y: 0, width, height });
+        defaultPage.setSize(width, height);
+        defaultPage.drawImage(img, { x: 0, y: 0, width, height });
       } else {
         // Fallback: empty white A4
-        page.setSize(595.28, 841.89);
+        defaultPage.setSize(595.28, 841.89);
       }
     }
-    const pageWidth = page.getWidth();
-    const pageHeight = page.getHeight();
     const embedImage = async (filePath) => {
       const b = await fs.promises.readFile(filePath);
       if (filePath.toLowerCase().endsWith('.png')) {
@@ -88,6 +86,17 @@ const composeFinalPdf = async (doc) => {
     };
     const placeImage = async (imgUrl, pos) => {
       if (!imgUrl || !pos) return;
+      let page = defaultPage;
+      if (pdfDoc && typeof pos.page === 'number' && Number.isFinite(pos.page) && pos.page >= 1) {
+        const idx = Math.max(0, Math.min((pdfDoc.getPageCount?.() || 1) - 1, Math.floor(pos.page - 1)));
+        try {
+          page = pdfDoc.getPage(idx);
+        } catch {
+          page = defaultPage;
+        }
+      }
+      const pageWidth = page.getWidth();
+      const pageHeight = page.getHeight();
       const fpath = buildPathFromUrl(imgUrl);
       if (!fs.existsSync(fpath)) return;
       const img = await embedImage(fpath);
@@ -114,7 +123,7 @@ const composeFinalPdf = async (doc) => {
 
 router.post('/', protect, admin, async (req, res) => {
   try {
-    const { chatId, file, managerSignatureDataUrl, managerSignPos } = req.body || {};
+    const { chatId, file, managerSignatureDataUrl, managerSignPos, saveOnly } = req.body || {};
     if (!chatId || !file || !file.url) return res.status(400).json({ message: 'chatId and file are required' });
     const chat = await Chat.findById(chatId);
     if (!chat) return res.status(404).json({ message: 'Chat not found' });
@@ -132,33 +141,35 @@ router.post('/', protect, admin, async (req, res) => {
       managerSignPos: managerSignPos || null,
       status: sigUrl ? 'manager_signed' : 'created'
     });
-    // Create a chat message with the document as attachment and clickable link
+    // Optionally create a chat message with the document and clickable link
     const link = `${process.env.CLIENT_URL || ''}/sign/${doc._id}`;
-    const text = `Документ на подпись: ${link}`;
-    const attachment = {
-      filename: path.basename(doc.file.url),
-      originalName: sanitizeName(doc.file.name || 'document'),
-      mimetype: doc.file.type || '',
-      size: doc.file.size || 0,
-      url: doc.file.url
-    };
-    const message = await Message.create({
-      chatId,
-      text,
-      senderId: 'manager',
-      senderEmail: req.user.email,
-      attachments: [attachment]
-    });
-    chat.unread = true;
-    chat.lastMessage = text;
-    chat.lastUpdate = new Date();
-    await chat.save();
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`chat-${chatId}`).emit('new-message', message);
-      io.emit('new-chat-message', { chatId: chatId.toString(), message: message.toObject() });
+    if (!saveOnly) {
+      const text = `Документ на подпись: ${link}`;
+      const attachment = {
+        filename: path.basename(doc.file.url),
+        originalName: sanitizeName(doc.file.name || 'document'),
+        mimetype: doc.file.type || '',
+        size: doc.file.size || 0,
+        url: doc.file.url
+      };
+      const message = await Message.create({
+        chatId,
+        text,
+        senderId: 'manager',
+        senderEmail: req.user.email,
+        attachments: [attachment]
+      });
+      chat.unread = true;
+      chat.lastMessage = text;
+      chat.lastUpdate = new Date();
+      await chat.save();
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`chat-${chatId}`).emit('new-message', message);
+        io.emit('new-chat-message', { chatId: chatId.toString(), message: message.toObject() });
+      }
     }
-    res.status(201).json({ id: doc._id, link: `/sign/${doc._id}` });
+    res.status(201).json({ id: doc._id, link: `/sign/${doc._id}`, status: doc.status, saveOnly: !!saveOnly });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
@@ -234,6 +245,41 @@ router.post('/:id/client-sign', protect, async (req, res) => {
     });
     chat.unread = true;
     chat.lastMessage = 'Документ подписан клиентом';
+    chat.lastUpdate = new Date();
+    await chat.save();
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${doc.chatId}`).emit('new-message', message);
+      io.emit('new-chat-message', { chatId: doc.chatId.toString(), message: message.toObject() });
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.post('/:id/reject', protect, async (req, res) => {
+  try {
+    const doc = await SignatureRequest.findById(req.params.id);
+    if (!doc) return res.status(404).json({ message: 'Not found' });
+    const chat = await Chat.findById(doc.chatId);
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
+    if (req.user.role === 'admin') return res.status(400).json({ message: 'Client only' });
+    if (chat.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    doc.status = 'rejected';
+    doc.updatedAt = new Date();
+    await doc.save();
+    const message = await Message.create({
+      chatId: doc.chatId,
+      text: 'Документ отклонён клиентом',
+      senderId: req.user._id.toString(),
+      senderEmail: req.user.email,
+      attachments: []
+    });
+    chat.unread = true;
+    chat.lastMessage = 'Документ отклонён клиентом';
     chat.lastUpdate = new Date();
     await chat.save();
     const io = req.app.get('io');

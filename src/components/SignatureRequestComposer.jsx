@@ -1,11 +1,11 @@
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { filesAPI, signaturesAPI } from '../config/api';
 
-export default function SignatureRequestComposer({ chatId, onClose, onSent, onSaveToScripts }) {
-  const [file, setFile] = useState(null);
+export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
   const [uploaded, setUploaded] = useState(null);
   const [loading, setLoading] = useState(false);
   const [signBox, setSignBox] = useState(null); // {x,y,w,h} в нормализованных координатах 0..1
+  const [savingDraft, setSavingDraft] = useState(false);
   const canSend = !!uploaded?.url; // разрешаем отправку даже без подписи менеджера
   const previewUrl = useMemo(() => (uploaded?.url ? filesAPI.getFileUrl(uploaded.url) : ''), [uploaded]);
   const isPdf = useMemo(() => {
@@ -17,12 +17,12 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
   const onFileChange = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    setFile(f);
     setLoading(true);
     try {
       const res = await filesAPI.upload(f, null);
       setUploaded({ url: res.fileUrl, name: res.fileName, type: res.fileType, size: res.fileSize });
     } catch {
+      void 0;
       setUploaded(null);
     } finally {
       setLoading(false);
@@ -36,16 +36,22 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
       const res = await signaturesAPI.create(payload);
       onSent?.(res);
     } catch {
+      void 0;
     } finally {
       setLoading(false);
     }
   };
-  const saveAsQuickScript = () => {
+  const saveDraft = async () => {
     if (!uploaded?.url) return;
-    const payload = { file: uploaded, managerSignPos: signBox || null };
-    const text = `__SIGNREQ__:${JSON.stringify(payload)}`;
-    const title = uploaded?.name ? `Подписать: ${uploaded.name}` : 'Подписать документ';
-    onSaveToScripts?.({ title, text });
+    setSavingDraft(true);
+    try {
+      await signaturesAPI.create({ chatId, file: uploaded, managerSignPos: signBox || null, saveOnly: true });
+      onSent?.({ saved: true });
+    } catch {
+      void 0;
+    } finally {
+      setSavingDraft(false);
+    }
   };
   const placeBox = (e) => {
     if (!previewRef.current) return;
@@ -109,7 +115,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                 </div>
                 <div className="text-xs text-white/60 mt-1">Нажмите по предпросмотру, чтобы указать место подписи</div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
                 <div className="col-span-1">
                   <label className="block text-[11px] text-white/60 mb-1">X (%)</label>
                   <input
@@ -170,6 +176,20 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                     className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
                   />
                 </div>
+                <div className="col-span-1">
+                  <label className="block text-[11px] text-white/60 mb-1">Страница</label>
+                  <input
+                    type="number"
+                    min={1}
+                    step={1}
+                    value={signBox ? Math.max(1, Number(signBox.page || 1)) : 1}
+                    onChange={(e) => {
+                      const v = Math.max(1, Number(e.target.value || 1));
+                      setSignBox((sb) => sb ? { ...sb, page: v } : { x: 0.5, y: 0.5, w: 0.2, h: 0.1, page: v });
+                    }}
+                    className="w-full px-2 py-1 bg-white/10 border border-white/20 rounded text-white text-sm"
+                  />
+                </div>
                 <div className="col-span-2 flex items-end justify-end">
                   <button
                     type="button"
@@ -184,7 +204,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
           )}
           
           <div className="flex flex-col sm:flex-row justify-end gap-2">
-            <button disabled={!uploaded?.url || loading} onClick={saveAsQuickScript} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить в быстрые скрипты</button>
+            <button disabled={!uploaded?.url || savingDraft} onClick={saveDraft} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить как ожидает подписи</button>
             <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
             <button disabled={!uploaded?.url || loading} onClick={send} className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60">Отправить клиенту</button>
           </div>

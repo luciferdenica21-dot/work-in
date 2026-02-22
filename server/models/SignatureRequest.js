@@ -26,7 +26,7 @@ const signatureRequestSchema = new mongoose.Schema({
     h: { type: Number, default: null },
     page: { type: Number, default: 1 }
   },
-  status: { type: String, enum: ['created', 'manager_signed', 'completed'], default: 'created', index: true },
+  status: { type: String, enum: ['created', 'manager_signed', 'completed', 'rejected'], default: 'created', index: true },
   createdAt: { type: Date, default: Date.now, index: true },
   updatedAt: { type: Date, default: Date.now }
 });

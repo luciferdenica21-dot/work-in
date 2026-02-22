@@ -205,6 +205,9 @@ export const signaturesAPI = {
     method: 'POST',
     body: JSON.stringify({ signatureDataUrl: dataUrl, clientSignPos }),
   }),
+  reject: (id) => apiRequest(`/signatures/${id}/reject`, {
+    method: 'POST'
+  }),
 };
 
 export const analyticsAPI = {
