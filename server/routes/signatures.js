@@ -311,7 +311,7 @@ router.post('/:id/client-sign', protect, async (req, res) => {
       io.to(`chat-${doc.chatId}`).emit('new-message', message);
       io.emit('new-chat-message', { chatId: doc.chatId.toString(), message: message.toObject() });
     }
-    res.json({ ok: true });
+    res.json({ ok: true, finalPdfUrl: doc.finalPdfUrl || '' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
