@@ -17,8 +17,10 @@ const useDrawing = (onChange) => {
     ctx.lineCap = 'round';
     const getPos = (e) => {
       const r = c.getBoundingClientRect();
-      if (e.touches && e.touches[0]) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
-      return { x: e.clientX - r.left, y: e.clientY - r.top };
+      const sx = c.width / r.width;
+      const sy = c.height / r.height;
+      if (e.touches && e.touches[0]) return { x: (e.touches[0].clientX - r.left) * sx, y: (e.touches[0].clientY - r.top) * sy };
+      return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
     };
     const start = (e) => { drawing.current = true; last.current = getPos(e); };
     const move = (e) => {
@@ -106,6 +108,7 @@ export default function SignDocumentView() {
   const fileUrl = filesAPI.getFileUrl(data?.file?.url);
   const isPdf = String(data?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf');
   const isImage = String(data?.file?.type || '').startsWith('image/');
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   return (
     <div className="min-h-screen bg-[#050a18] text-white p-4">
       <div className="max-w-4xl mx-auto space-y-4">
@@ -124,7 +127,11 @@ export default function SignDocumentView() {
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
           <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
-              <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
+              isMobile ? (
+                <a href={fileUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">Открыть PDF</a>
+              ) : (
+                <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
+              )
             ) : isImage ? (
               <img alt="doc" src={fileUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
             ) : (
@@ -134,8 +141,8 @@ export default function SignDocumentView() {
               <div
                 className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
                 style={{
-                  left: `${(signPos.x - signPos.w / 2) * 100}%`,
-                  top: `${(signPos.y - signPos.h / 2) * 100}%`,
+                  left: `${(signPos.x) * 100}%`,
+                  top: `${(signPos.y) * 100}%`,
                   width: `${signPos.w * 100}%`,
                   height: `${signPos.h * 100}%`
                 }}

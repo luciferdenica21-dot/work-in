@@ -89,8 +89,9 @@ const composeFinalPdf = async (doc) => {
     const placeImage = async (imgUrl, pos) => {
       if (!imgUrl || !pos) return;
       let page = defaultPage;
-      if (pdfDoc && typeof pos.page === 'number' && Number.isFinite(pos.page) && pos.page >= 1) {
-        const idx = Math.max(0, Math.min((pdfDoc.getPageCount?.() || 1) - 1, Math.floor(pos.page - 1)));
+      const pageNum = Number(pos.page);
+      if (pdfDoc && Number.isFinite(pageNum) && pageNum >= 1) {
+        const idx = Math.max(0, Math.min((pdfDoc.getPageCount?.() || 1) - 1, Math.floor(pageNum - 1)));
         try {
           page = pdfDoc.getPage(idx);
         } catch {
@@ -102,10 +103,14 @@ const composeFinalPdf = async (doc) => {
       const fpath = buildPathFromUrl(imgUrl);
       if (!fs.existsSync(fpath)) return;
       const img = await embedImage(fpath);
-      const w = (pos.w || 0.2) * pageWidth;
-      const h = (pos.h || 0.1) * pageHeight;
-      const x = Math.max(0, Math.min(pageWidth - w, (pos.x || 0) * pageWidth));
-      const y = Math.max(0, Math.min(pageHeight - h, (1 - (pos.y || 0)) * pageHeight - h));
+      const nx = Number(pos.x);
+      const ny = Number(pos.y);
+      const nw = Number(pos.w);
+      const nh = Number(pos.h);
+      const w = (Number.isFinite(nw) ? nw : 0.2) * pageWidth;
+      const h = (Number.isFinite(nh) ? nh : 0.1) * pageHeight;
+      const x = Math.max(0, Math.min(pageWidth - w, (Number.isFinite(nx) ? nx : 0) * pageWidth));
+      const y = Math.max(0, Math.min(pageHeight - h, (1 - (Number.isFinite(ny) ? ny : 0)) * pageHeight - h));
       page.drawImage(img, { x, y, width: w, height: h });
     };
     if (doc.managerSignatureUrl && doc.managerSignPos) {
