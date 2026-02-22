@@ -99,6 +99,15 @@ const composeFinalPdf = async (doc) => {
         return await pdfDoc.embedJpg(b);
       }
     };
+    const parseNorm = (v, def = 0) => {
+      const s = (v ?? '').toString().trim();
+      if (s.endsWith('%')) {
+        const n = Number(s.slice(0, -1));
+        return Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : def;
+      }
+      const n = Number(s);
+      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : def;
+    };
     const placeImage = async (imgUrl, pos) => {
       if (!imgUrl || !pos) return;
       let page = defaultPage;
@@ -116,15 +125,18 @@ const composeFinalPdf = async (doc) => {
       const fpath = buildPathFromUrl(imgUrl);
       if (!fs.existsSync(fpath)) return;
       const img = await embedImage(fpath);
-      const nx = Number(pos.x);
-      const ny = Number(pos.y);
-      const nw = Number(pos.w);
-      const nh = Number(pos.h);
-      const w = (Number.isFinite(nw) ? nw : 0.2) * pageWidth;
-      const h = (Number.isFinite(nh) ? nh : 0.1) * pageHeight;
-      const x = Math.max(0, Math.min(pageWidth - w, (Number.isFinite(nx) ? nx : 0) * pageWidth));
-      const y = Math.max(0, Math.min(pageHeight - h, (1 - (Number.isFinite(ny) ? ny : 0)) * pageHeight - h));
+      const nx = parseNorm(pos.x, 0);
+      const ny = parseNorm(pos.y, 0);
+      const nw = parseNorm(pos.w, 0.2);
+      const nh = parseNorm(pos.h, 0.1);
+      const w = Math.max(1, Math.min(pageWidth, nw * pageWidth));
+      const h = Math.max(1, Math.min(pageHeight, nh * pageHeight));
+      const x = Math.max(0, Math.min(pageWidth - w, nx * pageWidth));
+      const y = Math.max(0, Math.min(pageHeight - h, (pageHeight - (ny * pageHeight)) - h));
       page.drawImage(img, { x, y, width: w, height: h });
+      try {
+        page.drawRectangle({ x, y, width: w, height: h, borderColor: { r: 0.8, g: 0.1, b: 0.9 }, borderWidth: 0.5, opacity: 0.3 });
+      } catch { /* ignore */ }
     };
     if (doc.managerSignatureUrl && doc.managerSignPos) {
       await placeImage(doc.managerSignatureUrl, doc.managerSignPos);
