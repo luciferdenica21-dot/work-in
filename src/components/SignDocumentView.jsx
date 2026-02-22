@@ -11,42 +11,55 @@ const useDrawing = (onChange) => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const r0 = c.getBoundingClientRect();
+    c.width = Math.max(1, Math.round(r0.width * dpr));
+    c.height = Math.max(1, Math.round(r0.height * dpr));
+    ctx.scale(dpr, dpr);
     ctx.strokeStyle = '#111';
-    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     const getPos = (e) => {
       const r = c.getBoundingClientRect();
-      const sx = c.width / r.width;
-      const sy = c.height / r.height;
-      if (e.touches && e.touches[0]) return { x: (e.touches[0].clientX - r.left) * sx, y: (e.touches[0].clientY - r.top) * sy };
+      const sx = (c.width / dpr) / r.width;
+      const sy = (c.height / dpr) / r.height;
       return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
     };
-    const start = (e) => { drawing.current = true; last.current = getPos(e); };
+    const start = (e) => {
+      e.preventDefault();
+      drawing.current = true;
+      last.current = getPos(e);
+      const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+      ctx.beginPath();
+      ctx.arc(last.current.x, last.current.y, 1.5 + pressure, 0, Math.PI * 2);
+      ctx.fillStyle = '#111';
+      ctx.fill();
+      onChange?.(c.toDataURL('image/png'));
+    };
     const move = (e) => {
       if (!drawing.current) return;
+      e.preventDefault();
       const p = getPos(e);
-      ctx.beginPath(); ctx.moveTo(last.current.x, last.current.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+      const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+      ctx.lineWidth = 3 * pressure;
+      ctx.beginPath();
+      ctx.moveTo(last.current.x, last.current.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
       last.current = p;
       onChange?.(c.toDataURL('image/png'));
     };
-    const end = () => { drawing.current = false; onChange?.(c.toDataURL('image/png')); };
-    const preventScroll = (e) => { if (drawing.current) e.preventDefault(); };
-    c.addEventListener('mousedown', start);
-    c.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-    c.addEventListener('touchstart', start, { passive: true });
-    c.addEventListener('touchmove', move, { passive: false });
-    window.addEventListener('touchend', end);
-    c.addEventListener('touchmove', preventScroll, { passive: false });
+    const end = () => {
+      drawing.current = false;
+      onChange?.(c.toDataURL('image/png'));
+    };
+    c.addEventListener('pointerdown', start, { passive: false });
+    c.addEventListener('pointermove', move, { passive: false });
+    window.addEventListener('pointerup', end);
     return () => {
-      c.removeEventListener('mousedown', start);
-      c.removeEventListener('mousemove', move);
-      window.removeEventListener('mouseup', end);
-      c.removeEventListener('touchstart', start);
-      c.removeEventListener('touchmove', move);
-      window.removeEventListener('touchend', end);
-      c.removeEventListener('touchmove', preventScroll);
+      c.removeEventListener('pointerdown', start);
+      c.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', end);
     };
   }, [onChange]);
   const clear = () => {

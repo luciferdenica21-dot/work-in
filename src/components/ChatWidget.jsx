@@ -1006,33 +1006,50 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const rect = c.getBoundingClientRect();
+    c.width = Math.max(1, Math.round(rect.width * dpr));
+    c.height = Math.max(1, Math.round(c.clientHeight * dpr));
+    ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
   }, []);
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
-    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     drawingRef.current = true;
     lastRef.current = { x, y };
-  };
-  const move = (e) => {
-    if (!drawingRef.current) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.touches?.[0]?.clientX || e.clientX) - rect.left;
-    const y = (e.touches?.[0]?.clientY || e.clientY) - rect.top;
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
+    const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+    ctx.beginPath();
+    ctx.arc(x, y, 1.5 + pressure, 0, Math.PI * 2);
+    ctx.fillStyle = '#111';
+    ctx.fill();
+    onDraw?.(c.toDataURL('image/png'));
+  };
+  const move = (e) => {
+    if (!drawingRef.current) return;
+    e.preventDefault();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext('2d');
+    const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
     ctx.strokeStyle = '#111';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 3 * pressure;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(lastRef.current.x, lastRef.current.y);
     ctx.lineTo(x, y);
     ctx.stroke();
     lastRef.current = { x, y };
+    onDraw?.(c.toDataURL('image/png'));
   };
   const end = () => {
     if (!drawingRef.current) return;
@@ -1088,13 +1105,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             ref={canvasRef}
             width={600}
             height={200}
-            onMouseDown={start}
-            onMouseMove={move}
-            onMouseUp={end}
-            onMouseLeave={end}
-            onTouchStart={start}
-            onTouchMove={move}
-            onTouchEnd={end}
+            onPointerDown={start}
+            onPointerMove={move}
+            onPointerUp={end}
+            onPointerLeave={end}
             className="w-full h-[160px] sm:h-[200px] bg-white rounded"
           />
           <button
