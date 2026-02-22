@@ -229,8 +229,12 @@ router.post('/:id/manager-sign', protect, admin, async (req, res) => {
     doc.managerSignatureUrl = sigUrl;
     doc.status = 'manager_signed';
     doc.updatedAt = new Date();
+    const finalPdfUrl = await composeFinalPdf(doc);
+    if (finalPdfUrl) {
+      doc.finalPdfUrl = finalPdfUrl;
+    }
     await doc.save();
-    res.json({ ok: true });
+    res.json({ ok: true, finalPdfUrl: doc.finalPdfUrl || '' });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

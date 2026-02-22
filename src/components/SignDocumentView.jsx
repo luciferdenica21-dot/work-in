@@ -82,8 +82,11 @@ export default function SignDocumentView() {
     try {
       // рассчитываем абсолютные пиксели не нужны: отправим те же нормализованные координаты
       await signaturesAPI.clientSign(id, sig, signPos || null);
+      try {
+        const fresh = await signaturesAPI.get(id);
+        setData(fresh);
+      } catch { void 0; }
       alert('Документ подписан и отправлен менеджеру');
-      navigate('/dashboard');
     } catch {
       void 0;
     } finally {
