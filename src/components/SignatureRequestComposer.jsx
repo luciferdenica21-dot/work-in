@@ -74,10 +74,12 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
     const r = previewRef.current.getBoundingClientRect();
     const px = e.clientX - r.left;
     const py = e.clientY - r.top;
-    const nx = Math.max(0, Math.min(1, px / r.width));
-    const ny = Math.max(0, Math.min(1, py / r.height));
+    const nxRaw = px / r.width;
+    const nyRaw = py / r.height;
     const nw = Math.min(0.35, 140 / r.width); // ориентировочно 140px
     const nh = Math.min(0.2, 40 / r.height);  // ориентировочно 40px
+    const nx = Math.max(0, Math.min(1 - nw, nxRaw));
+    const ny = Math.max(0, Math.min(1 - nh, nyRaw));
     setSignBox({ x: nx, y: ny, w: nw, h: nh, page: 1 });
   };
   return (
@@ -117,8 +119,8 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                     <div
                       className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
                       style={{
-                        left: `${(signBox.x - signBox.w / 2) * 100}%`,
-                        top: `${(signBox.y - signBox.h / 2) * 100}%`,
+                        left: `${(signBox.x) * 100}%`,
+                        top: `${(signBox.y) * 100}%`,
                         width: `${signBox.w * 100}%`,
                         height: `${signBox.h * 100}%`
                       }}

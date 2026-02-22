@@ -104,8 +104,8 @@ const composeFinalPdf = async (doc) => {
       const img = await embedImage(fpath);
       const w = (pos.w || 0.2) * pageWidth;
       const h = (pos.h || 0.1) * pageHeight;
-      const x = (pos.x || 0.5) * pageWidth - w / 2;
-      const y = (1 - (pos.y || 0.5)) * pageHeight - h / 2;
+      const x = Math.max(0, Math.min(pageWidth - w, (pos.x || 0) * pageWidth));
+      const y = Math.max(0, Math.min(pageHeight - h, (1 - (pos.y || 0)) * pageHeight - h));
       page.drawImage(img, { x, y, width: w, height: h });
     };
     if (doc.managerSignatureUrl && doc.managerSignPos) {
