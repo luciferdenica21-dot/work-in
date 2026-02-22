@@ -29,8 +29,21 @@ const saveDataUrlPng = async (dataUrl) => {
 };
 
 const buildPathFromUrl = (urlPath) => {
-  const fname = urlPath.replace(/^\/+/, '');
-  return path.join(__dirname, '..', fname);
+  try {
+    const raw = String(urlPath || '');
+    const normalized = raw.replace(/\\/g, '/').trim();
+    const uploadsIdx = normalized.indexOf('/uploads/');
+    let rel = normalized;
+    if (uploadsIdx >= 0) {
+      // keep from 'uploads/...'
+      rel = normalized.slice(uploadsIdx + 1);
+    } else {
+      rel = normalized.replace(/^\/+/, '');
+    }
+    return path.join(__dirname, '..', rel);
+  } catch {
+    return path.join(__dirname, '..', 'uploads', 'invalid_path');
+  }
 };
 
 const sanitizeName = (s) => {
