@@ -30,8 +30,9 @@ const useDrawing = (onChange) => {
       drawing.current = true;
       last.current = getPos(e);
       const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+      const baseR = 2;
       ctx.beginPath();
-      ctx.arc(last.current.x, last.current.y, 1.5 + pressure, 0, Math.PI * 2);
+      ctx.arc(last.current.x, last.current.y, baseR + pressure, 0, Math.PI * 2);
       ctx.fillStyle = '#111';
       ctx.fill();
       onChange?.(c.toDataURL('image/png'));
@@ -41,7 +42,8 @@ const useDrawing = (onChange) => {
       e.preventDefault();
       const p = getPos(e);
       const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
-      ctx.lineWidth = 3 * pressure;
+      const baseW = 4;
+      ctx.lineWidth = baseW * pressure;
       ctx.beginPath();
       ctx.moveTo(last.current.x, last.current.y);
       ctx.lineTo(p.x, p.y);
@@ -56,10 +58,12 @@ const useDrawing = (onChange) => {
     c.addEventListener('pointerdown', start, { passive: false });
     c.addEventListener('pointermove', move, { passive: false });
     window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
     return () => {
       c.removeEventListener('pointerdown', start);
       c.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', end);
+      window.removeEventListener('pointercancel', end);
     };
   }, [onChange]);
   const clear = () => {
@@ -180,7 +184,7 @@ export default function SignDocumentView() {
           <div className="relative w-full max-w-xl bg-[#0a0f1f] border border-white/10 rounded-2xl p-4">
             <div className="text-white font-semibold mb-2">Подпишите</div>
             <div className="relative border border-white/10 rounded bg-white">
-              <canvas ref={canvasRef} width={800} height={240} className="w-full h-48" />
+              <canvas ref={canvasRef} width={800} height={240} className="w-full h-48" style={{ touchAction: 'none' }} />
               <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">Очистить</button>
             </div>
             <div className="flex justify-end gap-2 mt-3">

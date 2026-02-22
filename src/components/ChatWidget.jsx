@@ -1009,7 +1009,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const dpr = Math.max(1, window.devicePixelRatio || 1);
     const rect = c.getBoundingClientRect();
     c.width = Math.max(1, Math.round(rect.width * dpr));
-    c.height = Math.max(1, Math.round(c.clientHeight * dpr));
+    c.height = Math.max(1, Math.round(rect.height * dpr));
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
@@ -1110,6 +1110,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             onPointerUp={end}
             onPointerLeave={end}
             className="w-full h-[160px] sm:h-[200px] bg-white rounded"
+            style={{ touchAction: 'none' }}
           />
           <button
             type="button"
