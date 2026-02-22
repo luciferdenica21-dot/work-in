@@ -566,24 +566,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     } catch { /* ignore */ }
     return null;
   };
-  const sendSignatureScript = async (script) => {
-    if (!activeId) {
-      setActiveSection('chats');
-      alert('Сначала выберите чат');
-      return;
-    }
-    const payload = parseSignatureScript(script);
-    if (!payload) {
-      alert('Шаблон подписи некорректен');
-      return;
-    }
-    try {
-      await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl, managerSignPos: payload.managerSignPos || null });
-      setActiveSection('chats');
-    } catch {
-      alert('Не удалось создать запрос подписи');
-    }
-  };
+  // отправка шаблона подписи осуществляется только через чат
 
   const renderOrderFile = (file) => {
     const url = getAbsoluteFileUrl(file?.url);
@@ -1285,7 +1268,28 @@ const getAbsoluteFileUrl = (fileUrl) => {
       alert('Выберите чат для отправки сообщения');
       return;
     }
-    executeSend(script.text);
+    if (isSignatureScript(script)) {
+      const payload = parseSignatureScript(script);
+      if (!payload?.file?.url) {
+        alert('Шаблон подписи некорректен');
+        return;
+      }
+      (async () => {
+        try {
+          await signaturesAPI.create({
+            chatId: activeId,
+            file: payload.file,
+            managerSignatureDataUrl: payload.managerSignatureDataUrl || null,
+            managerSignPos: payload.managerSignPos || null
+          });
+          setActiveSection('chats');
+        } catch {
+          alert('Не удалось создать запрос подписи');
+        }
+      })();
+    } else {
+      executeSend(script.text);
+    }
     setShowScriptMenu(false);
   };
 
@@ -3258,12 +3262,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
               </div>
               <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                  <div className="text-white/90">Отправка документа на подпись</div>
+                  <div className="text-white/90">Конструктор документа для подписи</div>
                   <button
                     onClick={() => setSignatureComposerOpen(true)}
-                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
+                    className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
                   >
-                    Отправить на подпись
+                    Открыть конструктор
                   </button>
                 </div>
               </div>
@@ -3295,9 +3299,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
                                   )}
                                 </div>
-                                <div className="flex justify-end">
-                                  <button onClick={() => sendSignatureScript(script)} className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600">Отправить на подпись</button>
-                                </div>
+                                {/* отправка только через чат; кнопки нет */}
                               </div>
                             )}
                           </div>
@@ -3476,9 +3478,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
                             )}
                           </div>
-                          <div className="flex justify-end">
-                            <button onClick={() => sendSignatureScript(script)} className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600">Отправить на подпись</button>
-                          </div>
+                          {/* отправка только через чат; кнопки нет */}
                         </div>
                       )}
                     </div>

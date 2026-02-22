@@ -832,7 +832,7 @@ const ChatWidget = ({ user }) => {
                       {showText && (
                         <p className="whitespace-pre-wrap break-words">{renderTextWithLinks(replyMeta?.bodyText ?? msg.text)}</p>
                       )}
-                      {hasAttachments && (
+                      {hasAttachments && !extractSignLink(msg?.text || '') && (
                         <div className="mt-2 space-y-2">
                           {msg.attachments.map((att, idx) => (
                             <div key={idx} className="space-y-1">
@@ -947,19 +947,16 @@ const ChatWidget = ({ user }) => {
           <div className="absolute inset-0 bg-black/60" onClick={() => setSignPosModal(s => ({ ...s, open: false }))} />
           <div className="absolute inset-x-0 top-0 sm:top-8 mx-auto w-full max-w-3xl bg-[#0b1020] border border-white/10 rounded-none sm:rounded-2xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-semibold">Выбор места подписи</div>
+              <div className="text-white font-semibold">Подписать документ</div>
               <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
             </div>
             <div className="space-y-3">
-              <div className="text-white/80 text-sm">Нарисуйте подпись внутри рамки и отправьте</div>
+              <div className="text-white/80 text-sm">Нарисуйте подпись и отправьте менеджеру</div>
               <SignPosPreview
                 previewUrl={signPosModal.previewUrl}
                 scale={signPosModal.scale}
                 onScaleChange={(scale) => setSignPosModal(s => ({ ...s, scale }))}
-                signature={signPosModal.signDataUrl}
                 onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
-                value={signPosModal.pos}
-                disablePick={true}
               />
               <div className="flex justify-end gap-2">
                 <button
@@ -971,14 +968,14 @@ const ChatWidget = ({ user }) => {
                 </button>
                 <button
                   type="button"
-                  disabled={!signPosModal.requestId || !signPosModal.signDataUrl || !signPosModal.pos || signPosModal.sending}
+                  disabled={!signPosModal.requestId || !signPosModal.signDataUrl || signPosModal.sending}
                   onClick={async () => {
                     try {
                       setSignPosModal(s => ({ ...s, sending: true }));
                       await messagesAPI.getByChatId; // no-op to keep ESLint calm
                       await import('../config/api'); // ensure dynamic import chunk
                       const { signaturesAPI } = await import('../config/api');
-                      await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos);
+                      await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, null);
                       alert('Документ подписан и отправлен менеджеру');
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {
@@ -1001,9 +998,8 @@ const ChatWidget = ({ user }) => {
 
 export default ChatWidget;
 
-const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale = 1, onScaleChange, onDraw, value, disablePick = false }) {
+const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onScaleChange, onDraw }) {
   const ref = React.useRef(null);
-  const [pos, setPos] = React.useState(null);
   const [isPdf, setIsPdf] = React.useState(false);
   const [isImg, setIsImg] = React.useState(false);
   const canvasRef = React.useRef(null);
@@ -1014,24 +1010,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale 
     setIsPdf(url.endsWith('.pdf'));
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
   }, [previewUrl]);
-  React.useEffect(() => {
-    if (value && typeof value.x === 'number') {
-      setPos(value);
-    }
-  }, [value]);
-  const place = (e) => {
-    if (!ref.current) return;
-    const r = ref.current.getBoundingClientRect();
-    const px = e.clientX - r.left;
-    const py = e.clientY - r.top;
-    const nx = Math.max(0, Math.min(1, px / r.width));
-    const ny = Math.max(0, Math.min(1, py / r.height));
-    const nw = Math.min(0.35, 140 / r.width);
-    const nh = Math.min(0.2, 40 / r.height);
-    const next = { x: nx, y: ny, w: nw, h: nh, page: 1 };
-    setPos(next);
-    onPick?.(next);
-  };
   React.useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
@@ -1108,47 +1086,34 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, onPick, scale 
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
           )}
-          {!disablePick && <div onClick={place} className="absolute inset-0 z-10" />}
-          {pos && (
-            <div
-              className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
-              style={{
-                left: `${(pos.x - pos.w / 2) * 100}%`,
-                top: `${(pos.y - pos.h / 2) * 100}%`,
-                width: `${pos.w * 100}%`,
-                height: `${pos.h * 100}%`
-              }}
-            >
-              <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">
-                Место подписи
-              </div>
-              <div className="absolute inset-0 p-1 flex items-center justify-center">
-                <canvas
-                  ref={canvasRef}
-                  width={400}
-                  height={160}
-                  onMouseDown={start}
-                  onMouseMove={move}
-                  onMouseUp={end}
-                  onMouseLeave={end}
-                  onTouchStart={start}
-                  onTouchMove={move}
-                  onTouchEnd={end}
-                  className="w-full h-full bg-white rounded"
-                />
-                <button
-                  type="button"
-                  onClick={clearCanvas}
-                  className="absolute bottom-1 right-1 text-[10px] px-2 py-1 rounded bg-white/80 text-black hover:bg-white"
-                >
-                  Очистить
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-      <div className="text-xs text-white/60 mt-1">Нажмите по документу, чтобы указать место подписи</div>
+      <div className="mt-3">
+        <div className="text-white/80 text-sm mb-1">Поле подписи</div>
+        <div className="relative border border-white/10 rounded bg-white p-2">
+          <canvas
+            ref={canvasRef}
+            width={600}
+            height={200}
+            onMouseDown={start}
+            onMouseMove={move}
+            onMouseUp={end}
+            onMouseLeave={end}
+            onTouchStart={start}
+            onTouchMove={move}
+            onTouchEnd={end}
+            className="w-full h-[160px] sm:h-[200px] bg-white rounded"
+          />
+          <button
+            type="button"
+            onClick={clearCanvas}
+            className="absolute bottom-2 right-2 text-[11px] px-3 py-1.5 rounded bg-white/90 text-black hover:bg-white"
+          >
+            Очистить
+          </button>
+        </div>
+        <div className="text-xs text-white/60 mt-1">Нарисуйте вашу подпись и отправьте</div>
+      </div>
     </div>
   );
 });

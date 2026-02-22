@@ -111,8 +111,11 @@ const composeFinalPdf = async (doc) => {
     if (doc.managerSignatureUrl && doc.managerSignPos) {
       await placeImage(doc.managerSignatureUrl, doc.managerSignPos);
     }
-    if (doc.clientSignatureUrl && doc.clientSignPos) {
-      await placeImage(doc.clientSignatureUrl, doc.clientSignPos);
+    if (doc.clientSignatureUrl) {
+      const cpos = doc.clientSignPos || doc.managerSignPos || null;
+      if (cpos) {
+        await placeImage(doc.clientSignatureUrl, cpos);
+      }
     }
     const outBytes = await pdfDoc.save();
     await fs.promises.writeFile(outPath, outBytes);
