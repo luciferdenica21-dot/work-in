@@ -105,9 +105,9 @@ export default function SignDocumentView() {
   };
   if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">Загрузка...</div>;
   if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">Не найдено</div>;
-  const fileUrl = filesAPI.getFileUrl(data?.file?.url);
-  const isPdf = String(data?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf');
-  const isImage = String(data?.file?.type || '').startsWith('image/');
+  const previewUrl = filesAPI.getFileUrl(data?.finalPdfUrl || data?.file?.url);
+  const isPdf = (data?.finalPdfUrl ? true : (String(data?.file?.type || '').includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf')));
+  const isImage = !isPdf && String(data?.file?.type || '').startsWith('image/');
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   return (
     <div className="min-h-screen bg-[#050a18] text-white p-4">
@@ -115,7 +115,7 @@ export default function SignDocumentView() {
         <div className="flex items-center justify-between">
           <div className="text-xl font-semibold">Подписание документа</div>
           <div className="flex gap-2">
-            <a href={fileUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Просмотреть</a>
+            <a href={previewUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Просмотреть</a>
             {!data?.clientSignatureUrl && (
               <>
                 <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Подписать</button>
@@ -128,14 +128,14 @@ export default function SignDocumentView() {
           <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
               isMobile ? (
-                <a href={fileUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">Открыть PDF</a>
+                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">Открыть PDF</a>
               ) : (
-                <iframe title="doc" src={fileUrl} className="absolute inset-0 w-full h-full bg-white" />
+                <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
               )
             ) : isImage ? (
-              <img alt="doc" src={fileUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+              <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
             ) : (
-              <a href={fileUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">Открыть документ</a>
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">Открыть документ</a>
             )}
             {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
               <div
@@ -149,6 +149,7 @@ export default function SignDocumentView() {
               >
                 <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">Место подписи</div>
                 {data?.managerSignatureUrl && (<img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
+                {data?.clientSignatureUrl && (<img alt="client-sign" src={filesAPI.getFileUrl(data.clientSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
               </div>
             )}
           </div>
