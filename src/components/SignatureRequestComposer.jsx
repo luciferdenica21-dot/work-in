@@ -1,7 +1,7 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { filesAPI, signaturesAPI } from '../config/api';
 
-export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
+export default function SignatureRequestComposer({ chatId, onClose, onSent, onSaveToScripts }) {
   const [uploaded, setUploaded] = useState(null);
   const [loading, setLoading] = useState(false);
   const [signBox, setSignBox] = useState(null); // {x,y,w,h} в нормализованных координатах 0..1
@@ -39,6 +39,22 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
       void 0;
     } finally {
       setLoading(false);
+    }
+  };
+  const saveToScripts = async () => {
+    if (!uploaded?.url) return;
+    try {
+      const title = `Подпись: ${uploaded.name || 'документ'}`;
+      const SIGNATURE_MARKER = '__SIGNREQ__:';
+      const body = {
+        file: uploaded,
+        managerSignatureDataUrl: null,
+        managerSignPos: signBox || null
+      };
+      const text = SIGNATURE_MARKER + JSON.stringify(body);
+      onSaveToScripts?.({ title, text });
+    } catch {
+      void 0;
     }
   };
   const saveDraft = async () => {
@@ -204,6 +220,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent }) {
           )}
           
           <div className="flex flex-col sm:flex-row justify-end gap-2">
+            <button onClick={saveToScripts} disabled={!uploaded?.url} className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 disabled:opacity-60">Сохранить в быстрые скрипты</button>
             <button disabled={!uploaded?.url || savingDraft} onClick={saveDraft} className="px-4 py-2 rounded-lg bg-purple-600/70 text-white hover:bg-purple-600 disabled:opacity-60">Сохранить как ожидает подписи</button>
             <button onClick={onClose} className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
             <button disabled={!uploaded?.url || loading} onClick={send} className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60">Отправить клиенту</button>

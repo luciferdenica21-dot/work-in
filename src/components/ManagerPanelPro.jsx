@@ -556,7 +556,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
     try {
       const raw = script.text.slice(SIGNATURE_MARKER.length);
       const obj = JSON.parse(raw);
-      if (obj?.file?.url && obj?.managerSignatureDataUrl) return obj;
+      if (obj?.file?.url) {
+        return {
+          file: obj.file,
+          managerSignatureDataUrl: obj.managerSignatureDataUrl || null,
+          managerSignPos: obj.managerSignPos || null
+        };
+      }
     } catch { /* ignore */ }
     return null;
   };
@@ -567,7 +573,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
       return;
     }
     const payload = parseSignatureScript(script);
-    if (!payload) return;
+    if (!payload) {
+      alert('Шаблон подписи некорректен');
+      return;
+    }
     try {
       await signaturesAPI.create({ chatId: activeId, file: payload.file, managerSignatureDataUrl: payload.managerSignatureDataUrl, managerSignPos: payload.managerSignPos || null });
       setActiveSection('chats');
@@ -719,9 +728,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [editingService, setEditingService] = useState(null);
   const [orderDetailsEditorOpen, setOrderDetailsEditorOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
-  const [signatureDrafts, setSignatureDrafts] = useState([]);
-  const [signedDocs, setSignedDocs] = useState([]);
-  const [signaturesLoading, setSignaturesLoading] = useState(false);
+  // removed signatures section state
 
   useEffect(() => {
     try {
@@ -907,7 +914,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
     { id: 'orders', labelKey: 'MP_ORDERS', icon: Package },
     { id: 'clients', labelKey: 'MP_CLIENTS', icon: Users },
     { id: 'scripts', labelKey: 'MP_SCRIPTS', icon: Code },
-    { id: 'signatures', labelKey: 'MP_SIGNATURES', icon: FileText },
     { id: 'stats', labelKey: 'MP_STATS', icon: Activity }
   ];
 
@@ -935,24 +941,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
-  const loadSignatures = async () => {
-    setSignaturesLoading(true);
-    try {
-      const [pending, completed] = await Promise.all([
-        signaturesAPI.list({ status: 'pending', limit: 200 }).catch(() => []),
-        signaturesAPI.list({ status: 'completed', limit: 200 }).catch(() => []),
-      ]);
-      setSignatureDrafts(Array.isArray(pending) ? pending : []);
-      setSignedDocs(Array.isArray(completed) ? completed : []);
-    } catch { void 0; }
-    setSignaturesLoading(false);
-  };
-
-  useEffect(() => {
-    if (activeSection === 'signatures') {
-      loadSignatures();
-    }
-  }, [activeSection]);
+  // removed signatures section loader
 
   const isUserOnline = (user) => {
     const id = user?._id || user?.id;
@@ -1884,116 +1873,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             </div>
           )}
 
-          {/* Подписи */}
-          {activeSection === 'signatures' && (
-            <div className="space-y-6" data-section="signatures">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <h2 className="text-2xl font-bold text-white">Подписи</h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={loadSignatures}
-                    className="px-4 py-2 rounded-lg bg-blue-600/20 border border-blue-500/30 text-blue-200 hover:bg-blue-600/30 transition"
-                  >
-                    Обновить
-                  </button>
-                  <button
-                    onClick={() => setSignatureComposerOpen(true)}
-                    className="px-4 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600"
-                  >
-                    Отправить на подпись
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-white">Ожидают подписи</h3>
-                    {signaturesLoading && <span className="text-xs text-white/60">Загрузка…</span>}
-                  </div>
-                  <div className="space-y-3">
-                    {(signatureDrafts || []).map((doc) => {
-                      const chat = (chats || []).find(c => String(c.chatId) === String(doc.chatId));
-                      const fileUrl = getAbsoluteFileUrl(doc?.file?.url);
-                      const isPdf = String(doc?.file?.type || '').includes('pdf') || String(fileUrl).toLowerCase().endsWith('.pdf');
-                      const isImage = String(doc?.file?.type || '').startsWith('image/');
-                      return (
-                        <div key={doc._id || doc.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                          <div className="flex items-start gap-3">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-white font-medium truncate">{doc?.file?.name || 'Документ'}</div>
-                              <div className="text-xs text-white/60 mt-0.5">
-                                {new Date(doc.createdAt).toLocaleString()} • {chat?.userEmail || chat?.email || 'чат'}
-                              </div>
-                              <div className="mt-2 rounded overflow-hidden bg-white">
-                                {isPdf ? (
-                                  <iframe title="preview" src={fileUrl} className="w-full h-56 sm:h-64 rounded" />
-                                ) : isImage ? (
-                                  <img alt="preview" src={fileUrl} className="w-full max-h-64 object-contain rounded" />
-                                ) : (
-                                  <a href={fileUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline">Открыть документ</a>
-                                )}
-                              </div>
-                            </div>
-                            <div className="shrink-0">
-                              <a
-                                href={`/sign/${doc._id || doc.id}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="px-3 py-2 rounded-lg bg-purple-600/80 text-white hover:bg-purple-600 block"
-                              >
-                                Открыть ссылку
-                              </a>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {(signatureDrafts || []).length === 0 && (
-                      <div className="text-sm text-white/60">Нет ожидающих подписи</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-lg font-semibold text-white">Готовые PDF</h3>
-                    {signaturesLoading && <span className="text-xs text-white/60">Загрузка…</span>}
-                  </div>
-                  <div className="space-y-3">
-                    {(signedDocs || []).map((doc) => {
-                      const chat = (chats || []).find(c => String(c.chatId) === String(doc.chatId));
-                      const pdfUrl = getAbsoluteFileUrl(doc?.finalPdfUrl || '');
-                      if (!pdfUrl) return null;
-                      return (
-                        <div key={doc._id || doc.id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                          <div className="text-white font-medium truncate">{doc?.file?.name || 'Подписанный документ'}</div>
-                          <div className="text-xs text-white/60 mt-0.5">
-                            {new Date(doc.updatedAt || doc.createdAt).toLocaleString()} • {chat?.userEmail || chat?.email || 'чат'}
-                          </div>
-                          <div className="mt-2 rounded overflow-hidden bg-white">
-                            <iframe title="final" src={pdfUrl} className="w-full h-56 sm:h-64 rounded" />
-                          </div>
-                          <div className="mt-2 flex justify-end">
-                            <a
-                              href={pdfUrl}
-                              download
-                              className="px-3 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
-                            >
-                              Скачать PDF
-                            </a>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {(signedDocs || []).filter(d => d?.finalPdfUrl).length === 0 && (
-                      <div className="text-sm text-white/60">Нет готовых документов</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Раздел «Подписи» удалён */}
         </div>
       </nav>
 
@@ -3902,8 +3782,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
       )}
       <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
         <div className="bg-[#050a18]/95 backdrop-blur-md border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-5 gap-2">
-            {['dashboard','chats','orders','signatures','clients'].map((id) => {
+          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-2">
+            {['dashboard','chats','orders','clients'].map((id) => {
               const item = navItems.find(i => i.id === id);
               const Icon = item.icon;
               const isActive = activeSection === id;
