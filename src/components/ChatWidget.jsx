@@ -1064,6 +1064,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
           className="w-40 accent-purple-600"
         />
+        <a href={previewUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline text-xs">Открыть полностью</a>
       </div>
       <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
         <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>

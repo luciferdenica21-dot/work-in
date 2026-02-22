@@ -99,52 +99,33 @@ const composeFinalPdf = async (doc) => {
         return await pdfDoc.embedJpg(b);
       }
     };
-    const parseNorm = (v, def = 0) => {
-      const s = (v ?? '').toString().trim();
-      if (s.endsWith('%')) {
-        const n = Number(s.slice(0, -1));
-        return Number.isFinite(n) ? Math.max(0, Math.min(1, n / 100)) : def;
-      }
-      const n = Number(s);
-      return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : def;
-    };
-    const placeImage = async (imgUrl, pos) => {
-      if (!imgUrl || !pos) return;
-      let page = defaultPage;
-      const pageNum = Number(pos.page);
-      if (pdfDoc && Number.isFinite(pageNum) && pageNum >= 1) {
-        const idx = Math.max(0, Math.min((pdfDoc.getPageCount?.() || 1) - 1, Math.floor(pageNum - 1)));
-        try {
-          page = pdfDoc.getPage(idx);
-        } catch {
-          page = defaultPage;
-        }
-      }
-      const pageWidth = page.getWidth();
-      const pageHeight = page.getHeight();
+    const placeImageBottomLeftAllPages = async (imgUrl, widthPct = 0.25, heightPct = 0.12, leftPct = 0.05, bottomPct = 0.05, offsetXPct = 0) => {
+      if (!imgUrl) return;
       const fpath = buildPathFromUrl(imgUrl);
       if (!fs.existsSync(fpath)) return;
       const img = await embedImage(fpath);
-      const nx = parseNorm(pos.x, 0);
-      const ny = parseNorm(pos.y, 0);
-      const nw = parseNorm(pos.w, 0.2);
-      const nh = parseNorm(pos.h, 0.1);
-      const w = Math.max(1, Math.min(pageWidth, nw * pageWidth));
-      const h = Math.max(1, Math.min(pageHeight, nh * pageHeight));
-      const x = Math.max(0, Math.min(pageWidth - w, nx * pageWidth));
-      const y = Math.max(0, Math.min(pageHeight - h, (pageHeight - (ny * pageHeight)) - h));
-      page.drawImage(img, { x, y, width: w, height: h });
-      try {
-        page.drawRectangle({ x, y, width: w, height: h, borderColor: { r: 0.8, g: 0.1, b: 0.9 }, borderWidth: 0.5, opacity: 0.3 });
-      } catch { /* ignore */ }
+      const pageCount = typeof pdfDoc.getPageCount === 'function' ? pdfDoc.getPageCount() : 1;
+      for (let i = 0; i < pageCount; i++) {
+        let page;
+        try {
+          page = pdfDoc.getPage(i);
+        } catch {
+          page = defaultPage;
+        }
+        const pageWidth = page.getWidth();
+        const pageHeight = page.getHeight();
+        const w = Math.max(24, Math.min(pageWidth, widthPct * pageWidth));
+        const h = Math.max(12, Math.min(pageHeight, heightPct * pageHeight));
+        const x = Math.max(0, Math.min(pageWidth - w, (leftPct + offsetXPct) * pageWidth));
+        const y = Math.max(0, Math.min(pageHeight - h, (bottomPct) * pageHeight));
+        page.drawImage(img, { x, y, width: w, height: h });
+      }
     };
-    if (doc.managerSignatureUrl) {
-      const mpos = doc.managerSignPos || { x: 0.1, y: 0.88, w: 0.3, h: 0.1, page: (pdfDoc.getPageCount ? pdfDoc.getPageCount() : 1) };
-      await placeImage(doc.managerSignatureUrl, mpos);
-    }
     if (doc.clientSignatureUrl) {
-      const cpos = doc.clientSignPos || doc.managerSignPos || { x: 0.1, y: 0.88, w: 0.3, h: 0.1, page: (pdfDoc.getPageCount ? pdfDoc.getPageCount() : 1) };
-      await placeImage(doc.clientSignatureUrl, cpos);
+      await placeImageBottomLeftAllPages(doc.clientSignatureUrl, 0.25, 0.12, 0.05, 0.05, 0.00);
+    }
+    if (doc.managerSignatureUrl) {
+      await placeImageBottomLeftAllPages(doc.managerSignatureUrl, 0.25, 0.12, 0.05, 0.05, 0.28);
     }
     const outBytes = await pdfDoc.save();
     await fs.promises.writeFile(outPath, outBytes);

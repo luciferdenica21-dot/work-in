@@ -69,19 +69,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
       setSavingDraft(false);
     }
   };
-  const placeBox = (e) => {
-    if (!previewRef.current) return;
-    const r = previewRef.current.getBoundingClientRect();
-    const px = e.clientX - r.left;
-    const py = e.clientY - r.top;
-    const nxRaw = px / r.width;
-    const nyRaw = py / r.height;
-    const nw = Math.min(0.35, 140 / r.width); // ориентировочно 140px
-    const nh = Math.min(0.2, 40 / r.height);  // ориентировочно 40px
-    const nx = Math.max(0, Math.min(1 - nw, nxRaw));
-    const ny = Math.max(0, Math.min(1 - nh, nyRaw));
-    setSignBox({ x: nx, y: ny, w: nw, h: nh, page: 1 });
-  };
+  // координаты отключены: подпись ставится автоматически снизу слева на каждой странице
   return (
     <div className="fixed inset-0 z-[10000]">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
@@ -104,7 +92,6 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
               <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
                 <div
                   ref={previewRef}
-                  onClick={placeBox}
                   className="relative w-full h-[55vh] bg-white rounded overflow-auto"
                   style={{ touchAction: 'manipulation' }}
                 >
@@ -117,7 +104,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                   )}
                   {signBox && (
                     <div
-                      className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
+                      className="hidden absolute border-2 border-purple-600 bg-purple-500/20 rounded"
                       style={{
                         left: `${(signBox.x) * 100}%`,
                         top: `${(signBox.y) * 100}%`,
@@ -131,9 +118,9 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                     </div>
                   )}
                 </div>
-                <div className="text-xs text-white/60 mt-1">Нажмите по предпросмотру, чтобы указать место подписи</div>
+                <div className="text-xs text-white/60 mt-1">Место подписи определяется автоматически: внизу слева на каждой странице</div>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-7 gap-2">
+              <div className="hidden">
                 <div className="col-span-1">
                   <label className="block text-[11px] text-white/60 mb-1">X (%)</label>
                   <input
