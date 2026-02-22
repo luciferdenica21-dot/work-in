@@ -128,7 +128,7 @@ export default function SignDocumentView() {
           </div>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-hidden" style={{ touchAction: 'manipulation' }}>
+          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
               isMobile ? (
                 <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">Открыть PDF</a>

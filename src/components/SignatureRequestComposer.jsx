@@ -105,7 +105,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
                 <div
                   ref={previewRef}
                   onClick={placeBox}
-                  className="relative w-full h-[55vh] bg-white rounded overflow-hidden"
+                  className="relative w-full h-[55vh] bg-white rounded overflow-auto"
                   style={{ touchAction: 'manipulation' }}
                 >
                   {isPdf ? (
