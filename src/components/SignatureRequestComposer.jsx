@@ -44,7 +44,7 @@ export default function SignatureRequestComposer({ chatId, onClose, onSent, onSa
   const saveToScripts = async () => {
     if (!uploaded?.url) return;
     try {
-      const title = `Подпись: ${uploaded.name || 'документ'}`;
+      const title = `Документ`;
       const SIGNATURE_MARKER = '__SIGNREQ__:';
       const body = {
         file: uploaded,

@@ -46,15 +46,6 @@ const buildPathFromUrl = (urlPath) => {
   }
 };
 
-const sanitizeName = (s) => {
-  try {
-    const n = (s || '').normalize('NFC');
-    return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ.\-_()\s]/g, '').trim() || 'document';
-  } catch {
-    return 'document';
-  }
-};
-
 const composeFinalPdf = async (doc) => {
   try {
     const { PDFDocument } = await import('pdf-lib');
@@ -161,7 +152,7 @@ router.post('/', protect, admin, async (req, res) => {
       const text = `Документ на подпись: ${link}`;
       const attachment = {
         filename: path.basename(doc.file.url),
-        originalName: sanitizeName(doc.file.name || 'document'),
+        originalName: 'Документ',
         mimetype: doc.file.type || '',
         size: doc.file.size || 0,
         url: doc.file.url
@@ -237,7 +228,7 @@ router.post('/:id/manager-sign', protect, admin, async (req, res) => {
     if (finalPdfUrl) {
       doc.finalPdfUrl = finalPdfUrl;
       doc.file = {
-        name: 'Подписанный документ.pdf',
+        name: 'Документ',
         type: 'application/pdf',
         size: 0,
         url: finalPdfUrl
@@ -273,7 +264,7 @@ router.post('/:id/client-sign', protect, async (req, res) => {
     if (finalPdfUrl) {
       doc.finalPdfUrl = finalPdfUrl;
       doc.file = {
-        name: 'Подписанный документ.pdf',
+        name: 'Документ',
         type: 'application/pdf',
         size: 0,
         url: finalPdfUrl
@@ -286,7 +277,7 @@ router.post('/:id/client-sign', protect, async (req, res) => {
       senderId: req.user._id.toString(),
       senderEmail: req.user.email,
       attachments: [
-        ...(finalPdfUrl ? [{ filename: path.basename(finalPdfUrl), originalName: 'Подписанный документ.pdf', mimetype: 'application/pdf', size: 0, url: finalPdfUrl }] : [
+        ...(finalPdfUrl ? [{ filename: path.basename(finalPdfUrl), originalName: 'Документ', mimetype: 'application/pdf', size: 0, url: finalPdfUrl }] : [
           ...(doc.file?.url ? [{ filename: path.basename(doc.file.url), originalName: doc.file.name || 'document', mimetype: doc.file.type || '', size: doc.file.size || 0, url: doc.file.url }] : []),
           ...(doc.managerSignatureUrl ? [{ filename: path.basename(doc.managerSignatureUrl), originalName: 'Подпись менеджера', mimetype: 'image/png', size: 0, url: doc.managerSignatureUrl }] : []),
           ...(doc.clientSignatureUrl ? [{ filename: path.basename(doc.clientSignatureUrl), originalName: 'Подпись клиента', mimetype: 'image/png', size: 0, url: doc.clientSignatureUrl }] : [])
