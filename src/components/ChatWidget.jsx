@@ -560,6 +560,8 @@ const ChatWidget = ({ user }) => {
     signDataUrl: '',
     sending: false,
   });
+  const [legalCardOpen, setLegalCardOpen] = useState(false);
+  const [legalCardMsg, setLegalCardMsg] = useState(null);
 
   const openSignPosModal = (msg) => {
     const sign = extractSignLink(msg?.text || '');
@@ -854,7 +856,7 @@ const ChatWidget = ({ user }) => {
                               <div className="flex gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => openSignPosModal(msg)}
+                                  onClick={() => { setLegalCardMsg(msg); setLegalCardOpen(true); }}
                                   className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 text-[11px]"
                                 >
                                   Открыть
@@ -980,6 +982,38 @@ const ChatWidget = ({ user }) => {
                   Подписать и отправить
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {legalCardOpen && (
+        <div className="fixed inset-0 z-[9999]">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setLegalCardOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full sm:max-w-md bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl p-4">
+            <div className="text-white font-semibold mb-2">Внимание</div>
+            <div className="text-white/80 text-sm">
+              Подписывая данный контракт, вы подтверждаете согласие с условиями, и документ вступает в юридическую силу. Продолжить?
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setLegalCardOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const m = legalCardMsg;
+                  setLegalCardOpen(false);
+                  setLegalCardMsg(null);
+                  if (m) openSignPosModal(m);
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
+              >
+                Согласен
+              </button>
             </div>
           </div>
         </div>
