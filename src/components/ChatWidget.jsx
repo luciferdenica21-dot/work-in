@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square } from 'lucide-react';
 
 const ChatWidget = ({ user }) => {
+  const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -848,9 +850,9 @@ const ChatWidget = ({ user }) => {
                           <div className="rounded-xl border border-white/10 bg-white/5 p-3">
                           <div className="flex items-center justify-between gap-3">
                               <div className="min-w-0">
-                                <div className="text-xs text-white/80 font-medium">Документ на подпись</div>
+                                <div className="text-xs text-white/80 font-medium">{t('doc_sign_card_title')}</div>
                                 <div className="text-[11px] text-white/60 truncate max-w-[260px]">
-                                  Файл приложен к сообщению ниже
+                                  {t('doc_sign_card_hint')}
                                 </div>
                               </div>
                               <div className="flex gap-2">
@@ -859,7 +861,7 @@ const ChatWidget = ({ user }) => {
                                   onClick={() => { setLegalCardMsg(msg); setLegalCardOpen(true); }}
                                   className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 text-[11px]"
                                 >
-                                  Открыть
+                                  {t('open')}
                                 </button>
                               </div>
                             </div>
@@ -1029,6 +1031,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const [isPdf, setIsPdf] = React.useState(false);
   const [isImg, setIsImg] = React.useState(false);
   const [legalOpen, setLegalOpen] = React.useState(false);
+  const { t } = useTranslation();
   const canvasRef = React.useRef(null);
   const drawingRef = React.useRef(false);
   const lastRef = React.useRef({ x: 0, y: 0 });
@@ -1106,7 +1109,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   return (
     <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
       <div className="flex items-center justify-between mb-2">
-        <div className="text-white/70 text-xs">Масштаб</div>
+        <div className="text-white/70 text-xs">{t('scale')}</div>
         <input
           type="range"
           min="0.6"
@@ -1121,7 +1124,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           onClick={() => setLegalOpen(true)}
           className="text-blue-300 underline text-xs"
         >
-          Открыть полностью
+          {t('open_full')}
         </button>
       </div>
       <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
@@ -1136,10 +1139,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
               onClick={() => setLegalOpen(true)}
               className="absolute inset-0 flex items-center justify-center text-blue-300 underline"
             >
-              Открыть документ
+              {t('open_document')}
             </button>
           ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
+            <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
           )}
         </div>
       </div>
@@ -1147,17 +1150,15 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
         <div className="fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setLegalOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full sm:max-w-md bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl p-4">
-            <div className="text-white font-semibold mb-2">Внимание</div>
-            <div className="text-white/80 text-sm">
-              Подписывая данный контракт, вы подтверждаете согласие с условиями, и документ вступает в юридическую силу. Продолжить?
-            </div>
+            <div className="text-white font-semibold mb-2">{t('legal_title')}</div>
+            <div className="text-white/80 text-sm">{t('legal_text')}</div>
             <div className="flex justify-end gap-2 mt-3">
               <button
                 type="button"
                 onClick={() => setLegalOpen(false)}
                 className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
               >
-                Отмена
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -1167,14 +1168,14 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
                 }}
                 className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
               >
-                Согласен
+                {t('agree')}
               </button>
             </div>
           </div>
         </div>
       )}
       <div className="mt-3">
-        <div className="text-white/80 text-sm mb-1">Поле подписи</div>
+        <div className="text-white/80 text-sm mb-1">{t('sign_field')}</div>
         <div className="relative border border-white/10 rounded bg-white p-2">
           <canvas
             ref={canvasRef}
@@ -1195,7 +1196,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             Очистить
           </button>
         </div>
-        <div className="text-xs text-white/60 mt-1">Нарисуйте вашу подпись и отправьте</div>
+        <div className="text-xs text-white/60 mt-1">{t('sign_draw_and_send')}</div>
       </div>
     </div>
   );
