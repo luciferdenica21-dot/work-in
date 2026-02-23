@@ -465,16 +465,20 @@ const ChatWidget = ({ user }) => {
     const sanitize = (s) => {
       try {
         const n = (s || '').normalize('NFC');
-        return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ.\-_()\s]/g, '').trim() || 'Файл';
+        return n.replace(/[^\u0020-\u007E\u00A0-\u00BF\u0100-\u024F\u0400-\u04FF\u10A0-\u10FF\u1C90-\u1CBF0-9A-Za-zА-Яа-яა-ჰ.\-_()\s]/g, '').trim() || t('file');
       } catch {
-        return 'Файл';
+        return t('file');
       }
     };
     const baseName = sanitize(att?.originalName || att?.name || att?.filename || '');
     const prettify = (s, url) => {
-      let b = s && s.length > 0 ? s : decodeURIComponent((url || '').split('/').pop() || 'Файл');
+      let b = s && s.length > 0 ? s : decodeURIComponent((url || '').split('/').pop() || t('file'));
       b = b.replace(/^[a-f0-9]{8,}[_-]/i, '');
-      return b || 'Файл';
+      // Known original names translation
+      if (b === 'Документ') b = t('document');
+      if (b === 'Подпись менеджера') b = t('manager_signature');
+      if (b === 'Подпись клиента') b = t('client_signature');
+      return b || t('file');
     };
     const name = prettify(baseName, fileUrl);
 
@@ -525,6 +529,9 @@ const ChatWidget = ({ user }) => {
 
   const renderTextWithLinks = (text) => {
     if (typeof text !== 'string') return text;
+    const normalized = text.trim();
+    if (normalized === 'Документ подписан клиентом') return t('doc_signed_by_client');
+    if (normalized === 'Документ отклонён клиентом') return t('doc_rejected_by_client');
     const sanitize = (s) => {
       try {
         // Разрешаем: латиницу, кириллицу, грузинский, цифры, базовую пунктуацию и пробелы
