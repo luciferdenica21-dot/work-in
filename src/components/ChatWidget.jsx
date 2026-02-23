@@ -994,6 +994,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const ref = React.useRef(null);
   const [isPdf, setIsPdf] = React.useState(false);
   const [isImg, setIsImg] = React.useState(false);
+  const [legalOpen, setLegalOpen] = React.useState(false);
   const canvasRef = React.useRef(null);
   const drawingRef = React.useRef(false);
   const lastRef = React.useRef({ x: 0, y: 0 });
@@ -1081,7 +1082,13 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
           className="w-40 accent-purple-600"
         />
-        <a href={previewUrl} target="_blank" rel="noreferrer" className="text-blue-300 underline text-xs">Открыть полностью</a>
+        <button
+          type="button"
+          onClick={() => setLegalOpen(true)}
+          className="text-blue-300 underline text-xs"
+        >
+          Открыть полностью
+        </button>
       </div>
       <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
         <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
@@ -1090,14 +1097,48 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           ) : isImg ? (
             <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : previewUrl ? (
-            <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">
+            <button
+              type="button"
+              onClick={() => setLegalOpen(true)}
+              className="absolute inset-0 flex items-center justify-center text-blue-300 underline"
+            >
               Открыть документ
-            </a>
+            </button>
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">Предпросмотр недоступен</div>
           )}
         </div>
       </div>
+      {legalOpen && (
+        <div className="fixed inset-0 z-[100]">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setLegalOpen(false)} />
+          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full sm:max-w-md bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl p-4">
+            <div className="text-white font-semibold mb-2">Внимание</div>
+            <div className="text-white/80 text-sm">
+              Подписывая данный контракт, вы подтверждаете согласие с условиями, и документ вступает в юридическую силу. Продолжить?
+            </div>
+            <div className="flex justify-end gap-2 mt-3">
+              <button
+                type="button"
+                onClick={() => setLegalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLegalOpen(false);
+                  if (previewUrl) window.open(previewUrl, '_blank', 'noopener,noreferrer');
+                }}
+                className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
+              >
+                Согласен
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="mt-3">
         <div className="text-white/80 text-sm mb-1">Поле подписи</div>
         <div className="relative border border-white/10 rounded bg-white p-2">
