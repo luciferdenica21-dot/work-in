@@ -943,11 +943,11 @@ const ChatWidget = ({ user }) => {
           <div className="absolute inset-0 bg-black/60" onClick={() => setSignPosModal(s => ({ ...s, open: false }))} />
           <div className="absolute inset-x-0 top-0 sm:top-8 mx-auto w-full max-w-3xl bg-[#0b1020] border border-white/10 rounded-none sm:rounded-2xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-semibold">Подписать документ</div>
+              <div className="text-white font-semibold">{t('sign_modal_title')}</div>
               <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
             </div>
             <div className="space-y-3">
-              <div className="text-white/80 text-sm">Нарисуйте подпись и отправьте менеджеру</div>
+              <div className="text-white/80 text-sm">{t('sign_draw_send_manager')}</div>
               <SignPosPreview
                 previewUrl={signPosModal.previewUrl}
                 scale={signPosModal.scale}
@@ -960,7 +960,7 @@ const ChatWidget = ({ user }) => {
                   onClick={() => setSignPosModal(s => ({ ...s, open: false }))}
                   className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
                 >
-                  Отмена
+                  {t('cancel')}
                 </button>
                 <button
                   type="button"
@@ -972,16 +972,16 @@ const ChatWidget = ({ user }) => {
                       await import('../config/api'); // ensure dynamic import chunk
                       const { signaturesAPI } = await import('../config/api');
                       await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos || null);
-                      alert('Документ подписан и отправлен менеджеру');
+                      alert(t('sign_sent_success'));
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {
-                      alert('Не удалось отправить подпись');
+                      alert(t('sign_send_error'));
                       setSignPosModal(s => ({ ...s, sending: false }));
                     }
                   }}
                   className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 disabled:opacity-60"
                 >
-                  Подписать и отправить
+                  {t('sign_and_send')}
                 </button>
               </div>
             </div>
@@ -992,17 +992,15 @@ const ChatWidget = ({ user }) => {
         <div className="fixed inset-0 z-[9999]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setLegalCardOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full sm:max-w-md bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl p-4">
-            <div className="text-white font-semibold mb-2">Внимание</div>
-            <div className="text-white/80 text-sm">
-              Подписывая данный контракт, вы подтверждаете согласие с условиями, и документ вступает в юридическую силу. Продолжить?
-            </div>
+            <div className="text-white font-semibold mb-2">{t('legal_title')}</div>
+            <div className="text-white/80 text-sm">{t('legal_text')}</div>
             <div className="flex justify-end gap-2 mt-3">
               <button
                 type="button"
                 onClick={() => setLegalCardOpen(false)}
                 className="px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15"
               >
-                Отмена
+                {t('cancel')}
               </button>
               <button
                 type="button"
@@ -1014,7 +1012,7 @@ const ChatWidget = ({ user }) => {
                 }}
                 className="px-4 py-2 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600"
               >
-                Согласен
+                {t('agree')}
               </button>
             </div>
           </div>
@@ -1193,7 +1191,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             onClick={clearCanvas}
             className="absolute bottom-2 right-2 text-[11px] px-3 py-1.5 rounded bg-white/90 text-black hover:bg-white"
           >
-            Очистить
+            {t('clear')}
           </button>
         </div>
         <div className="text-xs text-white/60 mt-1">{t('sign_draw_and_send')}</div>

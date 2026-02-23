@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
@@ -77,6 +78,7 @@ const useDrawing = (onChange) => {
 };
 
 export default function SignDocumentView() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -103,7 +105,7 @@ export default function SignDocumentView() {
         const fresh = await signaturesAPI.get(id);
         setData(fresh);
       } catch { void 0; }
-      alert('Документ подписан и отправлен менеджеру');
+      alert(t('sign_sent_success'));
     } catch {
       void 0;
     } finally {
@@ -115,7 +117,7 @@ export default function SignDocumentView() {
     setSending(true);
     try {
       await signaturesAPI.reject(id);
-      alert('Вы отклонили документ. Менеджер уведомлён.');
+      alert(t('reject_success'));
       navigate('/dashboard');
     } catch {
       void 0;
@@ -123,8 +125,8 @@ export default function SignDocumentView() {
       setSending(false);
     }
   };
-  if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">Загрузка...</div>;
-  if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">Не найдено</div>;
+  if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
+  if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   const previewUrl = filesAPI.getFileUrl(data?.finalPdfUrl || data?.file?.url);
   const isPdf = (data?.finalPdfUrl ? true : (String(data?.file?.type || '').includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf')));
   const isImage = !isPdf && String(data?.file?.type || '').startsWith('image/');
@@ -133,13 +135,13 @@ export default function SignDocumentView() {
     <div className="min-h-screen bg-[#050a18] text-white p-4">
       <div className="max-w-4xl mx-auto space-y-4">
         <div className="flex items-center justify-between">
-          <div className="text-xl font-semibold">Подписание документа</div>
+          <div className="text-xl font-semibold">{t('sign_document_title')}</div>
           <div className="flex gap-2">
-            <a href={previewUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Просмотреть</a>
+            <a href={previewUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('view')}</a>
             {!data?.clientSignatureUrl && (
               <>
-                <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">Подписать</button>
-                <button onClick={reject} disabled={sending} className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">Отклонить</button>
+                <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('sign')}</button>
+                <button onClick={reject} disabled={sending} className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">{t('reject')}</button>
               </>
             )}
           </div>
@@ -148,14 +150,14 @@ export default function SignDocumentView() {
           <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
             {isPdf ? (
               isMobile ? (
-                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">Открыть PDF</a>
+                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">{t('open_pdf')}</a>
               ) : (
                 <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
               )
             ) : isImage ? (
               <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
             ) : (
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">Открыть документ</a>
+              <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">{t('open_document')}</a>
             )}
             {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
               <div
@@ -167,7 +169,7 @@ export default function SignDocumentView() {
                   height: `${signPos.h * 100}%`
                 }}
               >
-                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">Место подписи</div>
+                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">{t('sign_place_label')}</div>
                 {data?.managerSignatureUrl && (<img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
                 {data?.clientSignatureUrl && (<img alt="client-sign" src={filesAPI.getFileUrl(data.clientSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
               </div>
@@ -175,21 +177,21 @@ export default function SignDocumentView() {
           </div>
         </div>
         {data?.clientSignatureUrl ? (
-          <div className="text-green-300">Документ уже подписан</div>
+          <div className="text-green-300">{t('doc_already_signed')}</div>
         ) : null}
       </div>
       {showSignModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowSignModal(false)} />
           <div className="relative w-full max-w-xl bg-[#0a0f1f] border border-white/10 rounded-2xl p-4">
-            <div className="text-white font-semibold mb-2">Подпишите</div>
+            <div className="text-white font-semibold mb-2">{t('sign_draw_label')}</div>
             <div className="relative border border-white/10 rounded bg-white">
               <canvas ref={canvasRef} width={800} height={240} className="w-full h-48" style={{ touchAction: 'none' }} />
-              <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">Очистить</button>
+              <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">{t('clear')}</button>
             </div>
             <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">Отмена</button>
-              <button disabled={!sig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">Подписать</button>
+              <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('cancel')}</button>
+              <button disabled={!sig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">{t('sign')}</button>
             </div>
           </div>
         </div>
