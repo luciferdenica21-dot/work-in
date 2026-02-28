@@ -88,6 +88,7 @@ export default function SignDocumentView() {
   const [sending, setSending] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const previewRef = useRef(null);
+  const [scale, setScale] = useState(1);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -130,7 +131,6 @@ export default function SignDocumentView() {
   const previewUrl = filesAPI.getFileUrl(data?.finalPdfUrl || data?.file?.url);
   const isPdf = (data?.finalPdfUrl ? true : (String(data?.file?.type || '').includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf')));
   const isImage = !isPdf && String(data?.file?.type || '').startsWith('image/');
-  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   return (
     <div className="min-h-screen bg-[#050a18] text-white p-4">
       <div className="max-w-4xl mx-auto space-y-4">
@@ -147,18 +147,28 @@ export default function SignDocumentView() {
           </div>
         </div>
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
-          <div ref={previewRef} className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
-            {isPdf ? (
-              isMobile ? (
-                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-600 underline">{t('open_pdf')}</a>
-              ) : (
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-white/70 text-xs">{t('scale')}</div>
+            <input
+              type="range"
+              min="0.6"
+              max="2"
+              step="0.05"
+              value={scale}
+              onChange={(e) => setScale(parseFloat(e.target.value))}
+              className="w-40 accent-purple-600"
+            />
+          </div>
+          <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
+            <div ref={previewRef} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+              {isPdf ? (
                 <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-              )
-            ) : isImage ? (
-              <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
-            ) : (
-              <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">{t('open_document')}</a>
-            )}
+              ) : isImage ? (
+                <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+              ) : (
+                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">{t('open_document')}</a>
+              )}
+            </div>
             {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
               <div
                 className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
