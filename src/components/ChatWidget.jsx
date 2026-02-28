@@ -1047,6 +1047,8 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const canvasRef = React.useRef(null);
   const drawingRef = React.useRef(false);
   const lastRef = React.useRef({ x: 0, y: 0 });
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const [showDoc, setShowDoc] = React.useState(false);
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
@@ -1130,26 +1132,41 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
           className="w-40 accent-purple-600"
         />
-        <button
-          type="button"
-          onClick={() => setLegalOpen(true)}
-          className="text-blue-300 underline text-xs"
-        >
-          {t('open_full')}
-        </button>
+        {!isMobile && (
+          <button
+            type="button"
+            onClick={() => setLegalOpen(true)}
+            className="text-blue-300 underline text-xs"
+          >
+            {t('open_full')}
+          </button>
+        )}
       </div>
-      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
-        <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-          {isImg ? (
-            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
-          ) : previewUrl ? (
-            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
-          )}
+      {isMobile && !showDoc && (
+        <div className="mb-2">
+          <button
+            type="button"
+            onClick={() => setShowDoc(true)}
+            className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
+          >
+            {t('review_document')}
+          </button>
         </div>
-      </div>
-      {legalOpen && (
+      )}
+      {(!isMobile || (isMobile && showDoc)) && (
+        <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
+          <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+            {isImg ? (
+              <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+            ) : previewUrl ? (
+              <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
+            )}
+          </div>
+        </div>
+      )}
+      {legalOpen && !isMobile && (
         <div className="fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setLegalOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 mx-auto w-full sm:max-w-md bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl p-4">
