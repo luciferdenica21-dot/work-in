@@ -316,8 +316,19 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
           <div className="relative z-10 w-full max-w-5xl mt-32 px-4 pb-32 text-center">
             <div className="flex flex-col gap-8">
               <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10">
-                <img src={selectedService.img} alt={selectedService.title} className="w-full h-full object-cover" />
+                <img
+                  src={selectedService.img}
+                  alt={selectedService.title}
+                  className={`w-full h-full object-cover${[t('S2_T'), t('S7_T')].includes(selectedService.title) ? ' filter blur-md' : ''}`}
+                />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
+                {[t('S2_T'), t('S7_T')].includes(selectedService.title) && (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="px-4 py-2 rounded-xl bg-black/60 text-white text-sm md:text-lg font-semibold">
+                      {t('service_soon')}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="bg-white/[0.03] p-8 md:p-12 rounded-[2rem] border border-white/5 shadow-inner mb-12 flex flex-col items-start gap-8">
                 <div className="text-white/80 text-sm md:text-lg font-light leading-relaxed whitespace-pre-line text-left">
