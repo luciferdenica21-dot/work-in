@@ -97,8 +97,10 @@ const OrderSidebar = ({
   const services = [
     "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
   ];
+  const lockedKeys = ["S2_T", "S7_T"];
 
   const toggleService = (service) => {
+    if (lockedKeys.includes(service)) return;
     setTempSelection(prev => 
       prev.includes(service) 
         ? prev.filter(s => s !== service) 
@@ -107,7 +109,8 @@ const OrderSidebar = ({
   };
 
   const confirmSelection = () => {
-    setChosenServices(tempSelection);
+    const allowed = tempSelection.filter(s => !lockedKeys.includes(s));
+    setChosenServices(allowed);
     setIsSelectorOpen(false);
   };
 
@@ -508,19 +511,30 @@ const handleSubmit = async (e) => {
             <div className="h-full flex flex-col">
               <h3 className="text-xl font-bold text-white uppercase tracking-widest mb-8">{t("Выберите услуги")}</h3>
               <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-                {services.map(s => (
-                  <button
-                    key={s}
-                    onClick={() => toggleService(s)}
-                    className={`w-full p-4 rounded-xl border transition-all text-left uppercase tracking-widest text-[10px] ${
-                      tempSelection.includes(s) 
-                        ? 'bg-blue-500/20 border-blue-500 text-blue-400' 
-                        : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20'
-                    }`}
-                  >
-                    {t(s)}
-                  </button>
-                ))}
+                {services.map(s => {
+                  const isLocked = lockedKeys.includes(s);
+                  const isSelected = tempSelection.includes(s);
+                  return (
+                    <button
+                      key={s}
+                      onClick={() => toggleService(s)}
+                      disabled={isLocked}
+                      className={`w-full p-4 rounded-xl border transition-all text-left uppercase tracking-widest text-[10px] ${
+                        isLocked
+                          ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed'
+                          : isSelected
+                            ? 'bg-blue-500/20 border-blue-500 text-blue-400'
+                            : 'bg-white/5 border-white/5 text-white/40 hover:border-white/20'
+                      }`}
+                      title={isLocked ? t('service_soon') : undefined}
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        {t(s)}
+                        {isLocked && <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v2M12 12v4"/></svg>}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
               <div className="pt-6">
                 <button 
