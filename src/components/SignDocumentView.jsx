@@ -162,28 +162,30 @@ export default function SignDocumentView() {
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
             <div ref={previewRef} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
               {isPdf ? (
-                <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+                <object data={previewUrl} type="application/pdf" className="absolute inset-0 w-full h-full">
+                  <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+                </object>
               ) : isImage ? (
                 <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
               ) : (
-                <a href={previewUrl} target="_blank" rel="noreferrer" className="absolute inset-0 flex items-center justify-center text-blue-300 underline">{t('open_document')}</a>
+                <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+              )}
+              {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
+                <div
+                  className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
+                  style={{
+                    left: `${(signPos.x) * 100}%`,
+                    top: `${(signPos.y) * 100}%`,
+                    width: `${signPos.w * 100}%`,
+                    height: `${signPos.h * 100}%`
+                  }}
+                >
+                  <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">{t('sign_place_label')}</div>
+                  {data?.managerSignatureUrl && (<img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
+                  {data?.clientSignatureUrl && (<img alt="client-sign" src={filesAPI.getFileUrl(data.clientSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
+                </div>
               )}
             </div>
-            {signPos && signPos.x != null && signPos.y != null && signPos.w && signPos.h && (
-              <div
-                className="absolute border-2 border-purple-600 bg-purple-500/20 rounded"
-                style={{
-                  left: `${(signPos.x) * 100}%`,
-                  top: `${(signPos.y) * 100}%`,
-                  width: `${signPos.w * 100}%`,
-                  height: `${signPos.h * 100}%`
-                }}
-              >
-                <div className="absolute -top-6 left-0 bg-purple-600 text-white text-[11px] px-2 py-0.5 rounded">{t('sign_place_label')}</div>
-                {data?.managerSignatureUrl && (<img alt="manager-sign" src={filesAPI.getFileUrl(data.managerSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
-                {data?.clientSignatureUrl && (<img alt="client-sign" src={filesAPI.getFileUrl(data.clientSignatureUrl)} className="absolute inset-0 w-full h-full object-contain" />)}
-              </div>
-            )}
           </div>
         </div>
         {data?.clientSignatureUrl ? (
