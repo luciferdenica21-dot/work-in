@@ -1048,7 +1048,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const drawingRef = React.useRef(false);
   const lastRef = React.useRef({ x: 0, y: 0 });
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const [showDoc, setShowDoc] = React.useState(false);
   const pdfContainerRef = React.useRef(null);
   const [pdfReady, setPdfReady] = React.useState(false);
   const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
@@ -1071,7 +1070,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   React.useEffect(() => {
     let cancelled = false;
     const loadPdfJs = async () => {
-      if (!isPdf || !previewUrl || (!showDoc && isMobile)) return;
+      if (!isPdf || !previewUrl) return;
       try {
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
@@ -1113,7 +1112,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale, showDoc, isMobile]);
+  }, [isPdf, previewUrl, scale, isMobile]);
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1191,37 +1190,24 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           </button>
         )}
       </div>
-      {isMobile && !showDoc && (
-        <div className="mb-2">
-          <button
-            type="button"
-            onClick={() => setShowDoc(true)}
-            className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
-          >
-            {t('review_document')}
-          </button>
+      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
+        <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          {isImg ? (
+            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+          ) : isPdf ? (
+            <div className="absolute inset-0">
+              {!pdfReady && (
+                <div className="absolute inset-0 flex items-center justify-center textブラック/60">{t('loading')}</div>
+              )}
+              <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
+            </div>
+          ) : previewUrl ? (
+            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg白" />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
+          )}
         </div>
-      )}
-      {(!isMobile || (isMobile && showDoc)) && (
-        <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
-          <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-            {isImg ? (
-              <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
-            ) : isPdf ? (
-              <div className="absolute inset-0">
-                {!pdfReady && (
-                  <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
-                )}
-                <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
-              </div>
-            ) : previewUrl ? (
-              <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-            ) : (
-              <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
-            )}
-          </div>
-        </div>
-      )}
+      </div>
       {legalOpen && !isMobile && (
         <div className="fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setLegalOpen(false)} />

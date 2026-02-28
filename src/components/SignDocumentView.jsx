@@ -92,7 +92,6 @@ export default function SignDocumentView() {
   const pdfContainerRef = useRef(null);
   const [pdfReady, setPdfReady] = useState(false);
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const [showDoc, setShowDoc] = useState(!isMobile);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -136,7 +135,7 @@ export default function SignDocumentView() {
   useEffect(() => {
     let cancelled = false;
     const loadPdfJs = async () => {
-      if (!isPdf || !previewUrl || (isMobile && !showDoc)) return;
+      if (!isPdf || !previewUrl) return;
       try {
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
@@ -178,7 +177,7 @@ export default function SignDocumentView() {
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale, isMobile, showDoc]);
+  }, [isPdf, previewUrl, scale, isMobile]);
   if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
   if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   return (
@@ -215,29 +214,7 @@ export default function SignDocumentView() {
               >+</button>
             </div>
           </div>
-          {!isMobile && !showDoc && (
-            <div className="mb-2">
-              <button
-                type="button"
-                onClick={() => setShowDoc(true)}
-                className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
-              >
-                {t('review_document')}
-              </button>
-            </div>
-          )}
-          {(isMobile && !showDoc) ? (
-            <div className="mb-2">
-              <button
-                type="button"
-                onClick={() => setShowDoc(true)}
-                className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
-              >
-                {t('review_document')}
-              </button>
-            </div>
-          ) : null}
-          {(!isMobile || (isMobile && showDoc)) && (
+          
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
             <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
               {isPdf ? (
@@ -269,7 +246,6 @@ export default function SignDocumentView() {
               )}
             </div>
           </div>
-          )}
         </div>
         {data?.clientSignatureUrl ? (
           <div className="text-green-300">{t('doc_already_signed')}</div>
