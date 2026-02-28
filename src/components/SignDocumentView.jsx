@@ -91,6 +91,8 @@ export default function SignDocumentView() {
   const [scale, setScale] = useState(1);
   const pdfContainerRef = useRef(null);
   const [pdfReady, setPdfReady] = useState(false);
+  const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const [showDoc, setShowDoc] = useState(!isMobile);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -134,7 +136,7 @@ export default function SignDocumentView() {
   useEffect(() => {
     let cancelled = false;
     const loadPdfJs = async () => {
-      if (!isPdf || !previewUrl) return;
+      if (!isPdf || !previewUrl || (isMobile && !showDoc)) return;
       try {
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
@@ -176,7 +178,7 @@ export default function SignDocumentView() {
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale]);
+  }, [isPdf, previewUrl, scale, isMobile, showDoc]);
   if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
   if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   return (
@@ -197,16 +199,45 @@ export default function SignDocumentView() {
         <div className="bg-white/5 border border-white/10 rounded-lg p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-white/70 text-xs">{t('scale')}</div>
-            <input
-              type="range"
-              min="0.6"
-              max="2"
-              step="0.05"
-              value={scale}
-              onChange={(e) => setScale(parseFloat(e.target.value))}
-              className="w-40 accent-purple-600"
-            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setScale(s => Math.max(0.6, +(s - 0.1).toFixed(2)))}
+                className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                aria-label="Zoom out"
+              >−</button>
+              <div className="text-white/80 text-xs w-12 text-center">{Math.round(scale * 100)}%</div>
+              <button
+                type="button"
+                onClick={() => setScale(s => Math.min(2, +(s + 0.1).toFixed(2)))}
+                className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+                aria-label="Zoom in"
+              >+</button>
+            </div>
           </div>
+          {!isMobile && !showDoc && (
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={() => setShowDoc(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
+              >
+                {t('review_document')}
+              </button>
+            </div>
+          )}
+          {(isMobile && !showDoc) ? (
+            <div className="mb-2">
+              <button
+                type="button"
+                onClick={() => setShowDoc(true)}
+                className="px-3 py-1.5 rounded-lg bg-blue-600/80 text-white hover:bg-blue-600 text-xs"
+              >
+                {t('review_document')}
+              </button>
+            </div>
+          ) : null}
+          {(!isMobile || (isMobile && showDoc)) && (
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
             <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
               {isPdf ? (
@@ -238,6 +269,7 @@ export default function SignDocumentView() {
               )}
             </div>
           </div>
+          )}
         </div>
         {data?.clientSignatureUrl ? (
           <div className="text-green-300">{t('doc_already_signed')}</div>
