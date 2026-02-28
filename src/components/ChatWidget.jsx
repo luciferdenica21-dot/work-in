@@ -1052,7 +1052,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const [pdfLoading, setPdfLoading] = React.useState(false);
   const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
   const [renderTick, setRenderTick] = React.useState(0);
-  const pdfTextRef = React.useRef(null);
+  // const pdfTextRef = React.useRef(null);
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
@@ -1078,6 +1078,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     let cancelled = false;
     const loadPdfJs = async () => {
       if (!isPdf || !previewUrl) return;
+      if (isMobile) {
+        setPdfLoading(false);
+        return;
+      }
       try {
         setPdfLoading(true);
         if (!window.pdfjsLib) {
@@ -1227,12 +1231,11 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : isPdf ? (
             isMobile ? (
-              <div className="absolute inset-0 overflow-auto px-2">
-                {pdfLoading && (
-                  <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
-                )}
-                <div ref={pdfTextRef} className="max-w-full" />
-              </div>
+              <iframe
+                title="pdf-viewer"
+                src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(previewUrl)}#zoom=page-width&toolbar=0`}
+                className="absolute inset-0 w-full h-full bg-white"
+              />
             ) : (
               <div className="absolute inset-0">
                 {pdfLoading && (

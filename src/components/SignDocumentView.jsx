@@ -143,6 +143,10 @@ export default function SignDocumentView() {
     let cancelled = false;
     const loadPdfJs = async () => {
       if (!isPdf || !previewUrl) return;
+      if (isMobile) {
+        setPdfLoading(false);
+        return;
+      }
       try {
         setPdfLoading(true);
         const timer = setTimeout(() => { if (!cancelled) setPdfLoading(false); }, 8000);
@@ -255,12 +259,11 @@ export default function SignDocumentView() {
             <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%' }}>
               {isPdf ? (
                 isMobile ? (
-                  <div className="absolute inset-0 overflow-auto px-3">
-                    {pdfLoading && (
-                      <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
-                    )}
-                    <div ref={pdfTextRef} className="max-w-full" />
-                  </div>
+                  <iframe
+                    title="pdf-viewer"
+                    src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(previewUrl)}#zoom=page-width&toolbar=0`}
+                    className="absolute inset-0 w-full h-full bg-white"
+                  />
                 ) : (
                   <div className="absolute inset-0">
                     {pdfLoading && (
