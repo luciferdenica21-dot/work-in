@@ -1051,6 +1051,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const pdfContainerRef = React.useRef(null);
   const [pdfReady, setPdfReady] = React.useState(false);
   const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
+  const [renderTick, setRenderTick] = React.useState(0);
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
@@ -1066,6 +1067,11 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     ctx.scale(dpr, dpr);
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
+  }, []);
+  React.useEffect(() => {
+    const onResize = () => setRenderTick((n) => n + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
   React.useEffect(() => {
     let cancelled = false;
@@ -1117,7 +1123,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale, isMobile]);
+  }, [isPdf, previewUrl, scale, isMobile, renderTick]);
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();

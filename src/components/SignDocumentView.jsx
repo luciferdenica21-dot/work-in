@@ -92,6 +92,7 @@ export default function SignDocumentView() {
   const pdfContainerRef = useRef(null);
   const [pdfReady, setPdfReady] = useState(false);
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const [renderTick, setRenderTick] = useState(0);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -132,6 +133,11 @@ export default function SignDocumentView() {
   const previewUrl = filesAPI.getFileUrl(data?.finalPdfUrl || data?.file?.url);
   const isPdf = (data?.finalPdfUrl ? true : (String(data?.file?.type || '').includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf')));
   const isImage = !isPdf && String(data?.file?.type || '').startsWith('image/');
+  useEffect(() => {
+    const onResize = () => setRenderTick((n) => n + 1);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   useEffect(() => {
     let cancelled = false;
     const loadPdfJs = async () => {
@@ -182,7 +188,7 @@ export default function SignDocumentView() {
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale, isMobile]);
+  }, [isPdf, previewUrl, scale, isMobile, renderTick]);
   if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
   if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   return (
