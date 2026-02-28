@@ -1049,7 +1049,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const lastRef = React.useRef({ x: 0, y: 0 });
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const pdfContainerRef = React.useRef(null);
-  const [pdfReady, setPdfReady] = React.useState(false);
+  const [pdfLoading, setPdfLoading] = React.useState(false);
   const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
   const [renderTick, setRenderTick] = React.useState(0);
   const pdfTextRef = React.useRef(null);
@@ -1079,6 +1079,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const loadPdfJs = async () => {
       if (!isPdf || !previewUrl) return;
       try {
+        setPdfLoading(true);
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
           s1.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
@@ -1116,10 +1117,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           await page.render({ canvasContext: ctx, viewport }).promise;
         }
         if (!cancelled) {
-          setPdfReady(true);
+          setPdfLoading(false);
         }
       } catch {
-        setPdfReady(false);
+        setPdfLoading(false);
       }
     };
     loadPdfJs();
@@ -1227,14 +1228,14 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           ) : isPdf ? (
             isMobile ? (
               <div className="absolute inset-0 overflow-auto px-2">
-                {!pdfReady && (
+                {pdfLoading && (
                   <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
                 )}
                 <div ref={pdfTextRef} className="max-w-full" />
               </div>
             ) : (
               <div className="absolute inset-0">
-                {!pdfReady && (
+                {pdfLoading && (
                   <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
                 )}
                 <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />

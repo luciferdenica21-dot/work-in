@@ -90,7 +90,7 @@ export default function SignDocumentView() {
   const previewRef = useRef(null);
   const [scale, setScale] = useState(1);
   const pdfContainerRef = useRef(null);
-  const [pdfReady, setPdfReady] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [renderTick, setRenderTick] = useState(0);
   const pdfTextRef = useRef(null);
@@ -144,6 +144,7 @@ export default function SignDocumentView() {
     const loadPdfJs = async () => {
       if (!isPdf || !previewUrl) return;
       try {
+        setPdfLoading(true);
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
           s1.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
@@ -197,10 +198,10 @@ export default function SignDocumentView() {
           } catch { /* ignore text layer errors */ }
         }
         if (!cancelled) {
-          setPdfReady(true);
+          setPdfLoading(false);
         }
       } catch {
-        setPdfReady(false);
+        setPdfLoading(false);
       }
     };
     loadPdfJs();
@@ -248,14 +249,14 @@ export default function SignDocumentView() {
               {isPdf ? (
                 isMobile ? (
                   <div className="absolute inset-0 overflow-auto px-3">
-                    {!pdfReady && (
+                    {pdfLoading && (
                       <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
                     )}
                     <div ref={pdfTextRef} className="max-w-full" />
                   </div>
                 ) : (
                   <div className="absolute inset-0">
-                    {!pdfReady && (
+                    {pdfLoading && (
                       <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
                     )}
                     <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
