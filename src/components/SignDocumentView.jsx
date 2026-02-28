@@ -93,6 +93,7 @@ export default function SignDocumentView() {
   const [pdfReady, setPdfReady] = useState(false);
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [renderTick, setRenderTick] = useState(0);
+  const pdfTextRef = useRef(null);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -161,6 +162,8 @@ export default function SignDocumentView() {
         cont.innerHTML = '';
         const parent = previewRef.current;
         const containerWidth = Math.max(320, Math.floor((parent?.clientWidth || cont.clientWidth || 600)));
+        const textCont = pdfTextRef.current;
+        if (textCont) { textCont.innerHTML = ''; }
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
           const baseViewport = page.getViewport({ scale: 1 });
@@ -178,6 +181,20 @@ export default function SignDocumentView() {
           div.appendChild(canvas);
           cont.appendChild(div);
           await page.render({ canvasContext: ctx, viewport }).promise;
+          try {
+            if (textCont && isMobile) {
+              const text = await page.getTextContent();
+              const line = document.createElement('div');
+              line.style.whiteSpace = 'pre-wrap';
+              line.style.wordBreak = 'break-word';
+              line.style.fontSize = '18px';
+              line.style.lineHeight = '1.6';
+              line.style.padding = '8px 0';
+              const str = text.items.map(it => it.str).join(' ');
+              line.textContent = str;
+              textCont.appendChild(line);
+            }
+          } catch { /* ignore text layer errors */ }
         }
         if (!cancelled) {
           setPdfReady(true);
@@ -229,12 +246,21 @@ export default function SignDocumentView() {
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'hidden' }}>
             <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%' }}>
               {isPdf ? (
-                <div className="absolute inset-0">
-                  {!pdfReady && (
-                    <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
-                  )}
-                  <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
-                </div>
+                isMobile ? (
+                  <div className="absolute inset-0 overflow-auto px-3">
+                    {!pdfReady && (
+                      <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
+                    )}
+                    <div ref={pdfTextRef} className="max-w-full" />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0">
+                    {!pdfReady && (
+                      <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
+                    )}
+                    <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
+                  </div>
+                )
               ) : isImage ? (
                 <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
               ) : (
