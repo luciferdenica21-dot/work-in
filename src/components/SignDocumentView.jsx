@@ -164,6 +164,7 @@ export default function SignDocumentView() {
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
+          canvas.style.width = `${containerWidth}px`;
           const div = document.createElement('div');
           div.style.position = 'relative';
           div.style.width = `${containerWidth}px`;
