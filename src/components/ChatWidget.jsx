@@ -1088,16 +1088,20 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
         const cont = pdfContainerRef.current;
         if (!cont) return;
         cont.innerHTML = '';
+        const parent = ref.current;
+        const containerWidth = Math.max(280, Math.floor((parent?.clientWidth || cont.clientWidth || 560)));
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
-          const viewport = page.getViewport({ scale });
+          const baseViewport = page.getViewport({ scale: 1 });
+          const fitScale = containerWidth / baseViewport.width;
+          const viewport = page.getViewport({ scale: fitScale * scale });
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           const div = document.createElement('div');
           div.style.position = 'relative';
-          div.style.width = `${viewport.width}px`;
+          div.style.width = `${containerWidth}px`;
           div.style.height = `${viewport.height}px`;
           div.appendChild(canvas);
           cont.appendChild(div);
@@ -1168,41 +1172,59 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     onDraw?.('');
   };
   return (
-    <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
+      <div className="relative bg-white/5 border border-white/10 rounded-lg p-2">
       <div className="flex items-center justify-between mb-2">
         <div className="text-white/70 text-xs">{t('scale')}</div>
-        <input
-          type="range"
-          min="0.6"
-          max="2"
-          step="0.05"
-          value={scale}
-          onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
-          className="w-40 accent-purple-600"
-        />
-        {!isMobile && (
-          <button
-            type="button"
-            onClick={() => setLegalOpen(true)}
-            className="text-blue-300 underline text-xs"
-          >
-            {t('open_full')}
-          </button>
+        {isMobile ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onScaleChange?.(Math.max(0.6, +(scale - 0.1).toFixed(2)))}
+              className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+              aria-label="Zoom out"
+            >−</button>
+            <div className="text-white/80 text-xs w-12 text-center">{Math.round(scale * 100)}%</div>
+            <button
+              type="button"
+              onClick={() => onScaleChange?.(Math.min(2, +(scale + 0.1).toFixed(2)))}
+              className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
+              aria-label="Zoom in"
+            >+</button>
+          </div>
+        ) : (
+          <>
+            <input
+              type="range"
+              min="0.6"
+              max="2"
+              step="0.05"
+              value={scale}
+              onChange={(e) => onScaleChange?.(parseFloat(e.target.value))}
+              className="w-40 accent-purple-600"
+            />
+            <button
+              type="button"
+              onClick={() => setLegalOpen(true)}
+              className="text-blue-300 underline text-xs"
+            >
+              {t('open_full')}
+            </button>
+          </>
         )}
       </div>
-      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
-        <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', overflowX: 'hidden' }}>
+        <div ref={ref} className="relative" style={{ width: '100%', height: '100%' }}>
           {isImg ? (
             <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : isPdf ? (
             <div className="absolute inset-0">
-              {!pdfReady && (
-                <div className="absolute inset-0 flex items-center justify-center textブラック/60">{t('loading')}</div>
-              )}
+                {!pdfReady && (
+                  <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
+                )}
               <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
             </div>
           ) : previewUrl ? (
-            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg白" />
+            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
           )}
