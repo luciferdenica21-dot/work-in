@@ -572,9 +572,17 @@ const ChatWidget = ({ user }) => {
   const [legalCardOpen, setLegalCardOpen] = useState(false);
   const [legalCardMsg, setLegalCardMsg] = useState(null);
 
-  const openSignPosModal = (msg) => {
+  const openSignPosModal = async (msg) => {
     const sign = extractSignLink(msg?.text || '');
     if (!sign) return;
+    try {
+      const { signaturesAPI } = await import('../config/api');
+      const doc = await signaturesAPI.get(sign.id);
+      if (doc?.clientSignatureUrl || doc?.status === 'completed') {
+        alert(t('doc_already_signed'));
+        return;
+      }
+    } catch {/* ignore */}
     // берем первый подходящий attachment (pdf/image)
     const att = (msg.attachments || []).find(a => {
       const mime = a?.mimetype || a?.type || '';

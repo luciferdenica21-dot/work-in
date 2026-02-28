@@ -252,6 +252,9 @@ router.post('/:id/client-sign', protect, async (req, res) => {
     if (chat.userId.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: 'Access denied' });
     }
+    if (doc.status === 'completed' || doc.clientSignatureUrl) {
+      return res.status(409).json({ message: 'Already signed' });
+    }
     const sigUrl = await saveDataUrlPng(signatureDataUrl);
     doc.clientSignatureUrl = sigUrl;
     if (clientSignPos) {
