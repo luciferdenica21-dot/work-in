@@ -146,7 +146,9 @@ export default function SignDocumentView() {
         }
         if (cancelled) return;
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        const doc = await window.pdfjsLib.getDocument(previewUrl).promise;
+        const resp = await fetch(previewUrl);
+        const buf = await resp.arrayBuffer();
+        const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
         const cont = pdfContainerRef.current;
         if (!cont) return;
         cont.innerHTML = '';
@@ -208,13 +210,12 @@ export default function SignDocumentView() {
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
             <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
               {isPdf ? (
-                pdfReady ? (
+                <div className="absolute inset-0">
+                  {!pdfReady && (
+                    <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
+                  )}
                   <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
-                ) : isImage ? (
-                  <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
-                ) : (
-                  <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-                )
+                </div>
               ) : isImage ? (
                 <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
               ) : (
