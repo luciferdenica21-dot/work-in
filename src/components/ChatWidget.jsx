@@ -1049,6 +1049,9 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const lastRef = React.useRef({ x: 0, y: 0 });
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [showDoc, setShowDoc] = React.useState(false);
+  const pdfContainerRef = React.useRef(null);
+  const [pdfReady, setPdfReady] = React.useState(false);
+  const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
@@ -1065,6 +1068,52 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
   }, []);
+  React.useEffect(() => {
+    let cancelled = false;
+    const loadPdfJs = async () => {
+      if (!isPdf || !previewUrl || (!showDoc && isMobile)) return;
+      try {
+        if (!window.pdfjsLib) {
+          const s1 = document.createElement('script');
+          s1.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+          const s2 = document.createElement('script');
+          s2.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+          await new Promise((r, j) => { s1.onload = r; s1.onerror = j; document.head.appendChild(s1); });
+          await new Promise((r, j) => { s2.onload = r; s2.onerror = j; document.head.appendChild(s2); });
+        }
+        if (cancelled) return;
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        const resp = await fetch(previewUrl);
+        const buf = await resp.arrayBuffer();
+        const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+        const cont = pdfContainerRef.current;
+        if (!cont) return;
+        cont.innerHTML = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const div = document.createElement('div');
+          div.style.position = 'relative';
+          div.style.width = `${viewport.width}px`;
+          div.style.height = `${viewport.height}px`;
+          div.appendChild(canvas);
+          cont.appendChild(div);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+        }
+        if (!cancelled) {
+          setPdfReady(true);
+        }
+      } catch {
+        setPdfReady(false);
+      }
+    };
+    loadPdfJs();
+    return () => { cancelled = true; };
+  }, [isPdf, previewUrl, scale, showDoc, isMobile]);
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1158,6 +1207,13 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
             {isImg ? (
               <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+            ) : isPdf ? (
+              <div className="absolute inset-0">
+                {!pdfReady && (
+                  <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
+                )}
+                <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
+              </div>
             ) : previewUrl ? (
               <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
             ) : (
