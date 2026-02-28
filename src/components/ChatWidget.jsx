@@ -1041,7 +1041,6 @@ export default ChatWidget;
 
 const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onScaleChange, onDraw }) {
   const ref = React.useRef(null);
-  const [isPdf, setIsPdf] = React.useState(false);
   const [isImg, setIsImg] = React.useState(false);
   const [legalOpen, setLegalOpen] = React.useState(false);
   const { t } = useTranslation();
@@ -1050,7 +1049,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const lastRef = React.useRef({ x: 0, y: 0 });
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
-    setIsPdf(url.endsWith('.pdf'));
     setIsImg(/\.(png|jpg|jpeg|webp|gif)$/.test(url));
   }, [previewUrl]);
   React.useEffect(() => {
@@ -1142,18 +1140,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
       </div>
       <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation' }}>
         <div ref={ref} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
-          {isPdf ? (
-            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-          ) : isImg ? (
+          {isImg ? (
             <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : previewUrl ? (
-            <button
-              type="button"
-              onClick={() => setLegalOpen(true)}
-              className="absolute inset-0 flex items-center justify-center text-blue-300 underline"
-            >
-              {t('open_document')}
-            </button>
+            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
           )}
