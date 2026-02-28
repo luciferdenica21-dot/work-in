@@ -145,6 +145,7 @@ export default function SignDocumentView() {
       if (!isPdf || !previewUrl) return;
       try {
         setPdfLoading(true);
+        const timer = setTimeout(() => { if (!cancelled) setPdfLoading(false); }, 8000);
         if (!window.pdfjsLib) {
           const s1 = document.createElement('script');
           s1.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
@@ -157,7 +158,7 @@ export default function SignDocumentView() {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
         const resp = await fetch(previewUrl);
         const buf = await resp.arrayBuffer();
-        const doc = await window.pdfjsLib.getDocument({ data: buf }).promise;
+        const doc = await window.pdfjsLib.getDocument({ data: buf, disableWorker: true }).promise;
         const cont = pdfContainerRef.current;
         if (!cont) return;
         cont.innerHTML = '';
@@ -197,6 +198,12 @@ export default function SignDocumentView() {
             }
           } catch { /* ignore text layer errors */ }
         }
+        if (textCont && isMobile && textCont.childElementCount === 0) {
+          const fallback = document.createElement('div');
+          fallback.textContent = 'Предпросмотр недоступен';
+          textCont.appendChild(fallback);
+        }
+        clearTimeout(timer);
         if (!cancelled) {
           setPdfLoading(false);
         }
