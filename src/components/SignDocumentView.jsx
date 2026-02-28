@@ -89,6 +89,8 @@ export default function SignDocumentView() {
   const [showSignModal, setShowSignModal] = useState(false);
   const previewRef = useRef(null);
   const [scale, setScale] = useState(1);
+  const pdfContainerRef = useRef(null);
+  const [pdfReady, setPdfReady] = useState(false);
   const { canvasRef, clear } = useDrawing(setSig);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
@@ -126,11 +128,55 @@ export default function SignDocumentView() {
       setSending(false);
     }
   };
-  if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
-  if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   const previewUrl = filesAPI.getFileUrl(data?.finalPdfUrl || data?.file?.url);
   const isPdf = (data?.finalPdfUrl ? true : (String(data?.file?.type || '').includes('pdf') || String(previewUrl).toLowerCase().endsWith('.pdf')));
   const isImage = !isPdf && String(data?.file?.type || '').startsWith('image/');
+  useEffect(() => {
+    let cancelled = false;
+    const loadPdfJs = async () => {
+      if (!isPdf || !previewUrl) return;
+      try {
+        if (!window.pdfjsLib) {
+          const s1 = document.createElement('script');
+          s1.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js';
+          const s2 = document.createElement('script');
+          s2.src = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+          await new Promise((r, j) => { s1.onload = r; s1.onerror = j; document.head.appendChild(s1); });
+          await new Promise((r, j) => { s2.onload = r; s2.onerror = j; document.head.appendChild(s2); });
+        }
+        if (cancelled) return;
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        const doc = await window.pdfjsLib.getDocument(previewUrl).promise;
+        const cont = pdfContainerRef.current;
+        if (!cont) return;
+        cont.innerHTML = '';
+        for (let i = 1; i <= doc.numPages; i++) {
+          const page = await doc.getPage(i);
+          const viewport = page.getViewport({ scale });
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = viewport.width;
+          canvas.height = viewport.height;
+          const div = document.createElement('div');
+          div.style.position = 'relative';
+          div.style.width = `${viewport.width}px`;
+          div.style.height = `${viewport.height}px`;
+          div.appendChild(canvas);
+          cont.appendChild(div);
+          await page.render({ canvasContext: ctx, viewport }).promise;
+        }
+        if (!cancelled) {
+          setPdfReady(true);
+        }
+      } catch {
+        setPdfReady(false);
+      }
+    };
+    loadPdfJs();
+    return () => { cancelled = true; };
+  }, [isPdf, previewUrl, scale]);
+  if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
+  if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
   return (
     <div className="min-h-screen bg-[#050a18] text-white p-4">
       <div className="max-w-4xl mx-auto space-y-4">
@@ -160,11 +206,15 @@ export default function SignDocumentView() {
             />
           </div>
           <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
-            <div ref={previewRef} className="relative" style={{ width: '100%', height: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+            <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
               {isPdf ? (
-                <object data={previewUrl} type="application/pdf" className="absolute inset-0 w-full h-full">
+                pdfReady ? (
+                  <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
+                ) : isImage ? (
+                  <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+                ) : (
                   <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
-                </object>
+                )
               ) : isImage ? (
                 <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
               ) : (
