@@ -153,16 +153,20 @@ export default function SignDocumentView() {
         const cont = pdfContainerRef.current;
         if (!cont) return;
         cont.innerHTML = '';
+        const parent = previewRef.current;
+        const containerWidth = Math.max(320, Math.floor((parent?.clientWidth || cont.clientWidth || 600)));
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
-          const viewport = page.getViewport({ scale });
+          const baseViewport = page.getViewport({ scale: 1 });
+          const fitScale = containerWidth / baseViewport.width;
+          const viewport = page.getViewport({ scale: fitScale * scale });
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           const div = document.createElement('div');
           div.style.position = 'relative';
-          div.style.width = `${viewport.width}px`;
+          div.style.width = `${containerWidth}px`;
           div.style.height = `${viewport.height}px`;
           div.appendChild(canvas);
           cont.appendChild(div);
@@ -215,8 +219,8 @@ export default function SignDocumentView() {
             </div>
           </div>
           
-          <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch' }}>
-            <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%', transform: `scale(${scale})`, transformOrigin: 'top left' }}>
+          <div className="relative w-full h-[70vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'hidden' }}>
+            <div ref={previewRef} className="relative" style={{ width: '100%', minHeight: '100%' }}>
               {isPdf ? (
                 <div className="absolute inset-0">
                   {!pdfReady && (
