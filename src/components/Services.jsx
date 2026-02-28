@@ -199,26 +199,14 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                     </div>
                   </div>
 
-        {selectedService && lockedTitles.includes(selectedService.title) ? (
-          <button
-            type="button"
-            className="hidden md:block translate-y-[2px] bg-white/10 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest border border-white/20 cursor-not-allowed opacity-60"
-            title={t('service_soon')}
-          >
-            <span className="inline-flex items-center gap-2">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v2M12 12v4"/></svg>
-              {t('service_soon')}
-            </span>
-          </button>
-        ) : (
-          <OrderButton 
-            user={user} 
-            setIsOrderOpen={setIsOrderOpen} 
-            setIsAuthOpen={setIsAuthOpen} 
-            onRequireAuth={handleRequireAuthForOrder}
-            className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
-          />
-        )}
+        <OrderButton 
+          user={user} 
+          setIsOrderOpen={setIsOrderOpen} 
+          setIsAuthOpen={setIsAuthOpen} 
+          onRequireAuth={handleRequireAuthForOrder}
+          className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
+          locked={!!selectedService && lockedTitles.includes(selectedService.title)}
+        />
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
@@ -377,20 +365,14 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
                 </div>
               )}
 
-              {selectedService && lockedTitles.includes(selectedService.title) ? (
-                <div className="flex flex-col items-center gap-1 text-white/60 translate-y-1.5">
-                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="8"/><path d="M12 8v2M12 12v4"/></svg>
-                  <span className="text-[8px] font-bold uppercase tracking-tight mt-1">{t('service_soon')}</span>
-                </div>
-              ) : (
-                <OrderButton 
-                  user={user} 
-                  setIsOrderOpen={setIsOrderOpen} 
-                  setIsAuthOpen={setIsAuthOpen} 
-                  onRequireAuth={handleRequireAuthForOrder}
-                  className="text-blue-400" 
-                />
-              )}
+              <OrderButton 
+                user={user} 
+                setIsOrderOpen={setIsOrderOpen} 
+                setIsAuthOpen={setIsAuthOpen} 
+                onRequireAuth={handleRequireAuthForOrder}
+                className="text-blue-400" 
+                locked={!!selectedService && lockedTitles.includes(selectedService.title)}
+              />
 
               <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

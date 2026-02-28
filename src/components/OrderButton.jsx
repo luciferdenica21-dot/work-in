@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuth, className }) => {
+const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuth, className, locked = false }) => {
   const { t } = useTranslation();
 
   const handleOrderClick = () => {
+    if (locked) return;
     if (user) {
       setIsOrderOpen(true);
     } else {
@@ -21,7 +22,8 @@ const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuth, class
   return (
     <button 
       onClick={handleOrderClick} 
-      className={`focus:outline-none flex items-center justify-center ${className}`}
+      className={`focus:outline-none flex items-center justify-center ${className} ${locked ? 'cursor-not-allowed opacity-60' : ''}`}
+      title={locked ? t('service_soon') : undefined}
     >
       {/* Мобильная версия: стиль как у остальных иконок в нижней панели */}
       <div className="flex flex-col items-center md:hidden translate-y-1.5">
@@ -39,13 +41,16 @@ const OrderButton = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuth, class
           <path d="M9 14l2 2 4-4"></path>
         </svg>
         <span className="text-[8px] font-bold uppercase tracking-tight mt-1">
-          {t("Заказать")}
+          {t("Заказать")} {locked && <svg className="inline w-3 h-3 ml-1 align-middle" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="7" y="11" width="10" height="8" rx="2"/><path d="M12 7a3 3 0 0 1 3 3v1H9v-1a3 3 0 0 1 3-3z"/></svg>}
         </span>
       </div>
 
       {/* Десктопная версия (текст кнопки) */}
       <span className="hidden md:inline">
-        {t("Оформить заказ")}
+        <span className="inline-flex items-center gap-2">
+          {t("Оформить заказ")}
+          {locked && <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="7" y="11" width="10" height="8" rx="2"/><path d="M12 7a3 3 0 0 1 3 3v1H9v-1a3 3 0 0 1 3-3z"/></svg>}
+        </span>
       </span>
     </button>
   );
