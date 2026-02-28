@@ -1078,10 +1078,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     let cancelled = false;
     const loadPdfJs = async () => {
       if (!isPdf || !previewUrl) return;
-      if (isMobile) {
-        setPdfLoading(false);
-        return;
-      }
       try {
         setPdfLoading(true);
         if (!window.pdfjsLib) {
@@ -1230,13 +1226,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           {isImg ? (
             <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
           ) : isPdf ? (
-            isMobile ? (
-              <iframe
-                title="pdf-viewer"
-                src={`https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(previewUrl)}#zoom=page-width&toolbar=0`}
-                className="absolute inset-0 w-full h-full bg-white"
-              />
-            ) : (
+            (
               <div className="absolute inset-0">
                 {pdfLoading && (
                   <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
