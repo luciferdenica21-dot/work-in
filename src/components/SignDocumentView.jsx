@@ -101,6 +101,8 @@ export default function SignDocumentView() {
   const pinchScaleRef = useRef(1);
   const MIN_SCALE = isMobile ? 1 : 0.6;
   const MAX_SCALE = 2;
+  const isPinchingRef = useRef(false);
+  const cssPreviewScaleRef = useRef(1);
   useEffect(() => {
     if (isMobile) {
       setScale(1.2);
@@ -241,11 +243,17 @@ export default function SignDocumentView() {
     const m = ptrsRef.current;
     m.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (m.size === 2) {
+      isPinchingRef.current = true;
       const a = Array.from(m.values());
       const dx = a[0].x - a[1].x;
       const dy = a[0].y - a[1].y;
       pinchDistRef.current = Math.hypot(dx, dy) || 1;
       pinchScaleRef.current = scale;
+      cssPreviewScaleRef.current = 1;
+      if (previewRef.current) {
+        previewRef.current.style.transformOrigin = 'top left';
+        previewRef.current.style.transform = 'scale(1)';
+      }
     }
   };
   const onPtrMove = (e) => {
@@ -258,12 +266,26 @@ export default function SignDocumentView() {
     const dy = a[0].y - a[1].y;
     const dist = Math.hypot(dx, dy) || 1;
     const k = dist / (pinchDistRef.current || 1);
-    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(pinchScaleRef.current * k).toFixed(2)));
-    if (next !== scale) setScale(next);
+    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchScaleRef.current * k));
+    // Плавный визуальный зум через CSS, без тяжелого перерендера PDF на каждом кадре
+    if (previewRef.current) {
+      const cssScale = next / scale;
+      cssPreviewScaleRef.current = cssScale;
+      previewRef.current.style.transform = `scale(${cssScale})`;
+    }
   };
   const onPtrUp = (e) => {
     const m = ptrsRef.current;
     m.delete(e.pointerId);
+    if (isPinchingRef.current && m.size < 2) {
+      isPinchingRef.current = false;
+      // Фиксируем итоговый масштаб и перерендериваем четко
+      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchScaleRef.current * (cssPreviewScaleRef.current || 1)));
+      if (previewRef.current) {
+        previewRef.current.style.transform = 'none';
+      }
+      if (next !== scale) setScale(next);
+    }
   };
   if (loading) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('loading')}</div>;
   if (!data) return <div className="min-h-screen bg-[#050a18] text-white flex items-center justify-center">{t('not_found')}</div>;
@@ -304,7 +326,7 @@ export default function SignDocumentView() {
           
           <div
             className="relative w-full h-[70vh] bg-white rounded overflow-auto"
-            style={{ touchAction: isMobile ? 'pan-y' : 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'auto', overflowY: 'auto' }}
+            style={{ touchAction: isMobile ? 'auto' : 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'auto', overflowY: 'auto' }}
             onPointerDown={onPtrDown}
             onPointerMove={onPtrMove}
             onPointerUp={onPtrUp}

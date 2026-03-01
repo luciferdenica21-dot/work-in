@@ -1058,6 +1058,8 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const [renderTick, setRenderTick] = React.useState(0);
   const MIN_SCALE = isMobile ? 1 : 0.6;
   const MAX_SCALE = 2;
+  const isPinchingRef = React.useRef(false);
+  const cssPreviewScaleRef = React.useRef(1);
   // const pdfTextRef = React.useRef(null);
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
@@ -1147,11 +1149,17 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const m = ptrsRef.current;
     m.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (m.size === 2) {
+      isPinchingRef.current = true;
       const a = Array.from(m.values());
       const dx = a[0].x - a[1].x;
       const dy = a[0].y - a[1].y;
       pinchDistRef.current = Math.hypot(dx, dy) || 1;
       pinchScaleRef.current = scale;
+      cssPreviewScaleRef.current = 1;
+      if (ref.current) {
+        ref.current.style.transformOrigin = 'top left';
+        ref.current.style.transform = 'scale(1)';
+      }
     }
   };
   const onPtrMove = (e) => {
@@ -1164,12 +1172,24 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const dy = a[0].y - a[1].y;
     const dist = Math.hypot(dx, dy) || 1;
     const k = dist / (pinchDistRef.current || 1);
-    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(pinchScaleRef.current * k).toFixed(2)));
-    if (next !== scale) onScaleChange?.(next);
+    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchScaleRef.current * k));
+    if (ref.current) {
+      const cssScale = next / scale;
+      cssPreviewScaleRef.current = cssScale;
+      ref.current.style.transform = `scale(${cssScale})`;
+    }
   };
   const onPtrUp = (e) => {
     const m = ptrsRef.current;
     m.delete(e.pointerId);
+    if (isPinchingRef.current && m.size < 2) {
+      isPinchingRef.current = false;
+      const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, pinchScaleRef.current * (cssPreviewScaleRef.current || 1)));
+      if (ref.current) {
+        ref.current.style.transform = 'none';
+      }
+      if (next !== scale) onScaleChange?.(next);
+    }
   };
   const start = (e) => {
     e.preventDefault();
@@ -1268,7 +1288,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
       </div>
       <div
         className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto"
-        style={{ touchAction: isMobile ? 'pan-y' : 'manipulation', overflowX: 'auto', overflowY: 'auto' }}
+        style={{ touchAction: isMobile ? 'auto' : 'manipulation', overflowX: 'auto', overflowY: 'auto' }}
         onPointerDown={onPtrDown}
         onPointerMove={onPtrMove}
         onPointerUp={onPtrUp}
