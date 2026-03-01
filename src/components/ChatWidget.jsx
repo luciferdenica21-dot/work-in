@@ -1044,6 +1044,10 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const [isImg, setIsImg] = React.useState(false);
   const [legalOpen, setLegalOpen] = React.useState(false);
   const { t } = useTranslation();
+  const [baseWidth, setBaseWidth] = React.useState(0);
+  const ptrsRef = React.useRef(new Map());
+  const pinchDistRef = React.useRef(0);
+  const pinchScaleRef = React.useRef(1);
   const canvasRef = React.useRef(null);
   const drawingRef = React.useRef(false);
   const lastRef = React.useRef({ x: 0, y: 0 });
@@ -1070,7 +1074,12 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     ctx.fillRect(0, 0, c.width, c.height);
   }, []);
   React.useEffect(() => {
-    const onResize = () => setRenderTick((n) => n + 1);
+    const onResize = () => {
+      const el = ref.current?.parentElement;
+      if (el) setBaseWidth(Math.max(280, Math.floor(el.clientWidth)));
+      setRenderTick((n) => n + 1);
+    };
+    onResize();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
@@ -1096,22 +1105,27 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
         const cont = pdfContainerRef.current;
         if (!cont) return;
         cont.innerHTML = '';
-        const parent = ref.current;
-        const containerWidth = Math.max(280, Math.floor((parent?.clientWidth || cont.clientWidth || 560)));
+        const containerWidth = Math.max(280, baseWidth || Math.floor((cont.clientWidth || 560)));
+        const displayWidth = Math.round(containerWidth * Math.max(0.6, Math.min(2, scale)));
+        if (ref.current) ref.current.style.width = `${displayWidth}px`;
+        cont.style.width = `${displayWidth}px`;
         for (let i = 1; i <= doc.numPages; i++) {
           const page = await doc.getPage(i);
           const baseViewport = page.getViewport({ scale: 1 });
-          const fitScale = containerWidth / baseViewport.width;
-          const viewport = page.getViewport({ scale: fitScale * scale });
+          const dpr = Math.max(1, window.devicePixelRatio || 1);
+          const fitScale = displayWidth / baseViewport.width;
+          const viewport = page.getViewport({ scale: fitScale * dpr });
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
-          canvas.style.width = `${containerWidth}px`;
+          const cssHeight = Math.round(viewport.height / dpr);
+          canvas.style.width = `${displayWidth}px`;
+          canvas.style.height = `${cssHeight}px`;
           const div = document.createElement('div');
           div.style.position = 'relative';
-          div.style.width = `${containerWidth}px`;
-          div.style.height = `${viewport.height}px`;
+          div.style.width = `${displayWidth}px`;
+          div.style.height = `${cssHeight}px`;
           div.appendChild(canvas);
           cont.appendChild(div);
           await page.render({ canvasContext: ctx, viewport }).promise;
@@ -1125,7 +1139,38 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     };
     loadPdfJs();
     return () => { cancelled = true; };
-  }, [isPdf, previewUrl, scale, isMobile, renderTick]);
+  }, [isPdf, previewUrl, scale, isMobile, renderTick, baseWidth]);
+  const onPtrDown = (e) => {
+    if (!isMobile) return;
+    const el = e.currentTarget;
+    el.setPointerCapture?.(e.pointerId);
+    const m = ptrsRef.current;
+    m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (m.size === 2) {
+      const a = Array.from(m.values());
+      const dx = a[0].x - a[1].x;
+      const dy = a[0].y - a[1].y;
+      pinchDistRef.current = Math.hypot(dx, dy) || 1;
+      pinchScaleRef.current = scale;
+    }
+  };
+  const onPtrMove = (e) => {
+    const m = ptrsRef.current;
+    if (m.size < 2) return;
+    if (!m.has(e.pointerId)) return;
+    m.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const a = Array.from(m.values());
+    const dx = a[0].x - a[1].x;
+    const dy = a[0].y - a[1].y;
+    const dist = Math.hypot(dx, dy) || 1;
+    const k = dist / (pinchDistRef.current || 1);
+    const next = Math.max(0.6, Math.min(2, +(pinchScaleRef.current * k).toFixed(2)));
+    if (next !== scale) onScaleChange?.(next);
+  };
+  const onPtrUp = (e) => {
+    const m = ptrsRef.current;
+    m.delete(e.pointerId);
+  };
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1221,21 +1266,28 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
           </>
         )}
       </div>
-      <div className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto" style={{ touchAction: 'manipulation', overflowX: 'hidden' }}>
-        <div ref={ref} className="relative" style={{ width: '100%', height: '100%' }}>
+      <div
+        className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto"
+        style={{ touchAction: isMobile ? 'none' : 'manipulation', overflowX: 'auto' }}
+        onPointerDown={onPtrDown}
+        onPointerMove={onPtrMove}
+        onPointerUp={onPtrUp}
+        onPointerCancel={onPtrUp}
+      >
+        <div ref={ref} className="relative" style={{ width: baseWidth ? Math.round(baseWidth * scale) : '100%', height: '100%' }}>
           {isImg ? (
-            <img alt="doc" src={previewUrl} className="absolute inset-0 w-full h-full object-contain bg-white" />
+            <img alt="doc" src={previewUrl} style={{ width: baseWidth ? Math.round(baseWidth * scale) : '100%', height: 'auto', display: 'block' }} />
           ) : isPdf ? (
             (
-              <div className="absolute inset-0">
+              <div>
                 {pdfLoading && (
                   <div className="absolute inset-0 flex items-center justify-center text-black/60">{t('loading')}</div>
                 )}
-                <div ref={pdfContainerRef} className="absolute inset-0 overflow-auto" />
+                <div ref={pdfContainerRef} />
               </div>
             )
           ) : previewUrl ? (
-            <iframe title="doc" src={previewUrl} className="absolute inset-0 w-full h-full bg-white" />
+            <iframe title="doc" src={previewUrl} style={{ width: baseWidth ? Math.round(baseWidth * scale) : '100%', height: '56vh', display: 'block' }} />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-white/60">{t('preview_unavailable')}</div>
           )}
