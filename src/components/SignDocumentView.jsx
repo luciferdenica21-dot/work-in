@@ -99,6 +99,8 @@ export default function SignDocumentView() {
   const ptrsRef = useRef(new Map());
   const pinchDistRef = useRef(0);
   const pinchScaleRef = useRef(1);
+  const MIN_SCALE = isMobile ? 1 : 0.6;
+  const MAX_SCALE = 2;
   useEffect(() => {
     if (isMobile) {
       setScale(1.2);
@@ -180,7 +182,7 @@ export default function SignDocumentView() {
         const containerWidth = Math.max(320, baseWidth || Math.floor((cont.clientWidth || 600)));
         const textCont = pdfTextRef.current;
         if (textCont) { textCont.innerHTML = ''; }
-        const displayWidth = Math.round(containerWidth * Math.max(0.6, Math.min(2, scale)));
+        const displayWidth = Math.round(containerWidth * Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)));
         if (previewRef.current) previewRef.current.style.width = `${displayWidth}px`;
         cont.style.width = `${displayWidth}px`;
         for (let i = 1; i <= doc.numPages; i++) {
@@ -236,8 +238,6 @@ export default function SignDocumentView() {
   }, [isPdf, previewUrl, scale, isMobile, renderTick, baseWidth]);
   const onPtrDown = (e) => {
     if (!isMobile) return;
-    const el = e.currentTarget;
-    el.setPointerCapture?.(e.pointerId);
     const m = ptrsRef.current;
     m.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (m.size === 2) {
@@ -258,7 +258,7 @@ export default function SignDocumentView() {
     const dy = a[0].y - a[1].y;
     const dist = Math.hypot(dx, dy) || 1;
     const k = dist / (pinchDistRef.current || 1);
-    const next = Math.max(0.6, Math.min(2, +(pinchScaleRef.current * k).toFixed(2)));
+    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(pinchScaleRef.current * k).toFixed(2)));
     if (next !== scale) setScale(next);
   };
   const onPtrUp = (e) => {
@@ -288,14 +288,14 @@ export default function SignDocumentView() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={() => setScale(s => Math.max(0.6, +(s - 0.1).toFixed(2)))}
+              onClick={() => setScale(s => Math.max(MIN_SCALE, +(s - 0.1).toFixed(2)))}
                 className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
                 aria-label="Zoom out"
               >−</button>
               <div className="text-white/80 text-xs w-12 text-center">{Math.round(scale * 100)}%</div>
               <button
                 type="button"
-                onClick={() => setScale(s => Math.min(2, +(s + 0.1).toFixed(2)))}
+              onClick={() => setScale(s => Math.min(MAX_SCALE, +(s + 0.1).toFixed(2)))}
                 className="px-2 py-1 rounded bg-white/10 border border-white/20 text-white text-xs"
                 aria-label="Zoom in"
               >+</button>
@@ -304,7 +304,7 @@ export default function SignDocumentView() {
           
           <div
             className="relative w-full h-[70vh] bg-white rounded overflow-auto"
-            style={{ touchAction: isMobile ? 'none' : 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'auto' }}
+            style={{ touchAction: isMobile ? 'pan-y' : 'manipulation', WebkitOverflowScrolling: 'touch', overflowX: 'auto', overflowY: 'auto' }}
             onPointerDown={onPtrDown}
             onPointerMove={onPtrMove}
             onPointerUp={onPtrUp}

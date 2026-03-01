@@ -1056,6 +1056,8 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const [pdfLoading, setPdfLoading] = React.useState(false);
   const isPdf = String(previewUrl || '').toLowerCase().endsWith('.pdf');
   const [renderTick, setRenderTick] = React.useState(0);
+  const MIN_SCALE = isMobile ? 1 : 0.6;
+  const MAX_SCALE = 2;
   // const pdfTextRef = React.useRef(null);
   React.useEffect(() => {
     const url = String(previewUrl || '').toLowerCase();
@@ -1106,7 +1108,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
         if (!cont) return;
         cont.innerHTML = '';
         const containerWidth = Math.max(280, baseWidth || Math.floor((cont.clientWidth || 560)));
-        const displayWidth = Math.round(containerWidth * Math.max(0.6, Math.min(2, scale)));
+        const displayWidth = Math.round(containerWidth * Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale)));
         if (ref.current) ref.current.style.width = `${displayWidth}px`;
         cont.style.width = `${displayWidth}px`;
         for (let i = 1; i <= doc.numPages; i++) {
@@ -1142,8 +1144,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   }, [isPdf, previewUrl, scale, isMobile, renderTick, baseWidth]);
   const onPtrDown = (e) => {
     if (!isMobile) return;
-    const el = e.currentTarget;
-    el.setPointerCapture?.(e.pointerId);
     const m = ptrsRef.current;
     m.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (m.size === 2) {
@@ -1164,7 +1164,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     const dy = a[0].y - a[1].y;
     const dist = Math.hypot(dx, dy) || 1;
     const k = dist / (pinchDistRef.current || 1);
-    const next = Math.max(0.6, Math.min(2, +(pinchScaleRef.current * k).toFixed(2)));
+    const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, +(pinchScaleRef.current * k).toFixed(2)));
     if (next !== scale) onScaleChange?.(next);
   };
   const onPtrUp = (e) => {
@@ -1268,7 +1268,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
       </div>
       <div
         className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto"
-        style={{ touchAction: isMobile ? 'none' : 'manipulation', overflowX: 'auto' }}
+        style={{ touchAction: isMobile ? 'pan-y' : 'manipulation', overflowX: 'auto', overflowY: 'auto' }}
         onPointerDown={onPtrDown}
         onPointerMove={onPtrMove}
         onPointerUp={onPtrUp}
