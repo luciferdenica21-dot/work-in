@@ -72,7 +72,11 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
   return (
     <>
-      <nav className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-[120] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]" data-section="navbar">
+      <nav
+        className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-[120] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+        data-section="navbar"
+        style={{ paddingTop: 'env(safe-area-inset-top)' }}
+      >
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center z-10">
@@ -232,12 +236,16 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
       {isOpen && (
         <div
-          className="md:hidden fixed top-20 left-0 right-0 bottom-16 bg-black/70 z-[500]"
+          className="md:hidden fixed left-0 right-0 bottom-16 bg-black/70 z-[500]"
+          style={{ top: 'calc(5rem + env(safe-area-inset-top))' }}
           onClick={() => setIsOpen(false)}
         />
       )}
 
-      <div className={`md:hidden fixed left-0 right-0 top-20 bottom-16 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[510] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}>
+      <div
+        className={`md:hidden fixed left-0 right-0 bottom-16 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[510] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        style={{ top: 'calc(5rem + env(safe-area-inset-top))' }}
+      >
         <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
           <div className="space-y-2 text-center overflow-y-auto">
             <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
