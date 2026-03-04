@@ -66,12 +66,16 @@ const Hero = () => {
     }
   };
 
+  const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
+  const isMobileUa = /Mobi|Android|iPhone|iPad/i.test(ua);
+  const isTelegram = /Telegram/i.test(ua);
+  const heroOffsetStyle = isMobileUa && isTelegram ? { marginTop: 'calc(5rem + 16px)' } : undefined;
   return (
     <header 
       ref={sectionRef} 
       className={`relative text-center text-white bg-[#050505] overflow-hidden min-h-[85vh] flex items-center transition-all duration-700 ease-in-out ${activeId ? "py-4 md:py-6" : "py-8 md:py-12"}`}
       data-section="hero"
-      style={{ marginTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)' }}
+      style={heroOffsetStyle}
     >
       
       <div 
