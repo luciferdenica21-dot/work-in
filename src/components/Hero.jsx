@@ -71,6 +71,7 @@ const Hero = () => {
       ref={sectionRef} 
       className={`relative text-center text-white bg-[#050505] overflow-hidden min-h-[85vh] flex items-center transition-all duration-700 ease-in-out ${activeId ? "py-4 md:py-6" : "py-8 md:py-12"}`}
       data-section="hero"
+      style={{ marginTop: 'calc(env(safe-area-inset-top, 0px) + 5rem)' }}
     >
       
       <div 
