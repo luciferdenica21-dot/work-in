@@ -13,21 +13,41 @@ const useDrawing = (onChange) => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const r0 = c.getBoundingClientRect();
-    c.width = Math.max(1, Math.round(r0.width * dpr));
-    c.height = Math.max(1, Math.round(r0.height * dpr));
-    ctx.scale(dpr, dpr);
-    ctx.strokeStyle = '#111';
-    ctx.lineJoin = 'round';
-    ctx.lineCap = 'round';
+    const getDpr = () => Math.max(1, window.devicePixelRatio || 1);
+
+    const resize = () => {
+      const dpr = getDpr();
+      const r0 = c.getBoundingClientRect();
+      const nextW = Math.max(1, Math.round(r0.width * dpr));
+      const nextH = Math.max(1, Math.round(r0.height * dpr));
+      if (c.width !== nextW) c.width = nextW;
+      if (c.height !== nextH) c.height = nextH;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.strokeStyle = '#111';
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, r0.width, r0.height);
+    };
+
+    const raf1 = requestAnimationFrame(() => {
+      resize();
+      requestAnimationFrame(resize);
+    });
+
+    const ro = new ResizeObserver(() => resize());
+    ro.observe(c);
+    window.addEventListener('resize', resize);
     const getClientPoint = (e) => {
       const t = e?.touches?.[0] || e?.changedTouches?.[0];
       if (t) return { clientX: t.clientX, clientY: t.clientY, pressure: 1 };
       return { clientX: e.clientX, clientY: e.clientY, pressure: e.pressure };
     };
     const getPos = (e) => {
+      resize();
       const r = c.getBoundingClientRect();
+      const dpr = getDpr();
       const sx = (c.width / dpr) / r.width;
       const sy = (c.height / dpr) / r.height;
       const p = getClientPoint(e);
@@ -75,6 +95,9 @@ const useDrawing = (onChange) => {
     window.addEventListener('touchend', end);
     window.addEventListener('mouseup', end);
     return () => {
+      cancelAnimationFrame(raf1);
+      ro.disconnect();
+      window.removeEventListener('resize', resize);
       c.removeEventListener('pointerdown', start);
       c.removeEventListener('pointermove', move);
       c.removeEventListener('touchstart', start);
