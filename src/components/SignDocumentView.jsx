@@ -5,12 +5,13 @@ import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 import { authAPI } from '../config/api';
 
-const useDrawing = (onHasInkChange) => {
+const useDrawing = (onHasInkChange, enabled) => {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
   const hasInkRef = useRef(false);
   useEffect(() => {
+    if (!enabled) return;
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
@@ -96,7 +97,7 @@ const useDrawing = (onHasInkChange) => {
       window.removeEventListener('touchend', end);
       window.removeEventListener('mouseup', end);
     };
-  }, [onHasInkChange]);
+  }, [onHasInkChange, enabled]);
   const clear = () => {
     const c = canvasRef.current;
     if (!c) return;
@@ -132,7 +133,7 @@ export default function SignDocumentView() {
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [renderTick, setRenderTick] = useState(0);
   const pdfTextRef = useRef(null);
-  const { canvasRef, clear, getDataUrl } = useDrawing(setHasSig);
+  const { canvasRef, clear, getDataUrl } = useDrawing(setHasSig, showSignModal);
   const [baseWidth, setBaseWidth] = useState(0);
   const ptrsRef = useRef(new Map());
   const pinchDistRef = useRef(0);
