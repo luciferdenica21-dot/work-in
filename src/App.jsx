@@ -159,6 +159,25 @@ function App() {
             return;
           }
 
+          const hashParams = new URLSearchParams((window.location.hash || '').replace(/^#/, ''));
+          const hashAccessToken = hashParams.get('access_token');
+          if (hashAccessToken) {
+            try { window.history.replaceState({}, document.title, url.pathname + url.search); } catch { void 0; }
+            const exchanged = await authAPI.supabaseExchange(hashAccessToken);
+            setToken(exchanged.token);
+
+            const me = await authAPI.me();
+            setUser(me);
+            setUserRole(me.role);
+
+            if (me.role === 'admin') {
+              navigate('/manager', { replace: true });
+            } else {
+              navigate('/', { replace: true });
+            }
+            return;
+          }
+
           const code = url.searchParams.get('code');
           if (code) {
             const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
