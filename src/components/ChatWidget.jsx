@@ -1232,7 +1232,6 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     ctx.lineTo(x, y);
     ctx.stroke();
     lastRef.current = { x, y };
-    onDraw?.(c.toDataURL('image/png'));
   };
   const end = () => {
     if (!drawingRef.current) return;

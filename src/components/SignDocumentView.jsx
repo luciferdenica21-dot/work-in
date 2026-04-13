@@ -44,7 +44,6 @@ const useDrawing = (onChange) => {
       ctx.arc(last.current.x, last.current.y, baseR + pressure, 0, Math.PI * 2);
       ctx.fillStyle = '#111';
       ctx.fill();
-      onChange?.(c.toDataURL('image/png'));
     };
     const move = (e) => {
       if (!drawing.current) return;
@@ -58,11 +57,12 @@ const useDrawing = (onChange) => {
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
       last.current = { x: p.x, y: p.y };
-      onChange?.(c.toDataURL('image/png'));
     };
     const end = () => {
-      drawing.current = false;
-      onChange?.(c.toDataURL('image/png'));
+      if (drawing.current) {
+        drawing.current = false;
+        onChange?.(c.toDataURL('image/png'));
+      }
     };
     c.addEventListener('pointerdown', start, { passive: false });
     c.addEventListener('pointermove', move, { passive: false });
