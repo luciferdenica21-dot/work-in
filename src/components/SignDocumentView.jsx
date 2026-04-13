@@ -5,10 +5,11 @@ import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 import { authAPI } from '../config/api';
 
-const useDrawing = (onChange) => {
+const useDrawing = (onHasInkChange) => {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const last = useRef({ x: 0, y: 0 });
+  const hasInkRef = useRef(false);
   useEffect(() => {
     const c = canvasRef.current;
     if (!c) return;
@@ -36,6 +37,9 @@ const useDrawing = (onChange) => {
     };
     const start = (e) => {
       e.preventDefault();
+      if (typeof e.pointerId === 'number' && c.setPointerCapture) {
+        try { c.setPointerCapture(e.pointerId); } catch { void 0; }
+      }
       drawing.current = true;
       const p = getPos(e);
       last.current = { x: p.x, y: p.y };
@@ -45,7 +49,10 @@ const useDrawing = (onChange) => {
       ctx.arc(last.current.x, last.current.y, baseR + pressure, 0, Math.PI * 2);
       ctx.fillStyle = '#111';
       ctx.fill();
-      onChange?.(c.toDataURL('image/png'));
+      if (!hasInkRef.current) {
+        hasInkRef.current = true;
+        onHasInkChange?.(true);
+      }
     };
     const move = (e) => {
       if (!drawing.current) return;
@@ -59,11 +66,13 @@ const useDrawing = (onChange) => {
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
       last.current = { x: p.x, y: p.y };
-      onChange?.(c.toDataURL('image/png'));
+      if (!hasInkRef.current) {
+        hasInkRef.current = true;
+        onHasInkChange?.(true);
+      }
     };
     const end = () => {
       drawing.current = false;
-      onChange?.(c.toDataURL('image/png'));
     };
     c.addEventListener('pointerdown', start, { passive: false });
     c.addEventListener('pointermove', move, { passive: false });
@@ -87,15 +96,22 @@ const useDrawing = (onChange) => {
       window.removeEventListener('touchend', end);
       window.removeEventListener('mouseup', end);
     };
-  }, [onChange]);
+  }, [onHasInkChange]);
   const clear = () => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
     ctx.clearRect(0, 0, c.width, c.height);
-    onChange?.('');
+    hasInkRef.current = false;
+    onHasInkChange?.(false);
   };
-  return { canvasRef, clear };
+  const getDataUrl = () => {
+    const c = canvasRef.current;
+    if (!c) return '';
+    if (!hasInkRef.current) return '';
+    return c.toDataURL('image/png');
+  };
+  return { canvasRef, clear, getDataUrl };
 };
 
 export default function SignDocumentView() {
@@ -104,7 +120,7 @@ export default function SignDocumentView() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
-  const [sig, setSig] = useState('');
+  const [hasSig, setHasSig] = useState(false);
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
@@ -116,7 +132,7 @@ export default function SignDocumentView() {
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [renderTick, setRenderTick] = useState(0);
   const pdfTextRef = useRef(null);
-  const { canvasRef, clear } = useDrawing(setSig);
+  const { canvasRef, clear, getDataUrl } = useDrawing(setHasSig);
   const [baseWidth, setBaseWidth] = useState(0);
   const ptrsRef = useRef(new Map());
   const pinchDistRef = useRef(0);
@@ -144,6 +160,7 @@ export default function SignDocumentView() {
   }, [id]);
   const isAdmin = role === 'admin';
   const submit = async () => {
+    const sig = getDataUrl();
     if (!sig) return;
     setSending(true);
     try {
@@ -415,7 +432,7 @@ export default function SignDocumentView() {
             </div>
             <div className="flex justify-end gap-2 mt-3">
               <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('cancel')}</button>
-              <button disabled={!sig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">{t('sign')}</button>
+              <button disabled={!hasSig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">{t('sign')}</button>
             </div>
           </div>
         </div>
