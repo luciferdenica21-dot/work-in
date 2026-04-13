@@ -1,6 +1,9 @@
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'https://connector.ge';
+const defaultSocketUrl = (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+const envSocketUrl = import.meta.env.VITE_SOCKET_URL;
+const isLocalDev = import.meta.env.DEV && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const SOCKET_URL = isLocalDev ? defaultSocketUrl : (envSocketUrl || 'https://connector.ge');
 
 let socket = null;
 

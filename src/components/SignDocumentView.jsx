@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate } from 'react-router-dom';
 import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
+import { authAPI } from '../config/api';
 
 const useDrawing = (onChange) => {
   const canvasRef = useRef(null);
@@ -20,17 +21,24 @@ const useDrawing = (onChange) => {
     ctx.strokeStyle = '#111';
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
+    const getClientPoint = (e) => {
+      const t = e?.touches?.[0] || e?.changedTouches?.[0];
+      if (t) return { clientX: t.clientX, clientY: t.clientY, pressure: 1 };
+      return { clientX: e.clientX, clientY: e.clientY, pressure: e.pressure };
+    };
     const getPos = (e) => {
       const r = c.getBoundingClientRect();
       const sx = (c.width / dpr) / r.width;
       const sy = (c.height / dpr) / r.height;
-      return { x: (e.clientX - r.left) * sx, y: (e.clientY - r.top) * sy };
+      const p = getClientPoint(e);
+      return { x: (p.clientX - r.left) * sx, y: (p.clientY - r.top) * sy, pressure: p.pressure };
     };
     const start = (e) => {
       e.preventDefault();
       drawing.current = true;
-      last.current = getPos(e);
-      const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+      const p = getPos(e);
+      last.current = { x: p.x, y: p.y };
+      const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
       const baseR = 2;
       ctx.beginPath();
       ctx.arc(last.current.x, last.current.y, baseR + pressure, 0, Math.PI * 2);
@@ -42,14 +50,14 @@ const useDrawing = (onChange) => {
       if (!drawing.current) return;
       e.preventDefault();
       const p = getPos(e);
-      const pressure = e.pressure && e.pressure > 0 ? e.pressure : 1;
+      const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
       const baseW = 4;
       ctx.lineWidth = baseW * pressure;
       ctx.beginPath();
       ctx.moveTo(last.current.x, last.current.y);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
-      last.current = p;
+      last.current = { x: p.x, y: p.y };
       onChange?.(c.toDataURL('image/png'));
     };
     const end = () => {
@@ -58,13 +66,25 @@ const useDrawing = (onChange) => {
     };
     c.addEventListener('pointerdown', start, { passive: false });
     c.addEventListener('pointermove', move, { passive: false });
+    c.addEventListener('touchstart', start, { passive: false });
+    c.addEventListener('touchmove', move, { passive: false });
+    c.addEventListener('mousedown', start, { passive: false });
+    c.addEventListener('mousemove', move, { passive: false });
     window.addEventListener('pointerup', end);
     window.addEventListener('pointercancel', end);
+    window.addEventListener('touchend', end);
+    window.addEventListener('mouseup', end);
     return () => {
       c.removeEventListener('pointerdown', start);
       c.removeEventListener('pointermove', move);
+      c.removeEventListener('touchstart', start);
+      c.removeEventListener('touchmove', move);
+      c.removeEventListener('mousedown', start);
+      c.removeEventListener('mousemove', move);
       window.removeEventListener('pointerup', end);
       window.removeEventListener('pointercancel', end);
+      window.removeEventListener('touchend', end);
+      window.removeEventListener('mouseup', end);
     };
   }, [onChange]);
   const clear = () => {
@@ -87,6 +107,7 @@ export default function SignDocumentView() {
   const [signPos, setSignPos] = useState(null);
   const [sending, setSending] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
+  const [role, setRole] = useState('');
   const previewRef = useRef(null);
   const [scale, setScale] = useState(1);
   const pdfContainerRef = useRef(null);
@@ -109,25 +130,35 @@ export default function SignDocumentView() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    let active = true;
+    authAPI.me().then((u) => { if (active) setRole(String(u?.role || '')); }).catch(() => { void 0; });
+    return () => { active = false; };
+  }, []);
   // Клиент не меняет координаты — используем координаты, заданные администратором
   useEffect(() => {
     let active = true;
     signaturesAPI.get(id).then(d => { if (active) { setData(d); setSignPos(d?.managerSignPos || null); setLoading(false); } }).catch(() => { setLoading(false); });
     return () => { active = false; };
   }, [id]);
+  const isAdmin = role === 'admin';
   const submit = async () => {
     if (!sig) return;
     setSending(true);
     try {
       // рассчитываем абсолютные пиксели не нужны: отправим те же нормализованные координаты
-      await signaturesAPI.clientSign(id, sig, signPos || null);
+      if (isAdmin) {
+        await signaturesAPI.managerSign(id, sig);
+      } else {
+        await signaturesAPI.clientSign(id, sig, signPos || null);
+      }
       try {
         const fresh = await signaturesAPI.get(id);
         setData(fresh);
       } catch { void 0; }
       alert(t('sign_sent_success'));
-    } catch {
-      void 0;
+    } catch (e) {
+      alert(e?.message || t('sign_send_error'));
     } finally {
       setSending(false);
       setShowSignModal(false);
@@ -296,11 +327,14 @@ export default function SignDocumentView() {
           <div className="text-xl font-semibold">{t('sign_document_title')}</div>
           <div className="flex gap-2">
             <a href={previewUrl} target="_blank" rel="noreferrer" className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('view')}</a>
-            {!data?.clientSignatureUrl && (
+            {!isAdmin && !data?.clientSignatureUrl && (
               <>
                 <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('sign')}</button>
                 <button onClick={reject} disabled={sending} className="px-3 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60">{t('reject')}</button>
               </>
+            )}
+            {isAdmin && !data?.managerSignatureUrl && (
+              <button onClick={() => setShowSignModal(true)} className="px-3 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">{t('sign')}</button>
             )}
           </div>
         </div>

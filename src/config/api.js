@@ -1,4 +1,7 @@
-const API_URL = import.meta.env.VITE_API_URL || (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+const defaultApiUrl = (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+const envApiUrl = import.meta.env.VITE_API_URL;
+const isLocalDev = import.meta.env.DEV && typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+const API_URL = isLocalDev ? defaultApiUrl : (envApiUrl || defaultApiUrl);
 
 // Вспомогательные функции для токена
 export const getToken = () => localStorage.getItem('token');

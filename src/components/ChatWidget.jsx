@@ -1194,8 +1194,11 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
   const start = (e) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const t = e?.touches?.[0] || e?.changedTouches?.[0];
+    const clientX = t ? t.clientX : e.clientX;
+    const clientY = t ? t.clientY : e.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     drawingRef.current = true;
     lastRef.current = { x, y };
     const c = canvasRef.current;
@@ -1212,8 +1215,11 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
     if (!drawingRef.current) return;
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const t = e?.touches?.[0] || e?.changedTouches?.[0];
+    const clientX = t ? t.clientX : e.clientX;
+    const clientY = t ? t.clientY : e.clientY;
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
@@ -1352,6 +1358,13 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
             onPointerMove={move}
             onPointerUp={end}
             onPointerLeave={end}
+            onTouchStart={start}
+            onTouchMove={move}
+            onTouchEnd={end}
+            onMouseDown={start}
+            onMouseMove={move}
+            onMouseUp={end}
+            onMouseLeave={end}
             className="w-full h-[160px] sm:h-[200px] bg-white rounded"
             style={{ touchAction: 'none' }}
           />
