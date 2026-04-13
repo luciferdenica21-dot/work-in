@@ -40,6 +40,10 @@ export const authAPI = {
     method: 'POST',
     body: JSON.stringify(userData),
   }),
+  supabaseExchange: (accessToken) => apiRequest('/auth/supabase', {
+    method: 'POST',
+    body: JSON.stringify({ access_token: accessToken }),
+  }),
   me: () => apiRequest('/auth/me'),
   getMe: () => apiRequest('/auth/me'),
   updateProfile: (profileData) => apiRequest('/auth/me', {

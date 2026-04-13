@@ -15,8 +15,9 @@ const ManagerPanel = lazy(() => import('./components/ManagerPanelPro'));
 import ClientDashboard from './components/ClientDashboard';
 import TermsInfo from './components/TermsInfo';
 import SignDocumentView from './components/SignDocumentView';
-import { authAPI, getToken, removeToken } from './config/api';
+import { authAPI, getToken, removeToken, setToken } from './config/api';
 import { initAnalyticsTracker } from './config/analyticsTracker';
+import { supabase } from './config/supabaseClient';
 
 function App() {
   const { i18n } = useTranslation(); 
@@ -144,6 +145,51 @@ function App() {
     setUserRole(null);
   };
 
+  const AuthCallback = () => {
+    const navigate = useNavigate();
+
+    useEffect(() => {
+      const run = async () => {
+        try {
+          const { data, error } = await supabase.auth.getSession();
+          if (error) throw error;
+          const session = data?.session;
+          const accessToken = session?.access_token;
+          if (!accessToken) {
+            navigate('/', { replace: true });
+            return;
+          }
+
+          const exchanged = await authAPI.supabaseExchange(accessToken);
+          setToken(exchanged.token);
+
+          const me = await authAPI.me();
+          setUser(me);
+          setUserRole(me.role);
+
+          if (me.role === 'admin') {
+            navigate('/manager', { replace: true });
+          } else {
+            navigate('/', { replace: true });
+          }
+        } catch (e) {
+          console.error('Supabase callback error:', e);
+          removeToken();
+          setUser(null);
+          setUserRole(null);
+          navigate('/', { replace: true });
+        }
+      };
+      run();
+    }, [navigate]);
+
+    return (
+      <div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
+      </div>
+    );
+  };
+
   if (loading) return (
     <div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div>
@@ -201,6 +247,7 @@ function App() {
           : <MainSite />
       } 
     />
+    <Route path="/auth/callback" element={<AuthCallback />} />
     <Route 
       path="/manager" 
       element={

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { authAPI, setToken, analyticsAPI } from '../config/api';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../config/supabaseClient';
 
 const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const { t } = useTranslation();
@@ -18,6 +19,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -33,12 +35,47 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
 
   if (!isOpen) return null;
 
+  const handleGoogle = async () => {
+    if (loading) return;
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      });
+      if (err) throw err;
+    } catch (e) {
+      setError(e?.message || 'Не удалось войти через Google');
+      setLoading(false);
+    }
+  };
+
+  const handleFacebook = async () => {
+    if (loading) return;
+    setLoading(true);
+    setError('');
+    setInfo('');
+    try {
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: { redirectTo: `${window.location.origin}/auth/callback` }
+      });
+      if (err) throw err;
+    } catch (e) {
+      setError(e?.message || 'Не удалось войти через Facebook');
+      setLoading(false);
+    }
+  };
+
   const handleAuth = async (e) => {
     e.preventDefault();
     if (loading) return;
     
     setLoading(true);
     setError('');
+    setInfo('');
     
     try {
       let userData;
@@ -121,6 +158,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     setFirstName('');
     setLastName('');
     setError('');
+    setInfo('');
   };
 
   const toggleMode = () => {
@@ -149,6 +187,27 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
               className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50 transition-all"
             />
           </div>
+
+          {isLogin && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={loading}
+                className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+              >
+                Google
+              </button>
+              <button
+                type="button"
+                onClick={handleFacebook}
+                disabled={loading}
+                className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+              >
+                Facebook
+              </button>
+            </div>
+          )}
 
           {/* Новое поле ввода логина для регистрации */}
           {!isLogin && (
@@ -262,6 +321,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
             </div>
           )}
           
+          {info && <p className="text-green-400 text-[10px] uppercase text-center font-bold tracking-wider">{info}</p>}
           {error && <p className="text-red-500 text-[10px] uppercase text-center font-bold tracking-wider">{error}</p>}
           
           <button 

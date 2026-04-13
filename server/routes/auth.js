@@ -110,6 +110,67 @@ router.post('/login', async (req, res) => {
   }
 });
 
+router.post('/supabase', async (req, res) => {
+  try {
+    const { access_token } = req.body || {};
+    if (!access_token) return res.status(400).json({ message: 'access_token is required' });
+
+    const { data: u, error: uErr } = await supabase.auth.getUser(String(access_token));
+    if (uErr) return res.status(401).json({ message: uErr.message });
+    const authUser = u?.user;
+    if (!authUser?.id) return res.status(401).json({ message: 'Invalid Supabase session' });
+
+    const userId = authUser.id;
+    const normalizedEmail = String(authUser.email || '').trim().toLowerCase();
+    if (!normalizedEmail) return res.status(400).json({ message: 'Supabase user has no email' });
+
+    const { data: existing, error: exErr } = await supabase
+      .from('users')
+      .select('id,email,login,role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (exErr) throw exErr;
+
+    let row = existing;
+    if (!row) {
+      const nowIso = new Date().toISOString();
+      const passwordHash = await bcrypt.hash(randomUUID(), 10);
+      const login = normalizedEmail;
+
+      const { data: created, error: createErr } = await supabase
+        .from('users')
+        .insert({
+          id: userId,
+          email: normalizedEmail,
+          login,
+          password_hash: passwordHash,
+          role: 'user',
+          phone: '',
+          city: '',
+          first_name: '',
+          last_name: '',
+          quick_scripts: [],
+          created_at: nowIso,
+          updated_at: nowIso
+        })
+        .select('id,email,login,role')
+        .single();
+      if (createErr) throw createErr;
+      row = created;
+    }
+
+    res.json({
+      _id: row.id,
+      email: row.email,
+      login: row.login,
+      role: row.role,
+      token: generateToken(row.id)
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 // ПОЛУЧЕНИЕ ДАННЫХ О СЕБЕ
 router.get('/me', protect, async (req, res) => {
   try {
