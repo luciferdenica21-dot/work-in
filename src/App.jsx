@@ -147,13 +147,17 @@ function App() {
 
   const AuthCallback = () => {
     const navigate = useNavigate();
+    const [authError, setAuthError] = useState('');
 
     useEffect(() => {
       const run = async () => {
         try {
           const url = new URL(window.location.href);
           const errDesc = url.searchParams.get('error_description') || url.searchParams.get('error');
-          if (errDesc) throw new Error(errDesc);
+          if (errDesc) {
+            setAuthError(String(errDesc));
+            return;
+          }
 
           const code = url.searchParams.get('code');
           if (code) {
@@ -161,10 +165,25 @@ function App() {
             if (exErr) throw exErr;
           }
 
-          const { data, error } = await supabase.auth.getSession();
+          let { data, error } = await supabase.auth.getSession();
           if (error) throw error;
 
-          const accessToken = data?.session?.access_token;
+          let accessToken = data?.session?.access_token;
+          if (!accessToken) {
+            accessToken = await new Promise((resolve) => {
+              const sub = supabase.auth.onAuthStateChange((_event, session) => {
+                if (session?.access_token) {
+                  sub.data.subscription.unsubscribe();
+                  resolve(session.access_token);
+                }
+              });
+              setTimeout(() => {
+                sub.data.subscription.unsubscribe();
+                resolve('');
+              }, 2500);
+            });
+          }
+
           if (!accessToken) {
             navigate('/', { replace: true });
             return;
@@ -187,11 +206,28 @@ function App() {
           removeToken();
           setUser(null);
           setUserRole(null);
-          navigate('/', { replace: true });
+          setAuthError(String(e?.message || e));
         }
       };
       run();
     }, [navigate]);
+
+    if (authError) {
+      return (
+        <div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ maxWidth: 520 }}>
+            <div style={{ fontWeight: 700, marginBottom: 12 }}>Ошибка входа</div>
+            <div style={{ opacity: 0.8, wordBreak: 'break-word' }}>{authError}</div>
+            <button
+              onClick={() => navigate('/', { replace: true })}
+              style={{ marginTop: 16, background: '#2563eb', color: 'white', padding: '10px 14px', borderRadius: 10 }}
+            >
+              На главную
+            </button>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
