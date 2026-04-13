@@ -120,43 +120,77 @@ router.post('/supabase', async (req, res) => {
     const authUser = u?.user;
     if (!authUser?.id) return res.status(401).json({ message: 'Invalid Supabase session' });
 
-    const userId = authUser.id;
     const normalizedEmail = String(authUser.email || '').trim().toLowerCase();
     if (!normalizedEmail) return res.status(400).json({ message: 'Supabase user has no email' });
 
     const { data: existing, error: exErr } = await supabase
       .from('users')
       .select('id,email,login,role')
-      .eq('id', userId)
+      .eq('email', normalizedEmail)
       .maybeSingle();
     if (exErr) throw exErr;
 
     let row = existing;
+    if (row && (!row.login || String(row.login).trim() === '')) {
+      const nowIso = new Date().toISOString();
+      const { data: updated, error: updErr } = await supabase
+        .from('users')
+        .update({ login: normalizedEmail, updated_at: nowIso })
+        .eq('id', row.id)
+        .select('id,email,login,role')
+        .maybeSingle();
+      if (!updErr && updated) row = updated;
+    }
     if (!row) {
       const nowIso = new Date().toISOString();
       const passwordHash = await bcrypt.hash(randomUUID(), 10);
-      const login = normalizedEmail;
+      const baseLogin = normalizedEmail;
+      let login = baseLogin;
 
-      const { data: created, error: createErr } = await supabase
-        .from('users')
-        .insert({
-          id: userId,
-          email: normalizedEmail,
-          login,
-          password_hash: passwordHash,
-          role: 'user',
-          phone: '',
-          city: '',
-          first_name: '',
-          last_name: '',
-          quick_scripts: [],
-          created_at: nowIso,
-          updated_at: nowIso
-        })
-        .select('id,email,login,role')
-        .single();
-      if (createErr) throw createErr;
-      row = created;
+      const makeInsert = async () => {
+        const { data: created, error: createErr } = await supabase
+          .from('users')
+          .insert({
+            id: randomUUID(),
+            email: normalizedEmail,
+            login,
+            password_hash: passwordHash,
+            role: 'user',
+            phone: '',
+            city: '',
+            first_name: '',
+            last_name: '',
+            quick_scripts: [],
+            created_at: nowIso,
+            updated_at: nowIso
+          })
+          .select('id,email,login,role')
+          .single();
+        if (createErr) throw createErr;
+        return created;
+      };
+
+      try {
+        row = await makeInsert();
+      } catch (e) {
+        const code = e?.code || e?.details?.code;
+        if (String(code) === '23505') {
+          const { data: byEmail, error: byEmailErr } = await supabase
+            .from('users')
+            .select('id,email,login,role')
+            .eq('email', normalizedEmail)
+            .maybeSingle();
+          if (byEmailErr) throw byEmailErr;
+          if (byEmail) {
+            row = byEmail;
+          } else {
+            login = `${String(baseLogin).split('@')[0]}_${Date.now().toString(36)}`;
+            row = await makeInsert();
+          }
+        } else {
+          throw e;
+        }
+      }
     }
 
     res.json({

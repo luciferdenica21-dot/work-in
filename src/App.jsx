@@ -151,10 +151,20 @@ function App() {
     useEffect(() => {
       const run = async () => {
         try {
+          const url = new URL(window.location.href);
+          const errDesc = url.searchParams.get('error_description') || url.searchParams.get('error');
+          if (errDesc) throw new Error(errDesc);
+
+          const code = url.searchParams.get('code');
+          if (code) {
+            const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
+            if (exErr) throw exErr;
+          }
+
           const { data, error } = await supabase.auth.getSession();
           if (error) throw error;
-          const session = data?.session;
-          const accessToken = session?.access_token;
+
+          const accessToken = data?.session?.access_token;
           if (!accessToken) {
             navigate('/', { replace: true });
             return;

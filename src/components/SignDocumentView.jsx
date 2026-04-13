@@ -420,36 +420,43 @@ export default function SignDocumentView() {
         ) : null}
       </div>
       {showSignModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowSignModal(false)} />
-          <div className="relative w-full max-w-xl bg-[#0a0f1f] border border-white/10 rounded-2xl p-4">
-            <div className="text-white font-semibold mb-2">{t('sign_draw_label')}</div>
-            <div className="relative border border-white/10 rounded bg-white">
-              <canvas
-                ref={canvasRef}
-                width={800}
-                height={240}
-                onPointerDown={start}
-                onPointerMove={move}
-                onPointerUp={end}
-                onPointerCancel={end}
-                onPointerLeave={end}
-                onTouchStart={start}
-                onTouchMove={move}
-                onTouchEnd={end}
-                onTouchCancel={end}
-                onMouseDown={start}
-                onMouseMove={move}
-                onMouseUp={end}
-                onMouseLeave={end}
-                className="w-full h-48 bg-white rounded"
-                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
-              />
-              <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">{t('clear')}</button>
-            </div>
-            <div className="flex justify-end gap-2 mt-3">
-              <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('cancel')}</button>
-              <button disabled={!hasSig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">{t('sign')}</button>
+          <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center p-0 sm:p-4">
+            <div className="w-full sm:max-w-xl bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div className="text-white font-semibold">{t('sign_draw_label')}</div>
+                <button onClick={() => setShowSignModal(false)} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
+              </div>
+              <div className="p-4 overflow-y-auto">
+                <div className="relative border border-white/10 rounded bg-white">
+                  <canvas
+                    ref={canvasRef}
+                    width={800}
+                    height={320}
+                    onPointerDown={start}
+                    onPointerMove={move}
+                    onPointerUp={end}
+                    onPointerCancel={end}
+                    onPointerLeave={end}
+                    onTouchStart={start}
+                    onTouchMove={move}
+                    onTouchEnd={end}
+                    onTouchCancel={end}
+                    onMouseDown={start}
+                    onMouseMove={move}
+                    onMouseUp={end}
+                    onMouseLeave={end}
+                    className="w-full h-[240px] sm:h-[280px] bg-white rounded"
+                    style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+                  />
+                  <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/90 text-black hover:bg-white">{t('clear')}</button>
+                </div>
+              </div>
+              <div className="px-4 py-3 border-t border-white/10 flex gap-2 justify-end">
+                <button onClick={() => setShowSignModal(false)} className="px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15">{t('cancel')}</button>
+                <button disabled={!hasSig || sending} onClick={submit} className="px-3 py-2 rounded-lg bg-blue-600 text-white disabled:opacity-60">{t('sign')}</button>
+              </div>
             </div>
           </div>
         </div>
