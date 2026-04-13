@@ -1,10 +1,20 @@
 import express from 'express';
-import Message from '../models/Message.js';
-import Chat from '../models/Chat.js';
+import { randomUUID } from 'node:crypto';
+import { supabase } from '../config/supabase.js';
 import { protect } from '../middleware/auth.js';
 import { sendTelegram } from '../config/telegram.js';
 
 const router = express.Router();
+
+const toMessage = (row) => ({
+  _id: row.id,
+  chatId: row.chat_id,
+  text: row.text,
+  senderId: row.sender_id,
+  senderEmail: row.sender_email || '',
+  attachments: row.attachments || [],
+  createdAt: row.created_at
+});
 
 // Send message
 router.post('/', protect, async (req, res) => {
@@ -15,35 +25,53 @@ router.post('/', protect, async (req, res) => {
       return res.status(400).json({ message: 'ChatId and text are required' });
     }
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
     // Check access
     // Исправлено: добавлена проверка на существование chat.userId перед вызовом toString()
-    if (req.user.role !== 'admin' && chat.userId?.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
     const senderId = req.user.role === 'admin' ? 'manager' : req.user._id.toString();
 
-    const message = await Message.create({
-      chatId,
-      text,
-      senderId,
-      senderEmail: req.user.email
-    });
+    const nowIso = new Date().toISOString();
+    const msgRow = {
+      id: randomUUID(),
+      chat_id: chatId,
+      text: String(text),
+      sender_id: String(senderId),
+      sender_email: String(req.user.email || ''),
+      attachments: [],
+      created_at: nowIso
+    };
+
+    const { data: inserted, error: insErr } = await supabase
+      .from('messages')
+      .insert(msgRow)
+      .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+      .single();
+    if (insErr) throw insErr;
 
     // Update chat
-    chat.lastMessage = text;
-    chat.lastUpdate = new Date();
-    if (req.user.role === 'admin') {
-      chat.unread = false; // Admin messages don't mark as unread
-    } else {
-      chat.unread = true; // User messages mark as unread for admin
-    }
-    await chat.save();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({
+        last_message: String(text),
+        last_update: nowIso,
+        unread: req.user.role !== 'admin',
+        updated_at: nowIso
+      })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
 
     const senderType = req.user.role === 'admin' ? 'Менеджер' : 'Клиент';
     const tgText = [
@@ -54,7 +82,7 @@ router.post('/', protect, async (req, res) => {
     ].join('\n');
     sendTelegram(tgText);
 
-    res.status(201).json(message);
+    res.status(201).json(toMessage(inserted));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -64,12 +92,22 @@ router.delete('/:messageId', protect, async (req, res) => {
   try {
     const { messageId } = req.params;
 
-    const message = await Message.findById(messageId);
+    const { data: message, error: msgErr } = await supabase
+      .from('messages')
+      .select('id,chat_id,sender_id')
+      .eq('id', messageId)
+      .maybeSingle();
+    if (msgErr) throw msgErr;
     if (!message) {
       return res.status(404).json({ message: 'Message not found' });
     }
 
-    const chat = await Chat.findById(message.chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id')
+      .eq('id', message.chat_id)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
@@ -77,19 +115,20 @@ router.delete('/:messageId', protect, async (req, res) => {
     // Admin can delete any message
     if (req.user.role !== 'admin') {
       // User must own chat and be sender of message
-      if (chat.userId?.toString() !== req.user._id.toString()) {
+      if (String(chat.user_id) !== String(req.user._id)) {
         return res.status(403).json({ message: 'Access denied' });
       }
-      if (message.senderId !== req.user._id.toString()) {
+      if (String(message.sender_id) !== String(req.user._id)) {
         return res.status(403).json({ message: 'Access denied' });
       }
     }
 
-    await Message.findByIdAndDelete(messageId);
+    const { error: delErr } = await supabase.from('messages').delete().eq('id', messageId);
+    if (delErr) throw delErr;
 
     const io = req.app.get('io');
     if (io) {
-      io.to(`chat-${message.chatId}`).emit('message-deleted', { messageId });
+      io.to(`chat-${message.chat_id}`).emit('message-deleted', { messageId });
       io.emit('message-deleted', { messageId });
     }
 

@@ -1,42 +1,66 @@
 import express from 'express';
-import Chat from '../models/Chat.js';
-import Message from '../models/Message.js';
-import User from '../models/User.js';
+import { randomUUID } from 'node:crypto';
+import { supabase } from '../config/supabase.js';
 import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
+const toUserInfo = (row) => {
+  if (!row) return null;
+  return {
+    email: row.email,
+    phone: row.phone || '',
+    city: row.city || '',
+    firstName: row.first_name || '',
+    lastName: row.last_name || ''
+  };
+};
+
+const toChatResponse = (chatRow, userRow) => {
+  const userInfo = toUserInfo(userRow);
+  return {
+    chatId: chatRow.id,
+    userId: chatRow.user_id || 'Deleted User',
+    userEmail: chatRow.user_email,
+    userInfo,
+    lastMessage: chatRow.last_message || '',
+    lastUpdate: chatRow.last_update,
+    unread: !!chatRow.unread,
+    orders: chatRow.orders || []
+  };
+};
+
+const toMessage = (row) => ({
+  _id: row.id,
+  chatId: row.chat_id,
+  text: row.text,
+  senderId: row.sender_id,
+  senderEmail: row.sender_email || '',
+  attachments: row.attachments || [],
+  createdAt: row.created_at
+});
+
 // Get all chats (admin only)
 router.get('/', protect, admin, async (req, res) => {
   try {
-    const chats = await Chat.find()
-      .populate('userId', 'email phone city firstName lastName')
-      .sort({ lastUpdate: -1 });
+    const { data: chats, error } = await supabase
+      .from('chats')
+      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .order('last_update', { ascending: false });
+    if (error) throw error;
 
-    const formattedChats = chats.map(chat => {
-      // Проверяем, удалось ли найти пользователя через populate
-      const isUserPopulated = chat.userId && typeof chat.userId === 'object';
+    const userIds = Array.from(new Set((chats || []).map((c) => c.user_id).filter(Boolean)));
+    let usersById = new Map();
+    if (userIds.length > 0) {
+      const { data: users, error: uErr } = await supabase
+        .from('users')
+        .select('id,email,phone,city,first_name,last_name')
+        .in('id', userIds);
+      if (uErr) throw uErr;
+      usersById = new Map((users || []).map((u) => [u.id, u]));
+    }
 
-      return {
-        chatId: chat._id,
-        // Если пользователь удален, берем сохраненный ID из базы или 'Unknown'
-        userId: isUserPopulated ? chat.userId._id : (chat.userId || 'Deleted User'),
-        userEmail: chat.userEmail,
-        userInfo: isUserPopulated ? {
-          email: chat.userId.email,
-          phone: chat.userId.phone,
-          city: chat.userId.city,
-          firstName: chat.userId.firstName,
-          lastName: chat.userId.lastName
-        } : null,
-        lastMessage: chat.lastMessage,
-        lastUpdate: chat.lastUpdate,
-        unread: chat.unread,
-        orders: chat.orders
-      };
-    });
-
-    res.json(formattedChats);
+    res.json((chats || []).map((c) => toChatResponse(c, usersById.get(c.user_id))));
   } catch (error) {
     console.error('Ошибка в GET /api/chats:', error);
     res.status(500).json({ message: error.message });
@@ -51,40 +75,46 @@ router.post('/start', protect, admin, async (req, res) => {
       return res.status(400).json({ message: 'userId is required' });
     }
 
-    const user = await User.findById(userId).select('email phone city firstName lastName');
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id,email,phone,city,first_name,last_name')
+      .eq('id', userId)
+      .maybeSingle();
+    if (userErr) throw userErr;
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    let chat = await Chat.findOne({ userId: user._id }).populate('userId', 'email phone city firstName lastName');
+    let { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
+
     if (!chat) {
-      chat = await Chat.create({
-        userId: user._id,
-        userEmail: user.email,
-        lastMessage: '',
+      const nowIso = new Date().toISOString();
+      const chatRow = {
+        id: randomUUID(),
+        user_id: userId,
+        user_email: user.email,
+        last_message: '',
+        last_update: nowIso,
         unread: false,
-      });
-      await chat.populate('userId', 'email phone city firstName lastName');
+        orders: [],
+        created_at: nowIso,
+        updated_at: nowIso
+      };
+      const { data: created, error: createErr } = await supabase
+        .from('chats')
+        .insert(chatRow)
+        .select('id,user_id,user_email,last_message,last_update,unread,orders')
+        .single();
+      if (createErr) throw createErr;
+      chat = created;
     }
 
-    const isUserPopulated = chat.userId && typeof chat.userId === 'object';
-
-    res.json({
-      chatId: chat._id,
-      userId: isUserPopulated ? chat.userId._id : chat.userId,
-      userEmail: chat.userEmail,
-      userInfo: isUserPopulated ? {
-        email: chat.userId.email,
-        phone: chat.userId.phone,
-        city: chat.userId.city,
-        firstName: chat.userId.firstName,
-        lastName: chat.userId.lastName
-      } : null,
-      lastMessage: chat.lastMessage,
-      lastUpdate: chat.lastUpdate,
-      unread: chat.unread,
-      orders: chat.orders
-    });
+    res.json(toChatResponse(chat, user));
   } catch (error) {
     console.error('Ошибка в POST /api/chats/start:', error);
     res.status(500).json({ message: error.message });
@@ -94,39 +124,43 @@ router.post('/start', protect, admin, async (req, res) => {
 // Get user's own chat
 router.get('/my-chat', protect, async (req, res) => {
   try {
-    let chat = await Chat.findOne({ userId: req.user._id })
-      .populate('userId', 'email phone city firstName lastName');
+    let { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .eq('user_id', req.user._id)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
 
     if (!chat) {
-      // Create chat if doesn't exist
-      chat = await Chat.create({
-        userId: req.user._id,
-        userEmail: req.user.email,
-        lastMessage: '',
-        unread: false
-      });
-      // Повторно загружаем данные пользователя после создания
-      await chat.populate('userId', 'email phone city firstName lastName');
+      const nowIso = new Date().toISOString();
+      const chatRow = {
+        id: randomUUID(),
+        user_id: req.user._id,
+        user_email: req.user.email,
+        last_message: '',
+        last_update: nowIso,
+        unread: false,
+        orders: [],
+        created_at: nowIso,
+        updated_at: nowIso
+      };
+      const { data: created, error: createErr } = await supabase
+        .from('chats')
+        .insert(chatRow)
+        .select('id,user_id,user_email,last_message,last_update,unread,orders')
+        .single();
+      if (createErr) throw createErr;
+      chat = created;
     }
 
-    const isUserPopulated = chat.userId && typeof chat.userId === 'object';
+    const { data: user, error: uErr } = await supabase
+      .from('users')
+      .select('id,email,phone,city,first_name,last_name')
+      .eq('id', chat.user_id)
+      .maybeSingle();
+    if (uErr) throw uErr;
 
-    res.json({
-      chatId: chat._id,
-      userId: isUserPopulated ? chat.userId._id : chat.userId,
-      userEmail: chat.userEmail,
-      userInfo: isUserPopulated ? {
-        email: chat.userId.email,
-        phone: chat.userId.phone,
-        city: chat.userId.city,
-        firstName: chat.userId.firstName,
-        lastName: chat.userId.lastName
-      } : null,
-      lastMessage: chat.lastMessage,
-      lastUpdate: chat.lastUpdate,
-      unread: chat.unread,
-      orders: chat.orders
-    });
+    res.json(toChatResponse(chat, user));
   } catch (error) {
     console.error('Ошибка в GET /my-chat:', error);
     res.status(500).json({ message: error.message });
@@ -138,20 +172,29 @@ router.get('/:chatId/messages', protect, async (req, res) => {
   try {
     const { chatId } = req.params;
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
     // Проверка прав: админ или владелец чата
-    if (req.user.role !== 'admin' && chat.userId?.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    const messages = await Message.find({ chatId })
-      .sort({ createdAt: 1 });
+    const { data: messages, error: msgErr } = await supabase
+      .from('messages')
+      .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: true });
+    if (msgErr) throw msgErr;
 
-    res.json(messages);
+    res.json((messages || []).map(toMessage));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -162,17 +205,25 @@ router.patch('/:chatId/read', protect, async (req, res) => {
   try {
     const { chatId } = req.params;
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    if (req.user.role !== 'admin' && chat.userId?.toString() !== req.user._id.toString()) {
+    if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
       return res.status(403).json({ message: 'Access denied' });
     }
 
-    chat.unread = false;
-    await chat.save();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ unread: false, updated_at: new Date().toISOString() })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
 
     res.json({ message: 'Chat marked as read' });
   } catch (error) {
@@ -185,17 +236,25 @@ router.delete('/:chatId/messages', protect, admin, async (req, res) => {
   try {
     const { chatId } = req.params;
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    await Message.deleteMany({ chatId });
+    const { error: msgDelErr } = await supabase.from('messages').delete().eq('chat_id', chatId);
+    if (msgDelErr) throw msgDelErr;
 
-    chat.lastMessage = '';
-    chat.unread = false;
-    chat.lastUpdate = new Date();
-    await chat.save();
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ last_message: '', unread: false, last_update: nowIso, updated_at: nowIso })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
 
     const io = req.app.get('io');
     if (io) {
@@ -214,14 +273,21 @@ router.delete('/:chatId', protect, admin, async (req, res) => {
   try {
     const { chatId } = req.params;
 
-    // Удаляем сам чат
-    const chat = await Chat.findByIdAndDelete(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
 
-    // Удаляем все сообщения, связанные с этим чатом
-    await Message.deleteMany({ chatId });
+    const { error: msgDelErr } = await supabase.from('messages').delete().eq('chat_id', chatId);
+    if (msgDelErr) throw msgDelErr;
+
+    const { error: chatDelErr } = await supabase.from('chats').delete().eq('id', chatId);
+    if (chatDelErr) throw chatDelErr;
 
     const io = req.app.get('io');
     if (io) {
@@ -238,8 +304,14 @@ router.delete('/:chatId', protect, admin, async (req, res) => {
 // Удаление отдельного сообщения (только админ)
 router.delete('/message/:messageId', protect, admin, async (req, res) => {
   try {
-    const message = await Message.findByIdAndDelete(req.params.messageId);
-    if (!message) {
+    const { data: deleted, error } = await supabase
+      .from('messages')
+      .delete()
+      .eq('id', req.params.messageId)
+      .select('id')
+      .maybeSingle();
+    if (error) throw error;
+    if (!deleted) {
       return res.status(404).json({ message: 'Message not found' });
     }
 

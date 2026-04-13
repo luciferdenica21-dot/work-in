@@ -1,8 +1,8 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import Chat from '../models/Chat.js';
-import Message from '../models/Message.js';
+import bcrypt from 'bcryptjs';
+import { randomUUID } from 'node:crypto';
+import { supabase } from '../config/supabase.js';
 import { protect, admin } from '../middleware/auth.js';
 
 /* global process */
@@ -24,27 +24,50 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'Email, login and password are required' });
     }
 
-    const userExists = await User.findOne({ $or: [{ email }, { login }] });
-    if (userExists) {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedLogin = String(login).trim();
+
+    const { data: exists, error: existsErr } = await supabase
+      .from('users')
+      .select('id')
+      .or(`email.eq.${normalizedEmail},login.eq.${normalizedLogin}`)
+      .limit(1);
+    if (existsErr) throw existsErr;
+    if (exists && exists.length > 0) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const user = await User.create({
-      email,
-      login,
-      password,
+    const passwordHash = await bcrypt.hash(String(password), 10);
+    const nowIso = new Date().toISOString();
+
+    const userRow = {
+      id: randomUUID(),
+      email: normalizedEmail,
+      login: normalizedLogin,
+      password_hash: passwordHash,
+      role: 'user',
       phone: phone || '',
       city: city || '',
-      firstName: firstName || '',
-      lastName: lastName || ''
-    });
+      first_name: firstName || '',
+      last_name: lastName || '',
+      quick_scripts: [],
+      created_at: nowIso,
+      updated_at: nowIso
+    };
 
-    const token = generateToken(user._id);
+    const { data: created, error: createErr } = await supabase
+      .from('users')
+      .insert(userRow)
+      .select('id,email,login,role')
+      .single();
+    if (createErr) throw createErr;
+
+    const token = generateToken(created.id);
     res.status(201).json({
-      _id: user._id,
-      email: user.email,
-      login: user.login,
-      role: user.role, // Добавлено: передаем роль на фронтенд
+      _id: created.id,
+      email: created.email,
+      login: created.login,
+      role: created.role,
       token
     });
   } catch (error) {
@@ -64,17 +87,20 @@ router.post('/login', async (req, res) => {
     const identifier = String(email).trim();
     const normalizedEmail = identifier.toLowerCase();
 
-    const user = await User.findOne({
-      $or: [{ email: normalizedEmail }, { login: identifier }]
-    });
+    const { data: row, error: findErr } = await supabase
+      .from('users')
+      .select('id,email,login,role,password_hash')
+      .or(`email.eq.${normalizedEmail},login.eq.${identifier}`)
+      .maybeSingle();
+    if (findErr) throw findErr;
 
-    if (user && (await user.matchPassword(password))) {
+    if (row && (await bcrypt.compare(String(password), row.password_hash || ''))) {
       res.json({
-        _id: user._id,
-        email: user.email,
-        login: user.login,
-        role: user.role, // Добавлено: теперь фронтенд увидит, что это admin
-        token: generateToken(user._id)
+        _id: row.id,
+        email: row.email,
+        login: row.login,
+        role: row.role,
+        token: generateToken(row.id)
       });
     } else {
       res.status(401).json({ message: 'Invalid email or password' });
@@ -87,8 +113,7 @@ router.post('/login', async (req, res) => {
 // ПОЛУЧЕНИЕ ДАННЫХ О СЕБЕ
 router.get('/me', protect, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
-    res.json(user);
+    res.json(req.user);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -99,17 +124,13 @@ router.put('/me', protect, async (req, res) => {
   try {
     const { firstName, lastName, phone, city, quickScripts } = req.body;
 
-    const user = await User.findById(req.user._id);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    user.firstName = firstName ?? user.firstName;
-    user.lastName = lastName ?? user.lastName;
-    user.phone = phone ?? user.phone;
-    user.city = city ?? user.city;
+    const update = {};
+    if (firstName !== undefined) update.first_name = firstName ?? '';
+    if (lastName !== undefined) update.last_name = lastName ?? '';
+    if (phone !== undefined) update.phone = phone ?? '';
+    if (city !== undefined) update.city = city ?? '';
     if (Array.isArray(quickScripts)) {
-      user.quickScripts = quickScripts
+      update.quick_scripts = quickScripts
         .filter(s => s && typeof s.title === 'string' && typeof s.text === 'string')
         .map(s => ({
           id: String(s.id || Date.now().toString(36)),
@@ -117,11 +138,30 @@ router.put('/me', protect, async (req, res) => {
           text: String(s.text)
         }));
     }
+    update.updated_at = new Date().toISOString();
 
-    await user.save();
+    const { data: updated, error: updErr } = await supabase
+      .from('users')
+      .update(update)
+      .eq('id', req.user._id)
+      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .maybeSingle();
+    if (updErr) throw updErr;
+    if (!updated) return res.status(404).json({ message: 'User not found' });
 
-    const updated = await User.findById(req.user._id).select('-password');
-    res.json(updated);
+    res.json({
+      _id: updated.id,
+      email: updated.email,
+      login: updated.login,
+      role: updated.role,
+      phone: updated.phone || '',
+      city: updated.city || '',
+      firstName: updated.first_name || '',
+      lastName: updated.last_name || '',
+      quickScripts: updated.quick_scripts || [],
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -135,12 +175,29 @@ router.get('/users/:userId', protect, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
-    const user = await User.findById(req.params.userId).select('-password');
-    if (!user) {
+    const { data: row, error } = await supabase
+      .from('users')
+      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .eq('id', req.params.userId)
+      .maybeSingle();
+    if (error) throw error;
+    if (!row) {
       return res.status(404).json({ message: 'User not found' });
     }
     
-    res.json(user);
+    res.json({
+      _id: row.id,
+      email: row.email,
+      login: row.login,
+      role: row.role,
+      phone: row.phone || '',
+      city: row.city || '',
+      firstName: row.first_name || '',
+      lastName: row.last_name || '',
+      quickScripts: row.quick_scripts || [],
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -153,8 +210,25 @@ router.get('/users', protect, async (req, res) => {
       return res.status(403).json({ message: 'Access denied' });
     }
     
-    const users = await User.find({}).select('-password');
-    res.json(users);
+    const { data: rows, error } = await supabase
+      .from('users')
+      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    res.json((rows || []).map((r) => ({
+      _id: r.id,
+      email: r.email,
+      login: r.login,
+      role: r.role,
+      phone: r.phone || '',
+      city: r.city || '',
+      firstName: r.first_name || '',
+      lastName: r.last_name || '',
+      quickScripts: r.quick_scripts || [],
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    })));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -165,17 +239,31 @@ router.delete('/users/:userId', protect, admin, async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const user = await User.findById(userId);
+    const { data: user, error: userErr } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
+    if (userErr) throw userErr;
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    const chat = await Chat.findOneAndDelete({ userId: user._id });
-    if (chat?._id) {
-      await Message.deleteMany({ chatId: chat._id.toString() });
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
+    if (chat?.id) {
+      const { error: msgDelErr } = await supabase.from('messages').delete().eq('chat_id', chat.id);
+      if (msgDelErr) throw msgDelErr;
+      const { error: chatDelErr } = await supabase.from('chats').delete().eq('id', chat.id);
+      if (chatDelErr) throw chatDelErr;
     }
 
-    await User.findByIdAndDelete(user._id);
+    const { error: userDelErr } = await supabase.from('users').delete().eq('id', userId);
+    if (userDelErr) throw userDelErr;
 
     res.json({ message: 'User deleted' });
   } catch (error) {

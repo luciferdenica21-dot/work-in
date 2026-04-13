@@ -6,19 +6,18 @@ import cookieParser from 'cookie-parser';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'node:crypto';
 
-import connectDB from './config/database.js';
 import authRoutes from './routes/auth.js';
 import chatRoutes from './routes/chats.js';
 import messageRoutes from './routes/messages.js';
 import orderRoutes from './routes/orders.js';
 import analyticsRoutes from './routes/analytics.js';
 import fileRoutes from './routes/files.js';
-import Message from './models/Message.js';
 import backupRoutes from './routes/backups.js';
 import signatureRoutes from './routes/signatures.js';
-import Chat from './models/Chat.js';
 import { sendTelegram } from './config/telegram.js';
+import { supabase } from './config/supabase.js';
 
 /* global process */
 
@@ -51,8 +50,6 @@ const io = new Server(server, {
 
 app.set('io', io);
 
-connectDB();
-
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
@@ -67,14 +64,19 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 app.post('/api/chats/:id/read', async (req, res) => {
   try {
-    const chat = await Chat.findById(req.params.id);
-    if (chat) {
-      chat.unread = false;
-      await chat.save();
-      io.to(`chat-${req.params.id}`).emit('chat-read', { chatId: req.params.id });
-      return res.json({ success: true });
-    }
-    res.status(404).json({ message: 'Chat not found' });
+    const chatId = req.params.id;
+    const { data: updated, error } = await supabase
+      .from('chats')
+      .update({ unread: false, updated_at: new Date().toISOString() })
+      .eq('id', chatId)
+      .select('id')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!updated) return res.status(404).json({ message: 'Chat not found' });
+
+    io.to(`chat-${chatId}`).emit('chat-read', { chatId });
+    return res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -140,23 +142,61 @@ io.on('connection', (socket) => {
     try {
       const { chatId, text } = data;
       if (!chatId || !text) return;
-      const chat = await Chat.findById(chatId);
+
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('id,user_id,unread')
+        .eq('id', chatId)
+        .maybeSingle();
+      if (chatErr) throw chatErr;
       if (!chat) return;
+
       const senderId = socket.role === 'admin' ? 'manager' : socket.userId;
-      const message = await Message.create({
-        chatId,
-        text,
-        senderId,
-        senderEmail: socket.handshake.auth.email || ''
-      });
-      chat.lastMessage = text;
-      chat.lastUpdate = new Date();
-      chat.unread = socket.role !== 'admin';
-      await chat.save();
+
+      const nowIso = new Date().toISOString();
+      const messageRow = {
+        id: randomUUID(),
+        chat_id: chatId,
+        text: String(text),
+        sender_id: String(senderId),
+        sender_email: String(socket.handshake.auth.email || ''),
+        attachments: [],
+        created_at: nowIso
+      };
+
+      const { data: inserted, error: insErr } = await supabase
+        .from('messages')
+        .insert(messageRow)
+        .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+        .single();
+      if (insErr) throw insErr;
+
+      const { error: updErr } = await supabase
+        .from('chats')
+        .update({
+          last_message: String(text),
+          last_update: nowIso,
+          unread: socket.role !== 'admin',
+          updated_at: nowIso
+        })
+        .eq('id', chatId);
+      if (updErr) throw updErr;
+
+      const message = {
+        _id: inserted.id,
+        chatId: inserted.chat_id,
+        text: inserted.text,
+        senderId: inserted.sender_id,
+        senderEmail: inserted.sender_email || '',
+        attachments: inserted.attachments || [],
+        createdAt: inserted.created_at
+      };
+
       io.to(`chat-${chatId}`).emit('new-message', message);
       if (socket.role !== 'admin') {
-        io.emit('new-chat-message', { chatId, message: message.toObject() });
+        io.emit('new-chat-message', { chatId, message });
       }
+
       const senderType = socket.role === 'admin' ? 'Менеджер' : 'Клиент';
       sendTelegram([
         '💬 Новое сообщение',
@@ -173,12 +213,14 @@ io.on('connection', (socket) => {
   socket.on('mark-read', async (chatId) => {
     try {
       if (socket.role !== 'admin') return;
-      const chat = await Chat.findById(chatId);
-      if (chat) {
-        chat.unread = false;
-        await chat.save();
-        io.to(`chat-${chatId}`).emit('chat-read', { chatId });
-      }
+      const { data: updated, error } = await supabase
+        .from('chats')
+        .update({ unread: false, updated_at: new Date().toISOString() })
+        .eq('id', chatId)
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (updated) io.to(`chat-${chatId}`).emit('chat-read', { chatId });
     } catch (error) {
       console.error('Mark read error:', error);
     }

@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
+import { supabase } from '../config/supabase.js';
 
 /* global process */
 
@@ -19,11 +19,30 @@ export const protect = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-      req.user = await User.findById(decoded.id).select('-password');
-      
-      if (!req.user) {
+      const { data: row, error } = await supabase
+        .from('users')
+        .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+        .eq('id', decoded.id)
+        .maybeSingle();
+      if (error) throw error;
+
+      if (!row) {
         return res.status(401).json({ message: 'User not found' });
       }
+
+      req.user = {
+        _id: row.id,
+        email: row.email,
+        login: row.login,
+        role: row.role,
+        phone: row.phone || '',
+        city: row.city || '',
+        firstName: row.first_name || '',
+        lastName: row.last_name || '',
+        quickScripts: row.quick_scripts || [],
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
       
       next();
     } catch {

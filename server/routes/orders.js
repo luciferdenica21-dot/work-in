@@ -1,25 +1,62 @@
 import express from 'express';
-import Chat from '../models/Chat.js';
+import { randomUUID } from 'node:crypto';
+import { supabase } from '../config/supabase.js';
 import { sendTelegram } from '../config/telegram.js';
 import { protect, admin } from '../middleware/auth.js';
 
 const router = express.Router();
 
+const ensureChatForUser = async ({ userId, userEmail }) => {
+  const { data: existing, error: findErr } = await supabase
+    .from('chats')
+    .select('id,user_id,user_email,orders,last_update')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (findErr) throw findErr;
+  if (existing) return existing;
+
+  const nowIso = new Date().toISOString();
+  const chatRow = {
+    id: randomUUID(),
+    user_id: userId,
+    user_email: userEmail,
+    last_message: '',
+    last_update: nowIso,
+    unread: false,
+    orders: [],
+    created_at: nowIso,
+    updated_at: nowIso
+  };
+  const { data: created, error: createErr } = await supabase
+    .from('chats')
+    .insert(chatRow)
+    .select('id,user_id,user_email,orders,last_update')
+    .single();
+  if (createErr) throw createErr;
+  return created;
+};
+
 // ПОЛУЧИТЬ ВСЕ ЗАКАЗЫ (Добавлено для менеджера)
 router.get('/', protect, admin, async (req, res) => {
   try {
-    const chats = await Chat.find({ 'orders.0': { $exists: true } });
+    const { data: chats, error } = await supabase
+      .from('chats')
+      .select('id,orders')
+      .not('orders', 'is', null);
+    if (error) throw error;
+
     let allOrders = [];
-    chats.forEach(chat => {
-      chat.orders.forEach((order, index) => {
+    (chats || []).forEach(chat => {
+      const orders = Array.isArray(chat.orders) ? chat.orders : [];
+      orders.forEach((order, index) => {
         allOrders.push({ 
-          ...order.toObject(), 
-          chatId: chat._id, 
+          ...(order || {}), 
+          chatId: chat.id, 
           orderIndex: index // Индекс важен для удаления/обновления
         });
       });
     });
-    res.json(allOrders.sort((a, b) => b.createdAt - a.createdAt));
+    res.json(allOrders.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)));
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -46,20 +83,8 @@ router.post('/', protect, async (req, res) => {
     }
     
     console.log('Finding chat for user:', req.user._id);
-    let chat = await Chat.findOne({ userId: req.user._id });
-
-    if (!chat) {
-      console.log('Creating new chat for user:', req.user._id);
-      chat = await Chat.create({
-        userId: req.user._id,
-        userEmail: req.user.email,
-        lastMessage: '',
-        unread: false
-      });
-      console.log('New chat created:', chat._id);
-    } else {
-      console.log('Found existing chat:', chat._id);
-    }
+    let chat = await ensureChatForUser({ userId: req.user._id, userEmail: req.user.email });
+    console.log('Chat for order:', chat.id);
 
     const newOrder = {
       firstName: firstName || '',
@@ -74,15 +99,20 @@ router.post('/', protect, async (req, res) => {
     
     console.log('Creating order:', newOrder);
 
-    chat.orders.push(newOrder);
-    chat.lastUpdate = new Date();
-    
+    const existingOrders = Array.isArray(chat.orders) ? chat.orders : [];
+    const updatedOrders = [...existingOrders, newOrder];
+    const nowIso = new Date().toISOString();
+
     console.log('Saving chat with new order...');
-    await chat.save();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ orders: updatedOrders, last_update: nowIso, updated_at: nowIso })
+      .eq('id', chat.id);
+    if (updErr) throw updErr;
     
     const io = req.app.get('io');
     if (io) {
-      io.emit('order-created', { chatId: chat._id.toString(), order: newOrder });
+      io.emit('order-created', { chatId: chat.id.toString(), order: newOrder });
     }
     
     const servicesList = (newOrder.services || []).map(s => typeof s === 'string' ? s : s?.name || '').filter(Boolean).join(', ');
@@ -92,7 +122,7 @@ router.post('/', protect, async (req, res) => {
       `Связь: ${newOrder.contact}`,
       servicesList ? `Услуги: ${servicesList}` : '',
       newOrder.comment ? `Комментарий: ${newOrder.comment}` : '',
-      `Чат: ${chat._id.toString()}`
+      `Чат: ${chat.id.toString()}`
     ].filter(Boolean).join('\n');
     sendTelegram(tgText);
     
@@ -120,18 +150,29 @@ router.put('/:chatId/:orderIndex/status', protect, admin, async (req, res) => {
         return res.status(400).json({ message: 'Invalid status' });
       }
       
-      const chat = await Chat.findById(chatId);
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('id,orders')
+        .eq('id', chatId)
+        .maybeSingle();
+      if (chatErr) throw chatErr;
       if (!chat) {
         return res.status(404).json({ message: 'Chat not found' });
       }
       
-      if (!chat.orders[orderIdx]) {
+      const orders = Array.isArray(chat.orders) ? chat.orders : [];
+      if (!orders[orderIdx]) {
         return res.status(404).json({ message: 'Order not found' });
       }
       
-      console.log('Updating order:', chat.orders[orderIdx]);
-      chat.orders[orderIdx].status = status;
-      await chat.save();
+      console.log('Updating order:', orders[orderIdx]);
+      orders[orderIdx] = { ...(orders[orderIdx] || {}), status };
+      const nowIso = new Date().toISOString();
+      const { error: updErr } = await supabase
+        .from('chats')
+        .update({ orders, updated_at: nowIso })
+        .eq('id', chatId);
+      if (updErr) throw updErr;
       
       console.log('Order status updated successfully');
       res.json({ message: 'Updated' });
@@ -153,26 +194,37 @@ router.delete('/:chatId/:orderIndex', protect, async (req, res) => {
       const orderIdx = parseInt(orderIndex);
       
       // Находим чат
-      const chat = await Chat.findById(chatId);
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('id,user_id,orders')
+        .eq('id', chatId)
+        .maybeSingle();
+      if (chatErr) throw chatErr;
       if (!chat) {
         return res.status(404).json({ message: 'Chat not found' });
       }
 
       // Проверяем права: админ может удалять любой, клиент - только свои
-      if (req.user.role !== 'admin' && chat.userId.toString() !== req.user._id.toString()) {
+      if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
       // Проверяем существование заказа
-      if (!chat.orders[orderIdx]) {
+      const orders = Array.isArray(chat.orders) ? chat.orders : [];
+      if (!orders[orderIdx]) {
         return res.status(404).json({ message: 'Order not found' });
       }
 
-      console.log('Deleting order:', chat.orders[orderIdx]);
+      console.log('Deleting order:', orders[orderIdx]);
 
       // Удаляем заказ
-      chat.orders.splice(orderIdx, 1);
-      await chat.save();
+      orders.splice(orderIdx, 1);
+      const nowIso = new Date().toISOString();
+      const { error: updErr } = await supabase
+        .from('chats')
+        .update({ orders, updated_at: nowIso })
+        .eq('id', chatId);
+      if (updErr) throw updErr;
 
       console.log('Order deleted successfully');
       res.json({ message: 'Order deleted successfully' });
@@ -189,15 +241,21 @@ router.put('/:chatId/:orderIndex/details', protect, admin, async (req, res) => {
     const orderIdx = parseInt(orderIndex);
     const { managerComment, priceGel, priceUsd, priceEur, managerDate } = req.body;
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,orders')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
-    if (!chat.orders[orderIdx]) {
+    const orders = Array.isArray(chat.orders) ? chat.orders : [];
+    if (!orders[orderIdx]) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const order = chat.orders[orderIdx];
+    const order = { ...(orders[orderIdx] || {}) };
     if (typeof managerComment === 'string') order.managerComment = managerComment;
     if (priceGel !== undefined) order.priceGel = Number(priceGel) || 0;
     if (priceUsd !== undefined) order.priceUsd = Number(priceUsd) || 0;
@@ -206,12 +264,17 @@ router.put('/:chatId/:orderIndex/details', protect, admin, async (req, res) => {
       order.managerDate = managerDate ? new Date(managerDate) : null;
     }
 
-    chat.lastUpdate = new Date();
-    await chat.save();
+    orders[orderIdx] = order;
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ orders, last_update: nowIso, updated_at: nowIso })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
 
     const responseOrder = { 
-      ...order.toObject(), 
-      chatId: chat._id, 
+      ...order, 
+      chatId: chat.id, 
       orderIndex: orderIdx 
     };
     res.json(responseOrder);
@@ -225,22 +288,33 @@ router.delete('/:chatId/:orderIndex/details', protect, admin, async (req, res) =
     const { chatId, orderIndex } = req.params;
     const orderIdx = parseInt(orderIndex);
 
-    const chat = await Chat.findById(chatId);
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,orders')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
     if (!chat) {
       return res.status(404).json({ message: 'Chat not found' });
     }
-    if (!chat.orders[orderIdx]) {
+    const orders = Array.isArray(chat.orders) ? chat.orders : [];
+    if (!orders[orderIdx]) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
-    const order = chat.orders[orderIdx];
+    const order = { ...(orders[orderIdx] || {}) };
     order.managerComment = '';
     order.priceGel = 0;
     order.priceUsd = 0;
     order.priceEur = 0;
     order.managerDate = null;
-    chat.lastUpdate = new Date();
-    await chat.save();
+    orders[orderIdx] = order;
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ orders, last_update: nowIso, updated_at: nowIso })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
 
     res.json({ message: 'Cleared' });
   } catch (error) {

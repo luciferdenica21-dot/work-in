@@ -2,14 +2,24 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { upload } from '../middleware/upload.js';
-import Message from '../models/Message.js';
-import Chat from '../models/Chat.js';
+import { randomUUID } from 'node:crypto';
+import { supabase } from '../config/supabase.js';
 import { protect } from '../middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
+
+const toMessage = (row) => ({
+  _id: row.id,
+  chatId: row.chat_id,
+  text: row.text,
+  senderId: row.sender_id,
+  senderEmail: row.sender_email || '',
+  attachments: row.attachments || [],
+  createdAt: row.created_at
+});
 
 const sanitizeName = (s) => {
   try {
@@ -47,90 +57,129 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
 
     // If messageId provided, add to existing message
     if (parsedMessageId) {
-      const message = await Message.findById(parsedMessageId);
+      const { data: message, error: msgErr } = await supabase
+        .from('messages')
+        .select('id,chat_id,attachments')
+        .eq('id', parsedMessageId)
+        .maybeSingle();
+      if (msgErr) throw msgErr;
       if (!message) {
         console.log('ERROR: Message not found');
         return res.status(404).json({ message: 'Message not found' });
       }
 
       // Check access
-      const chat = await Chat.findById(message.chatId);
-      if (req.user.role !== 'admin' && chat.userId.toString() !== req.user._id.toString()) {
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('id,user_id')
+        .eq('id', message.chat_id)
+        .maybeSingle();
+      if (chatErr) throw chatErr;
+      if (!chat) return res.status(404).json({ message: 'Chat not found' });
+      if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
       const fileUrl = `/uploads/${req.file.filename}`;
-      message.attachments.push({
+      const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+      attachments.push({
         filename: req.file.filename,
         originalName: sanitizeName(req.file.originalname),
         mimetype: req.file.mimetype,
         size: req.file.size,
         url: fileUrl
       });
-      await message.save();
+
+      const { data: updated, error: updErr } = await supabase
+        .from('messages')
+        .update({ attachments })
+        .eq('id', parsedMessageId)
+        .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+        .single();
+      if (updErr) throw updErr;
 
       const io = req.app.get('io');
       if (io) {
-        io.to(`chat-${message.chatId}`).emit('new-message', message);
-        io.emit('new-chat-message', { chatId: message.chatId.toString(), message: message.toObject() });
+        const mapped = toMessage(updated);
+        io.to(`chat-${updated.chat_id}`).emit('new-message', mapped);
+        io.emit('new-chat-message', { chatId: updated.chat_id.toString(), message: mapped });
       }
 
       return res.json({
         message: 'File uploaded',
-        attachment: message.attachments[message.attachments.length - 1]
+        attachment: attachments[attachments.length - 1]
       });
     }
 
     // If chatId provided, create new message with file
     if (parsedChatId) {
-      const chat = await Chat.findById(parsedChatId);
+      const { data: chat, error: chatErr } = await supabase
+        .from('chats')
+        .select('id,user_id')
+        .eq('id', parsedChatId)
+        .maybeSingle();
+      if (chatErr) throw chatErr;
       if (!chat) {
         return res.status(404).json({ message: 'Chat not found' });
       }
 
-      if (req.user.role !== 'admin' && chat.userId.toString() !== req.user._id.toString()) {
+      if (req.user.role !== 'admin' && String(chat.user_id) !== String(req.user._id)) {
         return res.status(403).json({ message: 'Access denied' });
       }
 
       const senderId = req.user.role === 'admin' ? 'manager' : req.user._id.toString();
       const fileUrl = `/uploads/${req.file.filename}`;
 
-      const message = await Message.create({
-        chatId: parsedChatId,
+      const nowIso = new Date().toISOString();
+      const msgRow = {
+        id: randomUUID(),
+        chat_id: parsedChatId,
         text: `📎 Отправлен файл: ${sanitizeName(req.file.originalname)}`,
-        senderId,
-        senderEmail: req.user.email,
+        sender_id: senderId,
+        sender_email: req.user.email || '',
         attachments: [{
           filename: req.file.filename,
           originalName: sanitizeName(req.file.originalname),
           mimetype: req.file.mimetype,
           size: req.file.size,
           url: fileUrl
-        }]
-      });
+        }],
+        created_at: nowIso
+      };
+      const { data: message, error: msgErr } = await supabase
+        .from('messages')
+        .insert(msgRow)
+        .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+        .single();
+      if (msgErr) throw msgErr;
 
       // Update chat
-      chat.lastMessage = `📎 ${req.file.originalname}`;
-      chat.lastUpdate = new Date();
-      if (req.user.role !== 'admin') {
-        chat.unread = true;
-      }
-      await chat.save();
+      const { error: updChatErr } = await supabase
+        .from('chats')
+        .update({
+          last_message: `📎 ${req.file.originalname}`,
+          last_update: nowIso,
+          unread: req.user.role !== 'admin',
+          updated_at: nowIso
+        })
+        .eq('id', parsedChatId);
+      if (updChatErr) throw updChatErr;
 
       const io = req.app.get('io');
       if (io) {
-        io.to(`chat-${parsedChatId}`).emit('new-message', message);
-        io.emit('new-chat-message', { chatId: parsedChatId.toString(), message: message.toObject() });
+        const mapped = toMessage(message);
+        io.to(`chat-${parsedChatId}`).emit('new-message', mapped);
+        io.emit('new-chat-message', { chatId: parsedChatId.toString(), message: mapped });
       }
 
       // Возвращаем правильный формат для клиента
       return res.status(201).json({
-        messageId: message._id,
+        messageId: message.id,
         fileUrl: fileUrl,
         fileName: req.file.originalname,
         fileSize: req.file.size,
         fileType: req.file.mimetype,
-        message: message
+        message: toMessage(message)
       });
     }
 
