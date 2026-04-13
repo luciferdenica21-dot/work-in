@@ -5,114 +5,111 @@ import { signaturesAPI } from '../config/api';
 import { filesAPI } from '../config/api';
 import { authAPI } from '../config/api';
 
-const useDrawing = (onHasInkChange, enabled) => {
+const useDrawing = (onHasInkChange) => {
   const canvasRef = useRef(null);
-  const drawing = useRef(false);
-  const last = useRef({ x: 0, y: 0 });
+  const drawingRef = useRef(false);
+  const lastRef = useRef({ x: 0, y: 0 });
   const hasInkRef = useRef(false);
-  useEffect(() => {
-    if (!enabled) return;
+  const dprRef = useRef(1);
+
+  const ensureCanvas = () => {
     const c = canvasRef.current;
-    if (!c) return;
+    if (!c) return null;
     const ctx = c.getContext('2d');
+    if (!ctx) return null;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const r0 = c.getBoundingClientRect();
-    c.width = Math.max(1, Math.round(r0.width * dpr));
-    c.height = Math.max(1, Math.round(r0.height * dpr));
+    dprRef.current = dpr;
+    const r = c.getBoundingClientRect();
+    const nextW = Math.max(1, Math.round(r.width * dpr));
+    const nextH = Math.max(1, Math.round(r.height * dpr));
+    if (c.width !== nextW || c.height !== nextH) {
+      c.width = nextW;
+      c.height = nextH;
+    }
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(dpr, dpr);
     ctx.strokeStyle = '#111';
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    const getClientPoint = (e) => {
-      const t = e?.touches?.[0] || e?.changedTouches?.[0];
-      if (t) return { clientX: t.clientX, clientY: t.clientY, pressure: 1 };
-      return { clientX: e.clientX, clientY: e.clientY, pressure: e.pressure };
-    };
-    const getPos = (e) => {
-      const r = c.getBoundingClientRect();
-      const sx = (c.width / dpr) / r.width;
-      const sy = (c.height / dpr) / r.height;
-      const p = getClientPoint(e);
-      return { x: (p.clientX - r.left) * sx, y: (p.clientY - r.top) * sy, pressure: p.pressure };
-    };
-    const start = (e) => {
-      e.preventDefault();
-      if (typeof e.pointerId === 'number' && c.setPointerCapture) {
-        try { c.setPointerCapture(e.pointerId); } catch { void 0; }
-      }
-      drawing.current = true;
-      const p = getPos(e);
-      last.current = { x: p.x, y: p.y };
-      const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
-      const baseR = 2;
-      ctx.beginPath();
-      ctx.arc(last.current.x, last.current.y, baseR + pressure, 0, Math.PI * 2);
-      ctx.fillStyle = '#111';
-      ctx.fill();
-      if (!hasInkRef.current) {
-        hasInkRef.current = true;
-        onHasInkChange?.(true);
-      }
-    };
-    const move = (e) => {
-      if (!drawing.current) return;
-      e.preventDefault();
-      const p = getPos(e);
-      const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
-      const baseW = 4;
-      ctx.lineWidth = baseW * pressure;
-      ctx.beginPath();
-      ctx.moveTo(last.current.x, last.current.y);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-      last.current = { x: p.x, y: p.y };
-      if (!hasInkRef.current) {
-        hasInkRef.current = true;
-        onHasInkChange?.(true);
-      }
-    };
-    const end = () => {
-      drawing.current = false;
-    };
-    c.addEventListener('pointerdown', start, { passive: false });
-    c.addEventListener('pointermove', move, { passive: false });
-    c.addEventListener('touchstart', start, { passive: false });
-    c.addEventListener('touchmove', move, { passive: false });
-    c.addEventListener('mousedown', start, { passive: false });
-    c.addEventListener('mousemove', move, { passive: false });
-    window.addEventListener('pointerup', end);
-    window.addEventListener('pointercancel', end);
-    window.addEventListener('touchend', end);
-    window.addEventListener('mouseup', end);
-    return () => {
-      c.removeEventListener('pointerdown', start);
-      c.removeEventListener('pointermove', move);
-      c.removeEventListener('touchstart', start);
-      c.removeEventListener('touchmove', move);
-      c.removeEventListener('mousedown', start);
-      c.removeEventListener('mousemove', move);
-      window.removeEventListener('pointerup', end);
-      window.removeEventListener('pointercancel', end);
-      window.removeEventListener('touchend', end);
-      window.removeEventListener('mouseup', end);
-    };
-  }, [onHasInkChange, enabled]);
+    return { c, ctx };
+  };
+
+  const getPos = (e) => {
+    const c = canvasRef.current;
+    const dpr = dprRef.current || 1;
+    const r = c.getBoundingClientRect();
+    const t = e?.touches?.[0] || e?.changedTouches?.[0];
+    const clientX = t ? t.clientX : e.clientX;
+    const clientY = t ? t.clientY : e.clientY;
+    const sx = (c.width / dpr) / r.width;
+    const sy = (c.height / dpr) / r.height;
+    return { x: (clientX - r.left) * sx, y: (clientY - r.top) * sy, pressure: e.pressure };
+  };
+
+  const markInk = () => {
+    if (hasInkRef.current) return;
+    hasInkRef.current = true;
+    onHasInkChange?.(true);
+  };
+
+  const start = (e) => {
+    e.preventDefault?.();
+    const res = ensureCanvas();
+    if (!res) return;
+    if (typeof e.pointerId === 'number' && res.c.setPointerCapture) {
+      try { res.c.setPointerCapture(e.pointerId); } catch { void 0; }
+    }
+    drawingRef.current = true;
+    const p = getPos(e);
+    lastRef.current = { x: p.x, y: p.y };
+    const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
+    const baseR = 2;
+    res.ctx.beginPath();
+    res.ctx.arc(p.x, p.y, baseR + pressure, 0, Math.PI * 2);
+    res.ctx.fillStyle = '#111';
+    res.ctx.fill();
+    markInk();
+  };
+
+  const move = (e) => {
+    if (!drawingRef.current) return;
+    e.preventDefault?.();
+    const res = ensureCanvas();
+    if (!res) return;
+    const p = getPos(e);
+    const pressure = p.pressure && p.pressure > 0 ? p.pressure : 1;
+    const baseW = 4;
+    res.ctx.lineWidth = baseW * pressure;
+    res.ctx.beginPath();
+    res.ctx.moveTo(lastRef.current.x, lastRef.current.y);
+    res.ctx.lineTo(p.x, p.y);
+    res.ctx.stroke();
+    lastRef.current = { x: p.x, y: p.y };
+    markInk();
+  };
+
+  const end = () => {
+    drawingRef.current = false;
+  };
+
   const clear = () => {
     const c = canvasRef.current;
     if (!c) return;
     const ctx = c.getContext('2d');
+    if (!ctx) return;
     ctx.clearRect(0, 0, c.width, c.height);
     hasInkRef.current = false;
     onHasInkChange?.(false);
   };
+
   const getDataUrl = () => {
     const c = canvasRef.current;
     if (!c) return '';
     if (!hasInkRef.current) return '';
     return c.toDataURL('image/png');
   };
-  return { canvasRef, clear, getDataUrl };
+
+  return { canvasRef, clear, getDataUrl, start, move, end };
 };
 
 export default function SignDocumentView() {
@@ -133,7 +130,7 @@ export default function SignDocumentView() {
   const isMobile = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [renderTick, setRenderTick] = useState(0);
   const pdfTextRef = useRef(null);
-  const { canvasRef, clear, getDataUrl } = useDrawing(setHasSig, showSignModal);
+  const { canvasRef, clear, getDataUrl, start, move, end } = useDrawing(setHasSig);
   const [baseWidth, setBaseWidth] = useState(0);
   const ptrsRef = useRef(new Map());
   const pinchDistRef = useRef(0);
@@ -428,7 +425,26 @@ export default function SignDocumentView() {
           <div className="relative w-full max-w-xl bg-[#0a0f1f] border border-white/10 rounded-2xl p-4">
             <div className="text-white font-semibold mb-2">{t('sign_draw_label')}</div>
             <div className="relative border border-white/10 rounded bg-white">
-              <canvas ref={canvasRef} width={800} height={240} className="w-full h-48" style={{ touchAction: 'none' }} />
+              <canvas
+                ref={canvasRef}
+                width={800}
+                height={240}
+                onPointerDown={start}
+                onPointerMove={move}
+                onPointerUp={end}
+                onPointerCancel={end}
+                onPointerLeave={end}
+                onTouchStart={start}
+                onTouchMove={move}
+                onTouchEnd={end}
+                onTouchCancel={end}
+                onMouseDown={start}
+                onMouseMove={move}
+                onMouseUp={end}
+                onMouseLeave={end}
+                className="w-full h-48 bg-white rounded"
+                style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+              />
               <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/80 text-black hover:bg-white">{t('clear')}</button>
             </div>
             <div className="flex justify-end gap-2 mt-3">
