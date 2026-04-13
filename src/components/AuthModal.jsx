@@ -188,27 +188,6 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
             />
           </div>
 
-          {isLogin && (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleGoogle}
-                disabled={loading}
-                className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
-              >
-                Google
-              </button>
-              <button
-                type="button"
-                onClick={handleFacebook}
-                disabled={loading}
-                className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
-              >
-                Facebook
-              </button>
-            </div>
-          )}
-
           {/* Новое поле ввода логина для регистрации */}
           {!isLogin && (
             <div className="space-y-2">
@@ -339,6 +318,30 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
         >
           {isLogin ? t("Нет аккаунта? Создать") : t("Уже есть аккаунт? Войти")}
         </button>
+
+        <div className="mt-6">
+          <div className="text-white/30 text-[10px] uppercase tracking-widest text-center">
+            {t("Войти через")}
+          </div>
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleGoogle}
+              disabled={loading}
+              className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+            >
+              Google
+            </button>
+            <button
+              type="button"
+              onClick={handleFacebook}
+              disabled={loading}
+              className="w-full bg-white/5 hover:bg-white/10 text-white py-3 rounded-xl text-[10px] font-bold uppercase tracking-[0.2em] transition-all disabled:opacity-50"
+            >
+              Facebook
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
