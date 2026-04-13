@@ -553,7 +553,7 @@ const ChatWidget = ({ user }) => {
 
   const extractSignLink = (text) => {
     if (typeof text !== 'string') return null;
-    const m = text.match(/https?:\/\/[^\s]*\/sign\/([a-fA-F0-9]{24})/);
+    const m = text.match(/https?:\/\/[^\s]*\/sign\/([a-fA-F0-9]{24}|[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})/);
     if (!m) return null;
     return { url: m[0], id: m[1] };
   };
@@ -569,6 +569,14 @@ const ChatWidget = ({ user }) => {
     signDataUrl: '',
     sending: false,
   });
+  useEffect(() => {
+    if (!signPosModal.open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [signPosModal.open]);
   const [legalCardOpen, setLegalCardOpen] = useState(false);
   const [legalCardMsg, setLegalCardMsg] = useState(null);
 
@@ -956,20 +964,22 @@ const ChatWidget = ({ user }) => {
       {signPosModal.open && (
         <div className="fixed inset-0 z-[10000]">
           <div className="absolute inset-0 bg-black/60" onClick={() => setSignPosModal(s => ({ ...s, open: false }))} />
-          <div className="absolute inset-x-0 top-0 sm:top-8 mx-auto w-full max-w-3xl bg-[#0b1020] border border-white/10 rounded-none sm:rounded-2xl p-4 sm:p-6 max-h-[92vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-white font-semibold">{t('sign_modal_title')}</div>
-              <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
-            </div>
-            <div className="space-y-3">
-              <div className="text-white/80 text-sm">{t('sign_draw_send_manager')}</div>
-              <SignPosPreview
-                previewUrl={signPosModal.previewUrl}
-                scale={signPosModal.scale}
-                onScaleChange={(scale) => setSignPosModal(s => ({ ...s, scale }))}
-                onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
-              />
-              <div className="flex justify-end gap-2">
+          <div className="absolute inset-x-0 bottom-0 sm:bottom-auto sm:top-8 sm:left-1/2 sm:-translate-x-1/2 w-full sm:max-w-3xl">
+            <div className="bg-[#0b1020] border border-white/10 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)]">
+              <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                <div className="text-white font-semibold">{t('sign_modal_title')}</div>
+                <button onClick={() => setSignPosModal(s => ({ ...s, open: false }))} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
+              </div>
+              <div className="p-4 overflow-y-auto overscroll-contain space-y-3">
+                <div className="text-white/80 text-sm">{t('sign_draw_send_manager')}</div>
+                <SignPosPreview
+                  previewUrl={signPosModal.previewUrl}
+                  scale={signPosModal.scale}
+                  onScaleChange={(scale) => setSignPosModal(s => ({ ...s, scale }))}
+                  onDraw={(dataUrl) => setSignPosModal(s => ({ ...s, signDataUrl: dataUrl }))}
+                />
+              </div>
+              <div className="px-4 py-3 border-t border-white/10 flex justify-end gap-2">
                 <button
                   type="button"
                   onClick={() => setSignPosModal(s => ({ ...s, open: false }))}
@@ -1292,7 +1302,7 @@ const SignPosPreview = memo(function SignPosPreview({ previewUrl, scale = 1, onS
         )}
       </div>
       <div
-        className="relative w-full h-[56vh] sm:h-[60vh] bg-white rounded overflow-auto"
+        className="relative w-full h-[42vh] sm:h-[60vh] bg-white rounded overflow-auto"
         style={{ touchAction: isMobile ? 'auto' : 'manipulation', overflowX: 'auto', overflowY: 'auto' }}
         onPointerDown={onPtrDown}
         onPointerMove={onPtrMove}

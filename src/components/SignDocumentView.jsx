@@ -140,6 +140,14 @@ export default function SignDocumentView() {
   const isPinchingRef = useRef(false);
   const cssPreviewScaleRef = useRef(1);
   useEffect(() => {
+    if (!showSignModal) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [showSignModal]);
+  useEffect(() => {
     if (isMobile) {
       setScale(1.2);
     }
@@ -420,15 +428,15 @@ export default function SignDocumentView() {
         ) : null}
       </div>
       {showSignModal && (
-        <div className="fixed inset-0 z-[100]">
+        <div className="fixed inset-0 z-[10000]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setShowSignModal(false)} />
           <div className="absolute inset-x-0 bottom-0 sm:inset-0 sm:flex sm:items-center sm:justify-center p-0 sm:p-4">
-            <div className="w-full sm:max-w-xl bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col">
+            <div className="w-full sm:max-w-xl bg-[#0a0f1f] border border-white/10 rounded-t-2xl sm:rounded-2xl overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col pb-[env(safe-area-inset-bottom)]">
               <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                 <div className="text-white font-semibold">{t('sign_draw_label')}</div>
                 <button onClick={() => setShowSignModal(false)} className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10">✕</button>
               </div>
-              <div className="p-4 overflow-y-auto">
+              <div className="p-4 overflow-y-auto overscroll-contain">
                 <div className="relative border border-white/10 rounded bg-white">
                   <canvas
                     ref={canvasRef}
@@ -447,7 +455,7 @@ export default function SignDocumentView() {
                     onMouseMove={move}
                     onMouseUp={end}
                     onMouseLeave={end}
-                    className="w-full h-[240px] sm:h-[280px] bg-white rounded"
+                    className="w-full h-[220px] sm:h-[280px] bg-white rounded"
                     style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
                   />
                   <button type="button" onClick={clear} className="absolute bottom-2 right-2 text-xs px-3 py-1 rounded bg-white/90 text-black hover:bg-white">{t('clear')}</button>
