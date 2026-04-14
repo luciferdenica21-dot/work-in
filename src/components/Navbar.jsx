@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { Languages } from 'lucide-react';
 import OrderButton from './OrderButton';
 import OrderSidebar from './OrderSidebar';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
@@ -394,7 +393,11 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
           {/* СМЕНА ЯЗЫКА */}
           <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">
-            <Languages className="w-6 h-6" />
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="2" y1="12" x2="22" y2="12" />
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+            </svg>
             <select onChange={changeLanguage} value={i18n.language} className="absolute inset-0 opacity-0 w-full h-full cursor-pointer">
               <option value="ru">RU</option>
               <option value="en">EN</option>
