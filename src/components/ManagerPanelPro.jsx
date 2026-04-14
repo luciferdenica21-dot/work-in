@@ -5,13 +5,34 @@ import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, back
 import SignatureRequestComposer from './SignatureRequestComposer';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
-import { 
+import {
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, MessageCircle,
-  CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock, 
+  CheckCircle, XCircle, Download, Paperclip, Bell, Search, Filter, Clock,
   BookOpen, Users, Home, Package, Code, Shield, Database, Menu,
-  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square
- } from 'lucide-react';
+  Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square, Reply
+} from 'lucide-react';
+
+const UserAvatar = ({ email, size = "w-10 h-10", showStatus = false, isOnline = false, className = "" }) => {
+  const url = useAvatarUrl(email);
+  const initial = email && typeof email === 'string' ? email[0] : '?';
+  return (
+    <div className={`relative shrink-0 ${size} ${className}`}>
+      <div className="w-full h-full rounded-full overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+        {url ? (
+          <img src={url} alt="avatar" className="w-full h-full object-cover" />
+        ) : (
+          <div className="text-white/50 text-[10px] font-bold uppercase">
+            {initial}
+          </div>
+        )}
+      </div>
+      {showStatus && (
+        <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#050a18] ${isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
+      )}
+    </div>
+  );
+};
 
 function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
@@ -639,6 +660,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [chatActionsOpen, setChatActionsOpen] = useState(false);
   const [systemOverviewOpen, setSystemOverviewOpen] = useState(true);
   const [selectedMessages, setSelectedMessages] = useState(new Set());
+  const [contextMenuMsg, setContextMenuMsg] = useState(null);
   const [pinnedMessage, setPinnedMessage] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -667,6 +689,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }
     } catch { void 0; }
   }, [messages.length, activeId, activeSection]);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileMenuOpen]);
 
   useEffect(() => {
     if (activeSection !== 'chats' || !activeId) return;
@@ -1022,12 +1053,42 @@ const getAbsoluteFileUrl = (fileUrl) => {
         }
       });
 
+      // Считаем чаты для каждого пользователя
+      const chatsCountMap = new Map();
+      chats.forEach(chat => {
+        const emailKey = (chat.userEmail || '').toLowerCase();
+        const rawId = chat.userId ? String(chat.userId) : '';
+        const mappedId = emailToId.get(emailKey) ? String(emailToId.get(emailKey)) : '';
+        const resolvedId = usersMap.has(rawId) ? rawId : (mappedId || rawId);
+        if (resolvedId) {
+          chatsCountMap.set(resolvedId, (chatsCountMap.get(resolvedId) || 0) + 1);
+        }
+      });
+      chatsCountMap.forEach((count, uid) => {
+        if (usersMap.has(uid)) {
+          usersMap.get(uid).chatsCount = count;
+        }
+      });
+
       setAllUsers(Array.from(usersMap.values()));
     } catch (error) { 
       console.error('Error loading users:', error); 
       setAllUsers([]);
     }
   };
+
+  useEffect(() => {
+    setMobileMenuOpen(false);
+    if (activeSection === 'chats') {
+      setMobileChatListOpen(true);
+      if (window.innerWidth < 1024) {
+        setActiveId(null);
+      }
+    }
+    if (activeSection === 'clients') {
+      setSelectedClient(null);
+    }
+  }, [activeSection]);
 
   const [userStats, setUserStats] = useState(null);
   const loadUserStats = async (userId) => {
@@ -1446,16 +1507,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
   const handleMessageMouseDown = (msg) => {
     const timer = setTimeout(() => {
-      setSelectedMessages(prev => {
-        const newSet = new Set(prev);
-        const msgId = msg._id || msg.id;
-        if (newSet.has(msgId)) {
-          newSet.delete(msgId);
-        } else {
-          newSet.add(msgId);
-        }
-        return newSet;
-      });
+      setContextMenuMsg(msg);
     }, 500);
     setLongPressTimer(timer);
   };
@@ -1685,10 +1737,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
     return (label[0] || 'U').toUpperCase();
   };
 
-  const renderChatMessageAvatar = (isManagerSender) => {
+  const renderChatMessageAvatar = (isManagerSender, userEmail) => {
     if (isManagerSender) {
       return (
-        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
           {adminAvatarUrl ? (
             <img src={adminAvatarUrl} alt="avatar" className="w-full h-full object-cover" />
           ) : (
@@ -1701,14 +1753,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
 
     return (
-      <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
-        {getActiveClientInitial()}
-      </div>
+      <UserAvatar 
+        email={userEmail} 
+        size="w-6 h-6 sm:w-7 sm:h-7" 
+        className="shrink-0"
+      />
     );
   };
 
   return (
-    <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'} bg-[#050a18] text-white`}>
+    <div className={`flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'} bg-[#050a18] text-white ${activeSection === 'chats' ? 'h-screen h-[100dvh] overflow-hidden' : 'min-h-screen'}`}>
 
       {error && (
         <div className="fixed inset-0 z-[9999] bg-[#050a18] flex items-center justify-center p-6">
@@ -1730,7 +1784,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Логотип */}
-            <div className="flex items-center space-x-4 cursor-pointer" onClick={() => setActiveSection('dashboard')}>
+            <div className="flex items-center space-x-4 cursor-pointer" onClick={() => { setActiveSection('dashboard'); setMobileMenuOpen(false); }}>
               <img src="/img/logo.png" alt="logo" className="w-[50px] h-[50px] object-contain" />
               <div>
                 <h1 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-blue-400">CONNECTOR</h1>
@@ -1804,7 +1858,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10"
               >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Settings className="w-5 h-5" />}
+                {mobileMenuOpen ? <X className="w-4 h-4" /> : <Settings className="w-4 h-4" />}
               </button>
             </div>
           </div>
@@ -1813,11 +1867,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
           {mobileMenuOpen && (
             <div className="lg:hidden">
               <div
-                className="fixed inset-0 bg-black/95 z-30"
+                className="fixed inset-0 bg-black/80 z-30"
                 onClick={() => setMobileMenuOpen(false)}
               />
-              <div className="fixed left-0 right-0 top-16 z-40 px-4 py-6">
-                <div className="mx-auto max-w-sm bg-[#050a18]/95 border border-white/10 rounded-2xl p-4 shadow-2xl">
+              <div className="fixed left-0 right-0 top-16 z-40 px-4 py-6 overflow-y-auto">
+                <div className="mx-auto max-w-sm bg-[#050a18] border border-white/10 rounded-2xl p-4 shadow-2xl">
                   <div className="flex flex-col items-center gap-2 text-center">
                     <div className="text-sm font-semibold text-white">{t('SETTINGS')}</div>
                   </div>
@@ -1825,16 +1879,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <div className="mt-4 flex flex-col gap-2">
                     <button
                       onClick={() => { setMobileMenuOpen(false); handleMakeBackup(); }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-green-300 hover:text-green-200 hover:bg-green-500/10 border border-green-500/20"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm text-green-300 hover:text-green-200 hover:bg-green-500/10 border border-green-500/20"
                     >
-                      <Save className="w-5 h-5" />
+                      <Save className="w-4 h-4" />
                       <span className="text-center">Резервное копирование</span>
                     </button>
                     <button
                       onClick={() => { setMobileMenuOpen(false); handleDownloadBackup(); }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
                     >
-                      <Download className="w-5 h-5" />
+                      <Download className="w-4 h-4" />
                       <span className="text-center">Скачать данные</span>
                     </button>
                     <button
@@ -1842,9 +1896,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         setActiveSection('scripts');
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 border border-purple-500/20"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm text-purple-300 hover:text-purple-200 hover:bg-purple-500/10 border border-purple-500/20"
                     >
-                      <Code className="w-5 h-5" />
+                      <Code className="w-4 h-4" />
                       <span className="text-center">{t('MP_SCRIPTS')}</span>
                     </button>
                     <button
@@ -1852,26 +1906,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         setActiveSection('stats');
                         setMobileMenuOpen(false);
                       }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/10 border border-cyan-500/20"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm text-cyan-300 hover:text-cyan-200 hover:bg-cyan-500/10 border border-cyan-500/20"
                     >
-                      <Activity className="w-5 h-5" />
+                      <Activity className="w-4 h-4" />
                       <span className="text-center">{t('MP_STATS') || 'Статистика'}</span>
-                    </button>
-                    <button
-                      onClick={() => {
-                        if (installPromptEvent) {
-                          installPromptEvent.prompt();
-                          installPromptEvent.userChoice.then(() => {
-                            setInstallPromptEvent(null);
-                          });
-                        } else {
-                          setShowInstallModal(true);
-                        }
-                      }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-blue-300 hover:text-blue-200 hover:bg-blue-500/10 border border-blue-500/20"
-                    >
-                      <Download className="w-5 h-5" />
-                      <span className="text-center">{t('INSTALL_APP')}</span>
                     </button>
                   </div>
 
@@ -1889,10 +1927,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         removeToken();
                         window.location.href = '/';
                       }}
-                      className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl transition-all text-base text-red-300 hover:text-red-200 hover:bg-red-500/10 border border-red-500/20"
+                      className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl transition-all text-sm text-red-300 hover:text-red-200 hover:bg-red-500/10 border border-red-500/20"
                       title={t('LOGOUT')}
                     >
-                      <LogOut className="w-5 h-5" />
+                      <LogOut className="w-4 h-4" />
                       <span className="text-center">{t('LOGOUT')}</span>
                     </button>
                   </div>
@@ -1906,8 +1944,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
       </nav>
 
       {/* Основной контент */}
-      <main className="flex-grow pt-16 pb-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className={`flex-grow pt-16 ${activeSection === 'chats' ? 'h-screen h-[100dvh] overflow-hidden pb-12' : 'pb-20'}`}>
+        <div className={`max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 ${activeSection === 'chats' ? 'py-0 h-full' : 'py-6'}`}>
           {/* Кнопки резервного копирования на ПК (под навигацией) */}
           <div className="hidden lg:flex items-center gap-3 mb-4">
             <button
@@ -2017,278 +2055,113 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   </div>
                 </div>
               </div>
-
             </div>
           )}
 
           {/* Клиенты */}
           {activeSection === 'clients' && (
-            <div className="space-y-6">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h2 className="text-2xl font-bold text-white">Управление клиентами</h2>
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="text"
-                      placeholder="Поиск клиентов..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 w-full sm:w-64"
-                    />
-                  </div>
-                  <button className={`px-4 py-2 ${brandGradient} rounded-lg text-white font-medium flex items-center justify-center space-x-2`}>
-                    <Plus className="w-4 h-4" />
-                    <span>Добавить клиента</span>
-                  </button>
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-full lg:h-[calc(100vh-8rem)] overflow-hidden">
+              {/* Список клиентов */}
+              <div className={`${selectedClient ? 'hidden lg:flex' : 'flex'} lg:flex-none lg:w-80 flex-col bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden flex-1`}>
+                <div className="p-3 border-b border-white/10">
+                  <h2 className="text-lg font-bold text-white">Клиенты</h2>
+                </div>
+                <div className="overflow-y-auto flex-1">
+                  {allUsers.map(client => (
+                    <div
+                      key={client.id}
+                      onClick={() => setSelectedClient(client)}
+                      className={`p-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                        selectedClient?.id === client.id ? 'bg-blue-600/10' : 'hover:bg-white/5'
+                      }`}
+                    >
+                      <UserAvatar 
+                        email={client.email} 
+                        size="w-10 h-10" 
+                        showStatus={true}
+                        isOnline={isUserOnline(client)} 
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white truncate">
+                          {client.firstName} {client.lastName}
+                        </div>
+                        <div className="text-xs text-gray-400 truncate">{client.email}</div>
+                      </div>
+                      <span className={`px-1.5 py-0.5 text-[10px] font-semibold rounded-full ${
+                        isUserOnline(client) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {isUserOnline(client) ? 'Online' : 'Offline'}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {(() => {
-                const filteredClients = allUsers.filter(user => 
-                  user.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  user.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                  user.email?.toLowerCase().includes(searchQuery.toLowerCase())
-                );
-
-                return (
+              {/* Детали клиента */}
+              <div className={`flex-1 bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${selectedClient ? 'flex flex-col' : 'hidden lg:flex flex-col'}`}>
+                {selectedClient ? (
                   <>
-                    {/* Mobile: карточки */}
-                    <div className="md:hidden grid grid-cols-1 gap-3">
-                      {filteredClients.map(client => (
-                        <div key={client.id} className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className={`w-10 h-10 rounded-full ${brandGradient} flex items-center justify-center shrink-0`}>
-                                <User className="w-5 h-5 text-white" />
-                              </div>
-                              <div className="min-w-0">
-                                <div className="text-sm font-semibold text-white truncate">
-                                  {client.firstName} {client.lastName}
-                                </div>
-                                <div className="text-xs text-gray-400 truncate">{client.email}</div>
-                              </div>
-                            </div>
-                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
-                              isUserOnline(client) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                            }`}>
-                              {isUserOnline(client) ? 'Онлайн' : 'Офлайн'}
-                            </span>
-                          </div>
-
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-2">
-                              <div className="text-gray-400">Телефон</div>
-                              <div className="text-gray-200">{client.phone || 'Не указан'}</div>
-                            </div>
-                            <div className="bg-white/5 border border-white/10 rounded-lg p-2">
-                              <div className="text-gray-400">Заказы</div>
-                              <div className="text-gray-200">{client.ordersCount || 0}</div>
-                            </div>
-                          </div>
-                          {client.unreadCount > 0 && (
-                            <div className="mt-2 text-xs text-blue-400">{client.unreadCount} новых сообщений</div>
-                          )}
-
-                          <div className="mt-3 flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => startChat(client.id)}
-                              className="px-3 py-2 rounded-lg bg-blue-600/20 text-blue-300 border border-blue-500/30"
-                              title="Начать чат"
-                            >
-                              <MessageCircle className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => openClientInfo(client)}
-                              className="px-3 py-2 rounded-lg bg-white/5 text-gray-200 border border-white/10"
-                              title="Информация"
-                            >
-                              <Info className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteClient(client.id)}
-                              className="px-3 py-2 rounded-lg bg-red-500/10 text-red-300 border border-red-500/20"
-                              title="Удалить"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
+                    <div className="p-3 border-b border-white/10 bg-white/5 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <UserAvatar 
+                          email={selectedClient.email} 
+                          size="w-10 h-10"
+                          showStatus={true}
+                          isOnline={isUserOnline(selectedClient)} 
+                        />
+                        <div>
+                          <h3 className="text-base font-semibold text-white">
+                            {selectedClient.firstName} {selectedClient.lastName}
+                          </h3>
+                          <p className="text-xs text-gray-400">{selectedClient.email}</p>
                         </div>
-                      ))}
-                    </div>
-
-                    {/* Desktop/Tablet: таблица */}
-                    <div className="hidden md:block bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead className="bg-white/5 border-b border-white/10">
-                            <tr>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Клиент</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Контакты</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Статистика</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Статус</th>
-                              <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Действия</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-white/10">
-                            {filteredClients.map(client => (
-                              <tr key={client.id} className="hover:bg-white/5 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex items-center">
-                                    <div className={`w-10 h-10 rounded-full ${brandGradient} flex items-center justify-center mr-3`}>
-                                      <User className="w-5 h-5 text-white" />
-                                    </div>
-                                    <div>
-                                      <div className="text-sm font-medium text-white">
-                                        {client.firstName} {client.lastName}
-                                      </div>
-                                      <div className="text-sm text-gray-400">{client.email}</div>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-300">{client.phone || 'Не указан'}</div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="text-sm text-gray-300">
-                                    {getClientOrders(client.id).length} заказов
-                                  </div>
-                                  {getClientOrders(client.id).filter(o => o.status === 'new').length > 0 && (
-                                    <div className="text-xs text-yellow-400">
-                                      {getClientOrders(client.id).filter(o => o.status === 'new').length} новых
-                                    </div>
-                                  )}
-                                  {getClientOrders(client.id).filter(o => o.status === 'in-progress').length > 0 && (
-                                    <div className="text-xs text-blue-400">
-                                      {getClientOrders(client.id).filter(o => o.status === 'in-progress').length} в работе
-                                    </div>
-                                  )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                  <div className="flex flex-col gap-1">
-                                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                                      isUserOnline(client) ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-                                    }`}>
-                                      {isUserOnline(client) ? 'Онлайн' : 'Офлайн'}
-                                    </span>
-                                    {getClientOrders(client.id).length > 0 && (
-                                      <span className="text-xs text-gray-400">
-                                        {getClientOrders(client.id).some(o => o.status === 'new') ? 'Есть новые' : 'Без новых'}
-                                      </span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                  <div className="flex items-center space-x-2">
-                                    <button 
-                                      onClick={() => {
-                                        startChat(client.id);
-                                      }}
-                                      className="text-blue-400 hover:text-blue-300 p-1"
-                                      title="Начать чат"
-                                    >
-                                      <MessageCircle className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => openClientInfo(client)}
-                                      className="text-gray-400 hover:text-gray-300 p-1"
-                                      title="Информация"
-                                    >
-                                      <Info className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeleteClient(client.id)}
-                                      className="text-red-400 hover:text-red-300 p-1"
-                                      title="Удалить"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
                       </div>
+                      <button
+                        onClick={() => setSelectedClient(null)}
+                        className="lg:hidden p-2 rounded-full text-white hover:bg-white/5"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
                     </div>
-
-                    {selectedClient && (
-                      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-                        <div className="w-full max-w-2xl bg-[#0a0a0a] border border-white/10 rounded-2xl overflow-hidden">
-                          <div className="p-4 border-b border-white/10 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="text-white font-semibold truncate">
-                                {selectedClient.firstName} {selectedClient.lastName}
-                              </div>
-                              <div className="text-xs text-gray-400 truncate">{selectedClient.email}</div>
-                            </div>
-                            <button
-                              onClick={() => setSelectedClient(null)}
-                              className="p-2 rounded-lg text-white hover:bg-white/10"
-                              title="Закрыть"
-                            >
-                              <X className="w-5 h-5" />
-                            </button>
-                          </div>
-
-                          <div className="p-4 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                                <div className="text-xs text-gray-400">Телефон</div>
-                                <div className="text-gray-200">{selectedClient.phone || 'Не указан'}</div>
-                              </div>
-                              <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                                <div className="text-xs text-gray-400">Город</div>
-                                <div className="text-gray-200">{selectedClient.city || 'Не указан'}</div>
-                              </div>
-                            </div>
-
-                            <div className="bg-white/5 border border-white/10 rounded-xl p-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <div className="text-xs text-gray-400">Заказы</div>
-                                  <div className="text-sm text-gray-200">
-                                    {getClientOrders(selectedClient.id).length}
-                                  </div>
-                                </div>
-                                <button
-                                  onClick={() => handleDeleteClient(selectedClient.id)}
-                                  className="px-3 py-2 rounded-lg text-white border border-red-400/40 hover:bg-red-500/10 transition-colors text-xs"
-                                >
-                                  Удалить клиента
-                                </button>
-                              </div>
-
-                              {getClientOrders(selectedClient.id).length > 0 && (
-                                <div className="mt-3 space-y-2">
-                                  {getClientOrders(selectedClient.id).slice(0, 10).map((o, idx) => (
-                                    <div key={`${o.chatId}-${o.orderIndex}-${idx}`} className="bg-black/20 border border-white/10 rounded-lg p-3">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <div className="text-xs text-gray-200">
-                                          #{o.orderIndex}
-                                        </div>
-                                        <div className="text-xs text-gray-400">
-                                          {o.createdAt ? new Date(o.createdAt).toLocaleString() : ''}
-                                        </div>
-                                      </div>
-                                      <div className="mt-2 text-xs text-gray-300">
-                                        {(o.services || []).join(', ')}
-                                      </div>
-                                      {o.comment && (
-                                        <div className="mt-2 text-xs text-gray-400 italic">"{o.comment}"</div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="text-xs text-gray-400 mb-1">Телефон</div>
+                          <div className="text-sm text-white">{selectedClient.phone || 'Не указан'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="text-xs text-gray-400 mb-1">Заказы</div>
+                          <div className="text-sm text-white">{selectedClient.ordersCount || 0}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="text-xs text-gray-400 mb-1">Чаты</div>
+                          <div className="text-sm text-white">{selectedClient.chatsCount || 0}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-3">
+                          <div className="text-xs text-gray-400 mb-1">Статус</div>
+                          <div className={`text-sm ${isUserOnline(selectedClient) ? 'text-green-400' : 'text-gray-400'}`}>
+                            {isUserOnline(selectedClient) ? 'Онлайн' : 'Офлайн'}
                           </div>
                         </div>
                       </div>
-                    )}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setActiveSection('chats');
+                          }}
+                          className="flex-1 px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-300 text-sm hover:bg-blue-600/30"
+                        >
+                          Открыть чат
+                        </button>
+                      </div>
+                    </div>
                   </>
-                );
-              })()}
+                ) : (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-gray-400 text-sm">Выберите клиента</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2367,39 +2240,46 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     {!selectedClient && (
                       <div className="text-gray-300 text-sm">Выберите пользователя слева, чтобы увидеть статистику</div>
                     )}
-                    {selectedClient && !userStats && (
-                      <div className="text-gray-300 text-sm">Загрузка статистики...</div>
-                    )}
-                    {selectedClient && userStats && (
+                    {selectedClient && (
                       <div className="space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
                           <div className="bg-gradient-to-br from-blue-500/20 to-blue-600/10 border border-blue-500/30 rounded-xl p-4">
                             <div className="text-sm text-blue-300">Визиты</div>
-                            <div className="text-2xl font-bold text-white">{(userStats.visits?.[0]?.total) || 0}</div>
+                            <div className="text-2xl font-bold text-white">{userStats?.visits?.[0]?.total || selectedClient.visitsCount || 0}</div>
                             <div className="text-xs text-blue-400 mt-1">
-                              Последний: {userStats.visits?.[0]?.lastVisit ? new Date(userStats.visits[0].lastVisit).toLocaleString() : '—'}
+                              {userStats?.visits?.[0]?.lastVisit ? `Последний: ${new Date(userStats.visits[0].lastVisit).toLocaleString()}` : '—'}
                             </div>
                           </div>
                           <div className="bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 rounded-xl p-4">
                             <div className="text-sm text-green-300">Клики</div>
                             <div className="text-2xl font-bold text-white">
-                              {((userStats.clicksBySection || []).reduce((sum, x) => sum + x.count, 0)) || 0}
+                              {userStats ? ((userStats.clicksBySection || []).reduce((sum, x) => sum + x.count, 0)) : (selectedClient.clicksCount || 0)}
                             </div>
                             <div className="text-xs text-green-400 mt-1">по секциям сайта</div>
                           </div>
                           <div className="bg-gradient-to-br from-purple-500/20 to-purple-600/10 border border-purple-500/30 rounded-xl p-4">
                             <div className="text-sm text-purple-300">Время на сайте</div>
                             <div className="text-2xl font-bold text-white">
-                              {(() => {
+                              {userStats ? (() => {
                                 const totalMs = (userStats.timeBySection || []).reduce((sum, x) => sum + (x.durationMs || 0), 0);
                                 const s = Math.floor(totalMs / 1000);
                                 const h = Math.floor(s / 3600);
                                 const m = Math.floor((s % 3600) / 60);
                                 const sec = s % 60;
                                 return `${h}ч ${m}м ${sec}с`;
-                              })()}
+                              })() : '0ч 0м 0с'}
                             </div>
                             <div className="text-xs text-purple-400 mt-1">в сумме</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 rounded-xl p-4">
+                            <div className="text-sm text-yellow-300">Заказы</div>
+                            <div className="text-2xl font-bold text-white">{selectedClient.ordersCount || 0}</div>
+                            <div className="text-xs text-yellow-400 mt-1">всего создано</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30 rounded-xl p-4">
+                            <div className="text-sm text-cyan-300">Чаты</div>
+                            <div className="text-2xl font-bold text-white">{selectedClient.chatsCount || 0}</div>
+                            <div className="text-xs text-cyan-400 mt-1">{selectedClient.unreadCount || 0} непрочитанных</div>
                           </div>
                         </div>
 
@@ -2407,13 +2287,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                             <div className="text-white/80 mb-2">Клики по секциям</div>
                             <div className="space-y-2">
-                              {(userStats.clicksBySection || []).map(row => (
+                              {(userStats?.clicksBySection || []).map(row => (
                                 <div key={row._id} className="flex items-center justify-between text-sm text-gray-300">
                                   <span>{row._id || '—'}</span>
                                   <span className="text-white">{row.count}</span>
                                 </div>
                               ))}
-                              {(userStats.clicksBySection || []).length === 0 && (
+                              {(userStats?.clicksBySection || []).length === 0 && (
                                 <div className="text-gray-400 text-sm">Нет данных</div>
                               )}
                             </div>
@@ -2421,7 +2301,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                             <div className="text-white/80 mb-2">Время по секциям</div>
                             <div className="space-y-2">
-                              {(userStats.timeBySection || []).map(row => {
+                              {(userStats?.timeBySection || []).map(row => {
                                 const s = Math.floor((row.durationMs || 0) / 1000);
                                 const m = Math.floor(s / 60);
                                 const sec = s % 60;
@@ -2432,7 +2312,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                   </div>
                                 );
                               })}
-                              {(userStats.timeBySection || []).length === 0 && (
+                              {(userStats?.timeBySection || []).length === 0 && (
                                 <div className="text-gray-400 text-sm">Нет данных</div>
                               )}
                             </div>
@@ -2442,7 +2322,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                           <div className="text-white/80 mb-2">Время по услугам</div>
                           <div className="space-y-2">
-                            {(userStats.timeByService || []).map(row => {
+                            {(userStats?.timeByService || []).map(row => {
                               const s = Math.floor((row.durationMs || 0) / 1000);
                               const m = Math.floor(s / 60);
                               const sec = s % 60;
@@ -2453,7 +2333,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 </div>
                               );
                             })}
-                            {(userStats.timeByService || []).length === 0 && (
+                            {(userStats?.timeByService || []).length === 0 && (
                               <div className="text-gray-400 text-sm">Нет данных</div>
                             )}
                           </div>
@@ -2461,7 +2341,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <div className="bg-white/5 border border-white/10 rounded-xl p-4">
                           <div className="text-white/80 mb-2">Последние события</div>
                           <div className="space-y-2">
-                            {(userStats.recentEvents || []).slice(0, 50).map(ev => {
+                            {(userStats?.recentEvents || []).slice(0, 50).map(ev => {
                               const when = ev?.timestamp ? new Date(ev.timestamp).toLocaleString() : '';
                               const durS = ev?.durationMs ? Math.floor((ev.durationMs || 0) / 1000) : null;
                               return (
@@ -2476,7 +2356,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 </div>
                               );
                             })}
-                            {(userStats.recentEvents || []).length === 0 && (
+                            {(userStats?.recentEvents || []).length === 0 && (
                               <div className="text-gray-400 text-sm">Нет данных</div>
                             )}
                           </div>
@@ -2491,40 +2371,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
           {/* Чаты */}
           {activeSection === 'chats' && (
-            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100dvh-8rem)] lg:h-[calc(100vh-8rem)]">
-              {/* Мобильная кнопка переключения списка чатов */}
-              <div className="lg:hidden flex justify-between items-center mb-3">
-                <button
-                  onClick={() => {
-                    setChatActionsOpen(false);
-                    if (activeId) {
-                      setActiveId(null);
-                      setMobileChatListOpen(true);
-                      return;
-                    }
-                    setActiveSection('dashboard');
-                  }}
-                  className="p-2 rounded-lg text-white hover:bg-white/10"
-                  title="Назад"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
-                <button
-                  onClick={() => {
-                    setChatActionsOpen(false);
-                    setMobileChatListOpen(!mobileChatListOpen);
-                  }}
-                  className="p-2 bg-white/10 rounded-lg text-white"
-                  title={mobileChatListOpen ? 'Скрыть список' : 'Показать список'}
-                >
-                  {mobileChatListOpen ? <X className="w-5 h-5" /> : <MessageCircle className="w-5 h-5" />}
-                </button>
-              </div>
-
+            <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-full lg:h-[calc(100vh-8rem)] overflow-hidden mt-0">
               {/* Список чатов - мобильный и десктоп */}
-              <div className={`${mobileChatListOpen ? 'block' : 'hidden'} lg:block flex-1 lg:flex-none w-full lg:w-80 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden`}>
+              <div className={`${mobileChatListOpen ? 'flex' : 'hidden'} lg:flex lg:flex-none lg:w-80 bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden flex-col min-h-0 flex-1 lg:flex-auto`}>
                 <div className="p-4 border-b border-white/10">
-                  <h3 className="text-lg font-semibold text-white hidden lg:block">Чаты</h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-xl font-bold text-white">Чаты</h3>
+                  </div>
+                  
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                     <input
@@ -2532,117 +2386,189 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       placeholder="Поиск чатов..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
+                      className="w-full pl-10 pr-4 py-2 bg-white/5 border-none rounded-full text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                     />
                   </div>
                 </div>
-                <div className="overflow-y-auto h-[calc(100%-5rem)]">
+
+                <div className="overflow-y-auto h-[calc(100%-8rem)] lg:h-[calc(100%-5rem)]">
                   {chats.filter(chat => 
                     chat.userEmail?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                     chat.lastMessage?.toLowerCase().includes(searchQuery.toLowerCase())
-                  ).map(chat => (
-                    <div
-                      key={chat.chatId}
-                      onClick={() => {
-                        setChatActionsOpen(false);
-                        setActiveId(chat.chatId);
-                        setMobileChatListOpen(false); // Закрываем список на мобильных
-                      }}
-                      className={`p-4 border-b border-white/10 cursor-pointer transition-colors ${
-                        activeId === chat.chatId ? 'bg-blue-600/20' : 'hover:bg-white/5'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-medium text-white">
-                          {chat.userEmail?.split('@')[0] || 'Unknown User'}
-                        </span>
-                        <span className="text-xs text-gray-400">
-                          {new Date(chat.lastUpdate || chat.lastMessageTime || chat.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="text-sm text-gray-300 truncate">
-                        {chat.lastMessage || 'Нет сообщений'}
-                      </div>
-                      {chat.unread && (
-                        <div className="mt-2">
-                          <span className="inline-block px-2 py-1 text-xs bg-blue-600 text-white rounded-full">
-                            {chat.unread} новых
-                          </span>
+                  ).map(chat => {
+                    const chatUser = allUsers.find(u => u.email === chat.userEmail);
+                    const isOnline = isUserOnline(chatUser);
+                    return (
+                      <div
+                        key={chat.chatId}
+                        onClick={() => {
+                          setChatActionsOpen(false);
+                          setActiveId(chat.chatId);
+                          setMobileChatListOpen(false);
+                        }}
+                        className={`px-4 py-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                          activeId === chat.chatId ? 'bg-blue-600/10' : 'hover:bg-white/5'
+                        }`}
+                      >
+                        <UserAvatar 
+                          email={chat.userEmail} 
+                          size="w-14 h-14" 
+                          showStatus={true} 
+                          isOnline={isOnline} 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <span className="text-[15px] font-semibold text-white truncate">
+                              {chatUser ? `${chatUser.firstName} ${chatUser.lastName}` : (chat.userEmail?.split('@')[0] || 'Unknown User')}
+                            </span>
+                            <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                              {(() => {
+                                const date = new Date(chat.lastUpdate || chat.lastMessageTime || chat.createdAt);
+                                const now = new Date();
+                                if (date.toDateString() === now.toDateString()) {
+                                  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                }
+                                return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+                              })()}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className={`text-[13px] truncate ${chat.unread ? 'text-white font-semibold' : 'text-gray-400'}`}>
+                              {chat.lastMessage || 'Нет сообщений'}
+                            </p>
+                            {chat.unread > 0 && (
+                              <div className="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center shrink-0">
+                                <span className="text-[10px] text-white font-bold">{chat.unread}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
               {/* Область чата */}
-              <div className={`flex-1 bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${activeId ? 'flex' : 'hidden lg:flex'} flex-col`}>
+              <div className={`flex-1 bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${activeId && !mobileChatListOpen ? 'flex' : 'hidden lg:flex'} flex-col min-h-0`}>
                 {activeId ? (
                   <>
                     {/* Заголовок чата */}
-                    <div className="p-3 sm:p-4 border-b border-white/10 bg-white/5">
+                    <div className="p-2 sm:p-3 border-b border-white/10 bg-white/5">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="text-base sm:text-lg font-semibold text-white">
-                            {chats.find(c => c.chatId === activeId)?.userEmail?.split('@')[0] || 'Chat'}
-                          </h3>
-                          <p className="text-xs sm:text-sm text-gray-400">
-                            {chats.find(c => c.chatId === activeId)?.userEmail}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2">
-
-                          <div className="relative">
-                            <button
-                              onClick={() => setChatActionsOpen((v) => !v)}
-                              className="p-1.5 sm:p-2 rounded-lg text-white hover:bg-white/10 border border-white/10"
-                              title="Настройки"
-                            >
-                              <Settings className="w-4 h-4" />
-                            </button>
-
-                            {chatActionsOpen && (
-                              <>
-                                <div
-                                  className="fixed inset-0 z-40"
-                                  onClick={() => setChatActionsOpen(false)}
-                                />
-                                <div className="absolute right-0 mt-2 w-44 bg-[#050a18]/95 border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                  <button
-                                    onClick={() => {
-                                      setChatActionsOpen(false);
-                                      handleClearChat();
-                                    }}
-                                    className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5"
-                                    type="button"
-                                  >
-                                    Очистить чат
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      setChatActionsOpen(false);
-                                      handleDeleteChat();
-                                    }}
-                                    className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10"
-                                    type="button"
-                                  >
-                                    Удалить чат
-                                  </button>
-                                </div>
-                              </>
-                            )}
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <UserAvatar
+                            email={chats.find(c => c.chatId === activeId)?.userEmail}
+                            size="w-8 h-8 sm:w-10 sm:h-10"
+                            showStatus={true}
+                            isOnline={isUserOnline(allUsers.find(u => u.email === chats.find(c => c.chatId === activeId)?.userEmail))}
+                          />
+                          <div className="min-w-0">
+                            <h3 className="text-sm sm:text-base font-semibold text-white truncate max-w-[120px] sm:max-w-none">
+                              {(() => {
+                                const chatUser = allUsers.find(u => u.email === chats.find(c => c.chatId === activeId)?.userEmail);
+                                return chatUser ? `${chatUser.firstName} ${chatUser.lastName}` : (chats.find(c => c.chatId === activeId)?.userEmail?.split('@')[0] || 'Chat');
+                              })()}
+                            </h3>
+                            <p className="text-[10px] sm:text-xs text-gray-400">
+                              {isUserOnline(allUsers.find(u => u.email === chats.find(c => c.chatId === activeId)?.userEmail)) ? 'В сети' : 'Офлайн'}
+                            </p>
                           </div>
-
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => setChatActionsOpen((v) => !v)}
+                            className="p-2 rounded-full text-white hover:bg-white/5"
+                            title="Настройки"
+                          >
+                            <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+                          </button>
+                          {chatActionsOpen && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-40"
+                                onClick={() => setChatActionsOpen(false)}
+                              />
+                              <div className="absolute right-0 mt-2 mr-2 w-48 bg-[#050a18] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                <button
+                                  onClick={() => {
+                                    setChatActionsOpen(false);
+                                    handleClearChat();
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <Reply className="w-4 h-4" /> Ответить
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const lastMsg = messages[messages.length - 1];
+                                    if (lastMsg) {
+                                      setPinnedMessage(lastMsg);
+                                    }
+                                    setChatActionsOpen(false);
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <Pin className="w-4 h-4" /> Закрепить
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (messages.length > 0) {
+                                      const lastMsg = messages[messages.length - 1];
+                                      setSelectedMessages(new Set([lastMsg._id || lastMsg.id]));
+                                    }
+                                    setChatActionsOpen(false);
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <CheckSquare className="w-4 h-4" /> Отметить одно
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedMessages(new Set(messages.map(m => m._id || m.id)));
+                                    setChatActionsOpen(false);
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <CheckSquare className="w-4 h-4" /> Отметить все
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setChatActionsOpen(false);
+                                    handleClearChat();
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <Trash2 className="w-4 h-4" /> Очистить чат
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setChatActionsOpen(false);
+                                    handleDeleteChat();
+                                  }}
+                                  className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10 flex items-center gap-2"
+                                  type="button"
+                                >
+                                  <Trash2 className="w-4 h-4" /> Удалить чат
+                                </button>
+                              </div>
+                            </>
+                          )}
                           <button
                             onClick={() => {
                               setChatActionsOpen(false);
                               setActiveId(null);
                               setMobileChatListOpen(true);
                             }}
-                            className="lg:hidden p-1.5 sm:p-2 rounded-lg text-white hover:bg-white/10"
+                            className="lg:hidden p-2 rounded-full text-white hover:bg-white/5"
                             title="Назад"
                           >
-                            <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                            <ChevronLeft className="w-5 h-5" />
                           </button>
                         </div>
                       </div>
@@ -2720,15 +2646,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     )}
 
                     {/* Сообщения */}
-                    <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 bg-[#050a18]">
                       {messages.map(msg => (
                         <div key={msg._id || msg.id} className={`flex ${msg.senderId === 'manager' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`flex items-start gap-2 ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
-                            {renderChatMessageAvatar(msg.senderId === 'manager')}
-                            <div className={`min-w-0 max-w-[88%] sm:max-w-sm lg:max-w-md px-4 py-2 sm:px-5 sm:py-2.5 rounded-2xl text-[13px] sm:text-sm ${
-                              msg.senderId === 'manager' 
-                                ? 'bg-[#0866FF] text-white' 
-                                : 'bg-white text-gray-900'
+                          <div className={`flex items-end gap-1 max-w-[85%] ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
+                            {renderChatMessageAvatar(msg.senderId === 'manager', chats.find(c => c.chatId === activeId)?.userEmail)}
+                            <div className={`min-w-0 px-2.5 py-1.5 rounded-2xl text-[12px] ${
+                              msg.senderId === 'manager'
+                                ? 'bg-blue-600 text-white rounded-br-none'
+                                : 'bg-white/10 text-white rounded-bl-none'
                             } shadow-sm ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
                               onMouseDown={() => handleMessageMouseDown(msg)}
                               onMouseUp={handleMessageMouseUp}
@@ -2738,107 +2664,32 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             >
                             {msg.isUploading ? (
                               <div className="flex items-center space-x-2">
-                                <RefreshCw className="w-4 h-4 animate-spin" />
+                                <RefreshCw className="w-3 h-3 animate-spin" />
                                 <span className="whitespace-pre-wrap break-words">{msg.text}</span>
                               </div>
                             ) : (
-                              <>
-                                {(!msg.fileName || (((!msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('video/')) && (msg.text && !msg.text.startsWith('📎'))))) && (
-                                  <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                                )}
+                              <div className="flex flex-col gap-1">
                                 {msg.fileName && (
-                                  <div className="mt-2">
-                                    <div className={`${msg.senderId === 'manager' ? 'bg-white/10' : 'bg-gray-100'} rounded-xl p-3 hover:bg-white/20 transition-colors cursor-pointer group`
-                                    }
-                                         onClick={() => {
-                                           // Формируем правильный URL для файла
-                                           const url = msg.fileUrl ? getAbsoluteFileUrl(msg.fileUrl) : '';
-                                           
-                                           console.log('File URL:', url);
-                                           
-                                           // Для изображений открываем в новом окне
-                                           if (msg.fileType?.startsWith('image/')) {
-                                             window.open(url, '_blank');
-                                           } else {
-                                             // Для других файлов создаем ссылку для скачивания
-                                             const link = document.createElement('a');
-                                             link.href = url;
-                                             link.download = msg.fileName;
-                                             link.target = '_blank';
-                                             document.body.appendChild(link);
-                                             link.click();
-                                             document.body.removeChild(link);
-                                           }
-                                         }}>
-                                      <div className="flex items-center space-x-3">
-                                        <div className="flex-shrink-0">
-                                          {msg.fileType?.startsWith('image/') ? (
-                                            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-                                              <FileText className="w-5 h-5 text-blue-400" />
-                                            </div>
-                                          ) : msg.fileType?.includes('pdf') ? (
-                                            <div className="w-10 h-10 bg-red-500/20 rounded-lg flex items-center justify-center">
-                                              <FileText className="w-5 h-5 text-red-400" />
-                                            </div>
-                                          ) : (
-                                            <div className="w-10 h-10 bg-gray-500/20 rounded-lg flex items-center justify-center">
-                                              <FileText className="w-5 h-5 text-gray-400" />
-                                            </div>
-                                          )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="flex items-center justify-between">
-                                            <p className={`text-sm font-medium truncate group-hover:text-blue-500 ${msg.senderId === 'manager' ? 'text-white' : 'text-gray-900'}`}>
-                                              {msg.fileName}
-                                            </p>
-                                            <Download className={`w-4 h-4 transition-colors flex-shrink-0 ml-2 ${msg.senderId === 'manager' ? 'text-white/80 group-hover:text-white' : 'text-gray-500 group-hover:text-gray-800'}`} />
-                                          </div>
-                                          <div className="flex items-center space-x-2 mt-1">
-                                            <span className={`text-xs ${msg.senderId === 'manager' ? 'text-white/80' : 'text-gray-600'}`}>
-                                              {msg.fileSize ? formatFileSize(msg.fileSize) : '未知大小'}
-                                            </span>
-                                            {msg.fileType && (
-                                              <span className={`text-xs ${msg.senderId === 'manager' ? 'text-white/70' : 'text-gray-500'}`}>
-                                                {msg.fileType.split('/')[1]?.toUpperCase() || 'FILE'}
-                                              </span>
-                                            )}
-                                          </div>
-                                        </div>
-                                      </div>
-                                      
-                                      {msg.fileUrl && (
-                                        <div className={`mt-2 rounded-xl overflow-hidden ${msg.senderId === 'manager' ? 'bg-black/20' : 'bg-gray-200'}`}>
-                                          {renderFileContent(msg)}
+                                  <div className="mb-0.5">
+                                    <div className={`rounded-lg overflow-hidden cursor-pointer transition-colors ${msg.senderId === 'manager' ? 'bg-black/20' : 'bg-white/5'} hover:bg-white/10`}
+                                         onClick={() => window.open(msg.fileUrl ? getAbsoluteFileUrl(msg.fileUrl) : '', '_blank')}>
+                                      {msg.fileType?.startsWith('image/') ? (
+                                        <img src={getAbsoluteFileUrl(msg.fileUrl)} alt={msg.fileName} className="max-w-[80px] sm:max-w-[120px] h-auto object-contain" />
+                                      ) : (
+                                        <div className="flex items-center gap-1.5 p-1.5 text-[10px]">
+                                          <FileText className="w-3 h-3 text-blue-400 shrink-0" />
+                                          <span className="truncate max-w-[60px] sm:max-w-[80px]">{msg.fileName}</span>
                                         </div>
                                       )}
                                     </div>
                                   </div>
                                 )}
-                                <div className={`text-xs mt-1 ${msg.senderId === 'manager' ? 'text-white/80' : 'text-gray-500'}`}>
-                                  {new Date(msg.createdAt).toLocaleTimeString()}
+                                {(!msg.fileName || (msg.text && !msg.text.startsWith('📎'))) && (
+                                  <span className="whitespace-pre-wrap break-words leading-tight">{msg.text}</span>
+                                )}
+                                <div className={`text-[8px] mt-0.5 ${msg.senderId === 'manager' ? 'text-blue-100/60' : 'text-white/40'} text-right`}>
+                                  {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
-                              </>
-                            )}
-                            {!msg.isUploading && selectedMessages.size > 0 && selectedMessages.has(msg._id || msg.id) && (
-                              <div className="flex items-center gap-1 ml-2">
-                                <button
-                                  onClick={() => toggleMessageSelection(msg._id || msg.id)}
-                                  className={`${msg.senderId === 'manager' ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-800'}`}
-                                  title={selectedMessages.has(msg._id || msg.id) ? 'Снять выделение' : 'Выделить'}
-                                >
-                                  {selectedMessages.has(msg._id || msg.id) ? (
-                                    <CheckSquare className="w-3 h-3 text-blue-400" />
-                                  ) : (
-                                    <Square className="w-3 h-3" />
-                                  )}
-                                </button>
-                                <button
-                                  onClick={() => handlePinMessage(msg)}
-                                  className={`${msg.senderId === 'manager' ? 'text-white/80 hover:text-white' : 'text-gray-500 hover:text-gray-800'}`}
-                                  title={pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id) ? 'Открепить' : 'Прикрепить'}
-                                >
-                                  <Pin className={`w-3 h-3 ${pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id) ? 'text-blue-500' : ''}`} />
-                                </button>
                               </div>
                             )}
                             </div>
@@ -2849,44 +2700,113 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </div>
 
                     {/* Поле ввода */}
-                    <div className="p-3 sm:p-4 border-t border-white/10 relative">
+                    <div className="p-2 sm:p-3 border-t border-white/10 bg-[#050a18]">
+                      {contextMenuMsg && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setContextMenuMsg(null)} />
+                          <div className="relative w-full max-w-[280px] bg-[#050a18] border border-white/10 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in duration-200">
+                            <div className="p-3 border-b border-white/5 bg-white/5">
+                              <p className="text-[11px] text-gray-400 truncate">
+                                {contextMenuMsg.text || 'Медиафайл'}
+                              </p>
+                            </div>
+                            <div className="grid grid-cols-1">
+                              <button
+                                onClick={() => {
+                                  setInputText(prev => prev + (contextMenuMsg.text ? `\n> ${contextMenuMsg.text}\n` : ''));
+                                  setContextMenuMsg(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                              >
+                                <Reply className="w-4 h-4 text-blue-400" />
+                                <span>Ответить</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setPinnedMessage(contextMenuMsg);
+                                  setContextMenuMsg(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                              >
+                                <Pin className="w-4 h-4 text-blue-400" />
+                                <span>Закрепить</span>
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const msgId = contextMenuMsg._id || contextMenuMsg.id;
+                                  setSelectedMessages(prev => new Set(prev).add(msgId));
+                                  setContextMenuMsg(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
+                              >
+                                <CheckSquare className="w-4 h-4 text-blue-400" />
+                                <span>Выбрать</span>
+                              </button>
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm('Удалить это сообщение?')) {
+                                    try {
+                                      const msgId = contextMenuMsg._id || contextMenuMsg.id;
+                                      await messagesAPI.delete(activeId, msgId);
+                                      setMessages(prev => prev.filter(m => (m._id || m.id) !== msgId));
+                                    } catch (err) {
+                                      alert('Ошибка при удалении');
+                                    }
+                                  }
+                                  setContextMenuMsg(null);
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Удалить</span>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-2">
-                        <textarea
-                          value={inputText}
-                          onChange={(e) => setInputText(e.target.value)}
-                          placeholder="Введите сообщение..."
-                          className="flex-1 px-4 py-2 sm:px-5 bg-white rounded-full border border-white text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none text-sm"
-                          rows={1}
-                        />
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          onChange={handleFileUpload}
-                          className="hidden"
-                        />
                         <button
-                          onClick={() => setShowScriptMenu((v) => !v)}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="p-2 text-blue-400 hover:bg-white/5 rounded-full shrink-0"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                        <button
+                          onClick={() => setShowScriptMenu(true)}
                           disabled={!activeId}
-                          className="p-2 bg-white rounded-full text-gray-800 hover:bg-gray-100 disabled:opacity-50"
+                          className="p-2 text-purple-400 hover:bg-white/5 rounded-full shrink-0 disabled:opacity-30"
                           title="Скрипты"
                         >
                           <Code className="w-5 h-5" />
                         </button>
-                        <button
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={!activeId || uploading}
-                          className="p-2 bg-white rounded-full text-gray-800 hover:bg-gray-100 disabled:opacity-50"
-                        >
-                          <Paperclip className="w-5 h-5" />
-                        </button>
+                        <textarea
+                          value={inputText}
+                          onChange={(e) => setInputText(e.target.value)}
+                          placeholder="Aa"
+                          className="flex-1 px-4 py-1.5 bg-white/10 rounded-full border-none text-white placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none text-[14px] leading-tight min-h-[36px] max-h-[100px]"
+                          rows={1}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              executeSend();
+                            }
+                          }}
+                        />
                         <button
                           onClick={() => executeSend()}
                           disabled={!inputText.trim() || !activeId || uploading}
-                          className="p-2 bg-[#0866FF] rounded-full text-white hover:bg-[#0757d9] disabled:opacity-50"
+                          className="p-2 text-blue-400 hover:bg-white/5 rounded-full shrink-0 disabled:opacity-30"
                         >
                           <Send className="w-5 h-5" />
                         </button>
                       </div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </div>
 
                       {/* Меню скриптов */}
                       {showScriptMenu && (
@@ -2975,19 +2895,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </div>
                         </>
                       )}
-                    </div>
                   </>
                 ) : (
-                  <div className="hidden lg:flex flex-1 items-center justify-center">
-                    <div className="text-center">
-                      <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                      <p className="text-gray-400">Выберите чат для начала общения</p>
+                    <div className="hidden lg:flex flex-1 items-center justify-center">
+                      <div className="text-center">
+                        <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                        <p className="text-gray-400">Выберите чат для начала общения</p>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
           {/* Заказы */}
           {activeSection === 'orders' && (
@@ -3806,7 +3725,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       )}
       <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
         <div className="bg-[#050a18]/95 backdrop-blur-md border-t border-white/10">
-          <div className="max-w-7xl mx-auto px-4 py-2 grid grid-cols-4 gap-2">
+          <div className="max-w-7xl mx-auto px-2 py-1.5 grid grid-cols-4 gap-1">
             {['dashboard','chats','orders','clients'].map((id) => {
               const item = navItems.find(i => i.id === id);
               const Icon = item.icon;
@@ -3814,25 +3733,24 @@ const getAbsoluteFileUrl = (fileUrl) => {
               return (
                 <button
                   key={id}
-                  onClick={() => setActiveSection(id)}
-                  className={`flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs transition-all ${
+                  onClick={() => { setActiveSection(id); setMobileMenuOpen(false); }}
+                  className={`flex flex-col items-center justify-center gap-0.5 px-1 py-1 rounded-lg transition-all ${
                     isActive
                       ? 'bg-blue-600/20 text-blue-200 border border-blue-500/30'
                       : 'text-gray-200 hover:text-white hover:bg-white/5 border border-white/10'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
+                  <Icon className="w-3.5 h-3.5" />
                   {id === 'chats' && unreadMessagesCount > 0 && (
-                    <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px]">
+                    <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-600 text-white text-[8px]">
                       {unreadMessagesCount}
                     </span>
                   )}
                   {id === 'orders' && unseenNewOrdersCount > 0 && (
-                    <span className="mt-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-yellow-500 text-black text-[10px]">
+                    <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full bg-yellow-500 text-black text-[8px]">
                       {unseenNewOrdersCount}
                     </span>
                   )}
-                  <span className="text-[10px]">{t(item.labelKey)}</span>
                 </button>
               );
             })}
