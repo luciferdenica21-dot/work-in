@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Languages } from 'lucide-react';
 import OrderButton from './OrderButton';
 import OrderSidebar from './OrderSidebar';
+import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
 const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const { t, i18n } = useTranslation();
@@ -58,6 +59,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   };
 
   const navigate = useNavigate();
+  const avatarUrl = useAvatarUrl(user?.email);
   
   const handleLogout = () => {
     if (onLogout) {
@@ -192,10 +194,16 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               {user ? (
                 <>
                   {user.role !== 'admin' && (
-                    <button onClick={() => navigate('/dashboard')} className="hidden md:flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
-                      <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
+                    <button onClick={() => navigate('/dashboard')} className="hidden md:flex items-center gap-2 px-3 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
+                      <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                        ) : (
+                          <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        )}
+                      </div>
                     </button>
                   )}
                   <button onClick={handleLogout} className="hidden md:flex items-center gap-2 px-4 py-2 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-all group">
@@ -355,10 +363,16 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
           {/* КАБИНЕТ */}
           {user && user.role !== 'admin' ? (
             <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+              <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                )}
+              </div>
             </button>
           ) : (
             <div className="flex flex-col items-center gap-1 text-blue-400/30 translate-y-1.5">

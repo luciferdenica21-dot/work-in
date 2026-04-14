@@ -4,6 +4,7 @@ import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square } from 'lucide-react';
+import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
 const ChatWidget = ({ user }) => {
   const { t } = useTranslation();
@@ -37,6 +38,7 @@ const ChatWidget = ({ user }) => {
   const fileInputRef = useRef();
   const widgetRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
+  const avatarUrl = useAvatarUrl(user?.email);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -448,8 +450,14 @@ const ChatWidget = ({ user }) => {
     }
 
     return (
-      <div className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 flex items-center justify-center font-bold text-[10px] md:text-[11px]">
-        {getClientInitial()}
+      <div className="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full text-blue-200 flex items-center justify-center font-bold text-[10px] md:text-[11px]">
+            {getClientInitial()}
+          </div>
+        )}
       </div>
     );
   };

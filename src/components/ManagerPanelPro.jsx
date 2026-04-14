@@ -4,6 +4,7 @@ import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI, signaturesAPI } from '../config/api';
 import SignatureRequestComposer from './SignatureRequestComposer';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
+import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import { 
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
   Plus, Trash2, FileText, Info, Settings, MessageSquare, MessageCircle,
@@ -14,6 +15,7 @@ import {
 
 function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
+  const adminAvatarUrl = useAvatarUrl(user?.email);
   
   // Функция форматирования размера файла
   const formatFileSize = (bytes) => {
@@ -1670,8 +1672,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const renderChatMessageAvatar = (isManagerSender) => {
     if (isManagerSender) {
       return (
-        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
-          {(String(adminLabel)[0] || 'A').toUpperCase()}
+        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+          {adminAvatarUrl ? (
+            <img src={adminAvatarUrl} alt="avatar" className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
+              {(String(adminLabel)[0] || 'A').toUpperCase()}
+            </div>
+          )}
         </div>
       );
     }

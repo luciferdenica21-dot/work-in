@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authAPI, chatsAPI, ordersAPI, filesAPI } from '../config/api';
 import ChatWidget from './ChatWidget';
+import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import { 
   User, Mail, Phone, MapPin, LogOut, Edit2, 
   FileText, MessageSquare, Package, CheckCircle, 
@@ -23,6 +24,7 @@ const ClientDashboard = ({ user: initialUser }) => {
     phone: user?.phone || '',
     city: user?.city || ''
   });
+  const avatarUrl = useAvatarUrl(user?.email);
 
   useEffect(() => {
     const loadData = async () => {
@@ -242,8 +244,12 @@ const ClientDashboard = ({ user: initialUser }) => {
         <div className="sidebar-area" style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="card-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '2rem', padding: '30px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
-              <div style={{ width: '50px', height: '50px', background: 'linear-gradient(to bottom right, #38bdf8, #1e40af)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <User size={24} color="#fff" />
+              <div style={{ width: '50px', height: '50px', background: 'linear-gradient(to bottom right, #38bdf8, #1e40af)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <User size={24} color="#fff" />
+                )}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '16px', fontWeight: 700, color: theme.textMain, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
