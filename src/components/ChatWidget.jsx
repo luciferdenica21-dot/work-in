@@ -12,6 +12,7 @@ const ChatWidget = ({ user }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
+  
 
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [pinnedMessage, setPinnedMessage] = useState(null);
