@@ -98,6 +98,7 @@ app.get('/api/health', (req, res) => {
 // Простое отслеживание онлайн-пользователей (все роли)
 // Ключ: userId, Значение: количество активных соединений (вкладки/устройства)
 const onlineUsers = new Map();
+let supportOnlineCount = 0;
 
 io.use((socket, next) => {
   const userId = socket.handshake.auth.userId;
@@ -122,6 +123,11 @@ io.on('connection', (socket) => {
   // Админу отправляем снимок всех онлайн-пользователей
   if (socket.role === 'admin') {
     socket.emit('online-users', Array.from(onlineUsers.keys()));
+    supportOnlineCount += 1;
+    io.emit('support-status', { online: true });
+  }
+  if (socket.role === 'user') {
+    socket.emit('support-status', { online: supportOnlineCount > 0 });
   }
 
   socket.on('join-chat', async (chatId) => {
@@ -136,6 +142,17 @@ io.on('connection', (socket) => {
   socket.on('leave-chat', (chatId) => {
     socket.leave(`chat-${chatId}`);
     console.log(`User ${socket.userId} left chat ${chatId}`);
+  });
+
+  socket.on('typing', (payload) => {
+    try {
+      const chatId = payload?.chatId;
+      const isTyping = !!payload?.isTyping;
+      if (!chatId) return;
+      io.to(`chat-${chatId}`).emit('typing', { chatId, role: socket.role, isTyping });
+    } catch (error) {
+      console.error('Typing error:', error);
+    }
   });
 
   socket.on('send-message', async (data) => {
@@ -228,6 +245,10 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log(`User disconnected: ${socket.userId}`);
+    if (socket.role === 'admin') {
+      supportOnlineCount = Math.max(0, supportOnlineCount - 1);
+      io.emit('support-status', { online: supportOnlineCount > 0 });
+    }
     if (socket.role === 'user') {
       const current = onlineUsers.get(socket.userId) || 0;
       if (current <= 1) {

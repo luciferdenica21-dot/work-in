@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
-import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square } from 'lucide-react';
+import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
 const ChatWidget = ({ user }) => {
@@ -39,6 +39,9 @@ const ChatWidget = ({ user }) => {
   const widgetRef = useRef(null);
   const [scrolled, setScrolled] = useState(false);
   const avatarUrl = useAvatarUrl(user?.email);
+  const [supportOnline, setSupportOnline] = useState(false);
+  const [supportTyping, setSupportTyping] = useState(false);
+  const typingTimeoutRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -274,7 +277,13 @@ const ChatWidget = ({ user }) => {
         }
 
         const msgs = await messagesAPI.getByChatId(chat.chatId);
-        setMessages((msgs || []).map(normalizeMessage));
+        setMessages((msgs || []).map(normalizeMessage).map((m) => {
+          const mine = isUserMessage(m);
+          if (!mine) return m;
+          const id0 = m?._id || m?.id;
+          const isTemp = typeof id0 === 'string' && id0.startsWith('temp_');
+          return { ...m, __status: isTemp ? 'sending' : 'delivered' };
+        }));
       } catch (error) {
         console.error('Error loading chat:', error);
       }
@@ -296,9 +305,12 @@ const ChatWidget = ({ user }) => {
             const sameText = (m?.text || '') === (incoming?.text || '');
             return !(mine && sameText);
           });
+          const mineIncoming = isUserMessage(incoming);
+          const withStatus = mineIncoming ? { ...incoming, __status: 'delivered' } : incoming;
+
           // Если такое серверное сообщение уже есть — не добавляем повторно
           if (id && withoutTemps.some((m) => (m._id || m.id) === id)) return withoutTemps;
-          return [...withoutTemps, incoming];
+          return [...withoutTemps, withStatus];
         });
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
  
@@ -322,12 +334,40 @@ const ChatWidget = ({ user }) => {
         });
       };
 
+      const handleSupportStatus = (payload) => {
+        setSupportOnline(!!payload?.online);
+      };
+
+      const handleTyping = (payload) => {
+        if (!payload?.chatId || payload.chatId !== chatId) return;
+        if (payload?.role !== 'admin') return;
+        setSupportTyping(!!payload?.isTyping);
+      };
+
+      const handleChatRead = (payload) => {
+        if (!payload?.chatId || payload.chatId !== chatId) return;
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (!isUserMessage(m)) return m;
+            const id0 = m?._id || m?.id;
+            if (typeof id0 === 'string' && id0.startsWith('temp_')) return m;
+            return { ...m, __status: 'read' };
+          })
+        );
+      };
+
       socket.on('new-message', handleNewMessage);
       socket.on('message-deleted', handleMessageDeleted);
+      socket.on('support-status', handleSupportStatus);
+      socket.on('typing', handleTyping);
+      socket.on('chat-read', handleChatRead);
 
       return () => {
         socket.off('new-message', handleNewMessage);
         socket.off('message-deleted', handleMessageDeleted);
+        socket.off('support-status', handleSupportStatus);
+        socket.off('typing', handleTyping);
+        socket.off('chat-read', handleChatRead);
       };
     }
 
@@ -344,7 +384,13 @@ const ChatWidget = ({ user }) => {
       const loadMessages = async () => {
         try {
           const msgs = await chatsAPI.getMessages(chatId);
-          setMessages((msgs || []).map(normalizeMessage));
+          setMessages((msgs || []).map(normalizeMessage).map((m) => {
+            const mine = isUserMessage(m);
+            if (!mine) return m;
+            const id0 = m?._id || m?.id;
+            const isTemp = typeof id0 === 'string' && id0.startsWith('temp_');
+            return { ...m, __status: isTemp ? 'sending' : (m.__status || 'delivered') };
+          }));
           setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         } catch (error) {
           console.error('Error loading messages:', error);
@@ -393,7 +439,8 @@ const ChatWidget = ({ user }) => {
         _id: tempId,
         senderId: user?._id,
         text,
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        __status: 'sending'
       };
       setMessages((prev) => [...prev, normalizeMessage(optimistic)]);
 
@@ -426,31 +473,22 @@ const ChatWidget = ({ user }) => {
     return user?.name || user?.login || user?.email || 'Клиент';
   };
 
-  const isManagerMessage = (msg) => {
-    return msg?.senderId === 'manager' || msg?.senderRole === 'manager' || msg?.role === 'manager';
-  };
-
-  const getSenderLabel = (msg) => {
-    if (isManagerMessage(msg)) return 'Support';
-    return getClientLabel();
-  };
-
   const getClientInitial = () => {
     const label = String(getClientLabel() || '').trim();
     return (label[0] || 'U').toUpperCase();
   };
 
-  const renderMessageAvatar = (isMine) => {
-    if (!isMine) {
-      return (
-        <div className="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
-          <img src="/img/logo.png" alt="logo" className="w-full h-full object-contain p-1" />
-        </div>
-      );
-    }
-
+  const renderSupportAvatar = () => {
     return (
-      <div className="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
+      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
+        <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-1.5" />
+      </div>
+    );
+  };
+
+  const renderClientAvatar = () => {
+    return (
+      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
         {avatarUrl ? (
           <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
         ) : (
@@ -461,6 +499,47 @@ const ChatWidget = ({ user }) => {
       </div>
     );
   };
+
+  const normalizeForDisplay = (text) => {
+    if (typeof text !== 'string') return text;
+    return text.replace(/\u00ad/g, '').replace(/\u200b/g, '');
+  };
+
+  const formatTime = (iso) => {
+    try {
+      const d = new Date(iso);
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    } catch {
+      return '';
+    }
+  };
+
+  const renderReceipt = (msg) => {
+    if (!isUserMessage(msg)) return null;
+    const id0 = msg?._id || msg?.id;
+    if (typeof id0 === 'string' && id0.startsWith('temp_')) {
+      return <Check className="w-3 h-3 text-white/40" />;
+    }
+    const st = msg?.__status || 'delivered';
+    if (st === 'read') return <CheckCheck className="w-3 h-3 text-blue-300" />;
+    return <CheckCheck className="w-3 h-3 text-white/40" />;
+  };
+
+  useEffect(() => {
+    if (!chatId) return;
+    const socket = getSocket();
+    if (!socket || !socket.connected) return;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('typing', { chatId, isTyping: !!message });
+    typingTimeoutRef.current = setTimeout(() => {
+      try { socket.emit('typing', { chatId, isTyping: false }); } catch { void 0; }
+    }, 1200);
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [message, chatId]);
 
   const getFileUrl = (filename) => {
     return filesAPI.getFileUrl(filename);
@@ -708,7 +787,7 @@ const ChatWidget = ({ user }) => {
             } : {}
           }
         >
-          <div className="p-3 md:p-4 border-b border-white/5 flex justify-between items-center bg-white/5">
+          <div className="px-4 py-3 border-b border-white/10 flex justify-between items-center bg-white/5">
             {isSelecting ? (
               <div className="flex items-center gap-3 min-w-0">
                 <button
@@ -724,7 +803,20 @@ const ChatWidget = ({ user }) => {
                 </span>
               </div>
             ) : (
-              <span className="text-white text-[10px] uppercase font-bold tracking-widest">CONNECTOR Support</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
+                  <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-2" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-white text-sm font-semibold leading-tight truncate">Support</div>
+                  <div className="text-white/60 text-xs leading-tight flex items-center gap-2">
+                    <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
+                    <span className="truncate">
+                      {supportTyping ? 'Оператор вводит сообщение…' : (supportOnline ? 'В сети' : 'Не в сети')}
+                    </span>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className="flex items-center gap-2">
@@ -798,12 +890,12 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
           
-          <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
               const isSelected = !!msgId && selectedMessages.has(msgId);
-              const replyMeta = parseReplyMetaFromText(msg.text);
+              const replyMeta = parseReplyMetaFromText(normalizeForDisplay(msg.text));
               const hasAttachments = msg.attachments && msg.attachments.length > 0;
               const isAutoFileText =
                 typeof msg.text === 'string' &&
@@ -815,10 +907,12 @@ const ChatWidget = ({ user }) => {
                   return mime.startsWith('image/') || mime.startsWith('video/');
                 });
               const showText = (!hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText)) && !extractSignLink(msg?.text || '');
+              const isSupportMessage = !isMine;
+              const avatarEl = isSupportMessage ? renderSupportAvatar() : renderClientAvatar();
               return (
-                <div key={msg._id || msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`flex items-start gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
-                    {renderMessageAvatar(isMine)}
+                <div key={msg._id || msg.id} className="w-full flex justify-end">
+                  <div className="w-full flex flex-col items-end">
+                    <div className="mb-1">{avatarEl}</div>
                     <div
                       role={isSelecting ? 'button' : undefined}
                       tabIndex={isSelecting ? 0 : undefined}
@@ -838,22 +932,19 @@ const ChatWidget = ({ user }) => {
                           toggleMessageSelection(msg);
                         }
                       }}
-                      className={`min-w-0 max-w-[80%] px-3 py-2 rounded-2xl text-[11px] md:text-xs text-left ${
-                        isMine ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/10 text-white/80 rounded-tl-none'
+                      className={`w-full px-3 py-2 rounded-2xl text-[12px] md:text-sm text-left overflow-hidden ${
+                        isMine ? 'bg-white/10 text-white rounded-br-none' : 'bg-blue-600/30 text-white/90 rounded-bl-none'
                       } ${isSelected ? 'ring-2 ring-blue-300' : ''}`}
                     >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <span className="text-[10px] text-white/60 leading-none">{getSenderLabel(msg)}</span>
-                        {isSelecting && (
-                          <span className="flex-shrink-0">
-                            {isSelected ? (
-                              <CheckSquare className="w-3 h-3 text-white" />
-                            ) : (
-                              <Square className="w-3 h-3 text-white/60" />
-                            )}
-                          </span>
-                        )}
-                      </div>
+                      {isSelecting && (
+                        <div className="flex items-center justify-end mb-1">
+                          {isSelected ? (
+                            <CheckSquare className="w-3 h-3 text-white" />
+                          ) : (
+                            <Square className="w-3 h-3 text-white/60" />
+                          )}
+                        </div>
+                      )}
 
                       {replyMeta && (
                         <div className="mb-2 px-2 py-1 rounded-lg bg-black/20 border border-white/10">
@@ -865,7 +956,9 @@ const ChatWidget = ({ user }) => {
                       )}
 
                       {showText && (
-                        <p className="whitespace-pre-wrap break-words">{renderTextWithLinks(replyMeta?.bodyText ?? msg.text)}</p>
+                        <p className="whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'normal' }}>
+                          {renderTextWithLinks(normalizeForDisplay(replyMeta?.bodyText ?? msg.text))}
+                        </p>
                       )}
                       {hasAttachments && !extractSignLink(msg?.text || '') && (
                         <div className="mt-2 space-y-2">
@@ -899,6 +992,10 @@ const ChatWidget = ({ user }) => {
                           </div>
                         </div>
                       )}
+                      <div className={`mt-2 flex items-center gap-2 ${isMine ? 'justify-end' : 'justify-start'}`}>
+                        <span className="text-[10px] text-white/50">{formatTime(msg?.createdAt || msg?.created_at)}</span>
+                        {isMine && renderReceipt(msg)}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -907,7 +1004,7 @@ const ChatWidget = ({ user }) => {
             <div ref={scrollRef} />
           </div>
 
-          <form onSubmit={sendMessage} className="p-4 border-t border-white/5 flex flex-col gap-2">
+          <form onSubmit={sendMessage} className="px-4 py-3 border-t border-white/10 flex flex-col gap-2 bg-white/5">
             {replyTo && (
               <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                 <div className="min-w-0">
@@ -938,7 +1035,7 @@ const ChatWidget = ({ user }) => {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="text-blue-500 hover:text-white transition-colors disabled:opacity-50"
+                className="text-white/60 hover:text-white transition-colors disabled:opacity-50"
                 title="Прикрепить файл"
               >
                 {uploading ? (
@@ -950,10 +1047,10 @@ const ChatWidget = ({ user }) => {
               <input 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="..."
-                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-white text-xs outline-none focus:border-blue-500/50"
+                placeholder={supportTyping ? 'Оператор вводит сообщение…' : 'Текст...'}
+                className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-2xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50"
               />
-              <button type="submit" className="text-blue-500 hover:text-white transition-colors">
+              <button type="submit" className="text-white/80 hover:text-white transition-colors">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
                 </svg>

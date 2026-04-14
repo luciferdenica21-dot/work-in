@@ -632,6 +632,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [filterStatus, setFilterStatus] = useState('all'); 
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
+  const typingTimeoutRef = useRef(null);
   const [activeSection, setActiveSection] = useState('dashboard'); 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileChatListOpen, setMobileChatListOpen] = useState(true);
@@ -666,6 +667,20 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }
     } catch { void 0; }
   }, [messages.length, activeId, activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== 'chats' || !activeId) return;
+    const socket = getSocket();
+    if (!socket || !socket.connected) return;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    socket.emit('typing', { chatId: activeId, isTyping: !!inputText });
+    typingTimeoutRef.current = setTimeout(() => {
+      try { socket.emit('typing', { chatId: activeId, isTyping: false }); } catch { void 0; }
+    }, 1200);
+    return () => {
+      if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    };
+  }, [inputText, activeId, activeSection]);
   
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -1219,6 +1234,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         const socket = getSocket();
         if (socket) {
           socket.emit('join-chat', activeId);
+          socket.emit('mark-read', activeId);
         }
       } catch (error) { 
         console.error('Error loading messages:', error);
