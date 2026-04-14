@@ -125,7 +125,7 @@ export const gravatarUrl = (email) => {
   const e = String(email || '').trim().toLowerCase();
   if (!e) return '';
   const hash = md5(e);
-  return `https://www.gravatar.com/avatar/${hash}?d=identicon&s=256`;
+  return `https://www.gravatar.com/avatar/${hash}?d=404&s=256`;
 };
 
 export const supabaseProfileAvatarUrl = async (email) => {
@@ -151,4 +151,3 @@ export const supabaseProfileAvatarUrl = async (email) => {
     return '';
   }
 };
-

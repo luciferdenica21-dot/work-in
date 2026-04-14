@@ -13,19 +13,24 @@ import {
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square, Reply
 } from 'lucide-react';
 
-const UserAvatar = ({ email, size = "w-10 h-10", showStatus = false, isOnline = false, className = "" }) => {
+const UserAvatar = ({ email, name, size = "w-10 h-10", showStatus = false, isOnline = false, className = "" }) => {
   const url = useAvatarUrl(email);
-  const initial = email && typeof email === 'string' ? email[0] : '?';
+  const label = String(name || '').trim() || String(email || '').trim() || '?';
+  const initial = (label[0] || '?').toUpperCase();
   return (
     <div className={`relative shrink-0 ${size} ${className}`}>
-      <div className="w-full h-full rounded-full overflow-hidden border border-white/10 bg-white/5 flex items-center justify-center">
+      <div className="relative w-full h-full rounded-full overflow-hidden border border-white/10 bg-white/5">
+        <div className="absolute inset-0 flex items-center justify-center text-white/50 text-[10px] font-bold uppercase">
+          {initial}
+        </div>
         {url ? (
-          <img src={url} alt="avatar" className="w-full h-full object-cover" />
-        ) : (
-          <div className="text-white/50 text-[10px] font-bold uppercase">
-            {initial}
-          </div>
-        )}
+          <img
+            src={url}
+            alt="avatar"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none'; }}
+          />
+        ) : null}
       </div>
       {showStatus && (
         <div className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-[#050a18] ${isOnline ? 'bg-green-500' : 'bg-gray-500'}`} />
@@ -531,48 +536,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
-  const renderFileContent = (msg) => {
-    const url = getAbsoluteFileUrl(msg.fileUrl);
-    if (!url) return null;
-
-    if (msg.fileType?.startsWith('image/')) {
-      return (
-        <a href={url} target="_blank" rel="noopener noreferrer">
-          <img
-            src={url}
-            alt={msg.fileName || 'image'}
-            className="w-full h-32 object-cover rounded-lg border border-white/10 hover:opacity-90 transition-opacity"
-            onError={(e) => {
-              e.currentTarget.style.display = 'none';
-            }}
-          />
-        </a>
-      );
-    }
-
-    if (msg.fileType?.startsWith('video/')) {
-      return (
-        <video
-          src={url}
-          controls
-          className="w-full h-40 rounded-lg border border-white/10"
-        />
-      );
-    }
-
-    if (msg.fileType?.startsWith('audio/')) {
-      return (
-        <audio
-          src={url}
-          controls
-          className="w-full"
-        />
-      );
-    }
-
-    return null;
-  };
-
   const SIGNATURE_MARKER = '__SIGNREQ__:';
   const isSignatureScript = (script) => typeof script?.text === 'string' && script.text.startsWith(SIGNATURE_MARKER);
   const parseSignatureScript = (script) => {
@@ -651,6 +614,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [inputText, setInputText] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState('all'); 
+  const [selectedOrdersUserKey, setSelectedOrdersUserKey] = useState(null);
+  const [mobileOrdersListOpen, setMobileOrdersListOpen] = useState(true);
+  const [ordersSearchQuery, setOrdersSearchQuery] = useState('');
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -662,6 +628,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [contextMenuMsg, setContextMenuMsg] = useState(null);
   const [pinnedMessage, setPinnedMessage] = useState(null);
+  const [replyToMsg, setReplyToMsg] = useState(null);
   const [longPressTimer, setLongPressTimer] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -678,7 +645,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
   });
   const [orderDetailsDraft, setOrderDetailsDraft] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
-  const [installPromptEvent, setInstallPromptEvent] = useState(null);
   const [showInstallModal, setShowInstallModal] = useState(false);
   const installPromptHandlerRef = useRef(null);
 
@@ -803,15 +769,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scripts]);
 
-  const getClientChat = (clientId) => {
-    if (!clientId) return null;
-    return chats.find((c) => String(c?.userId) === String(clientId)) || null;
-  };
+  const normalizeEmail = (value) => String(value || '').trim().toLowerCase();
 
-  const getClientOrders = (clientId) => {
-    const chat = getClientChat(clientId);
-    if (!chat?.chatId) return [];
-    return (orders || []).filter((o) => String(o?.chatId) === String(chat.chatId));
+  const getClientChat = (clientId, email) => {
+    const id = clientId != null ? String(clientId) : '';
+    const emailKey = normalizeEmail(email);
+    if (!id && !emailKey) return null;
+    return (
+      (chats || []).find((c) => {
+        const byId = id && String(c?.userId) === id;
+        const byEmail = emailKey && normalizeEmail(c?.userEmail) === emailKey;
+        return byId || byEmail;
+      }) || null
+    );
   };
 
   const getOrderKey = (order) => {
@@ -906,37 +876,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
     });
   }, [orders]);
 
-  const openClientInfo = (client) => {
-    if (!client) return;
-    setSelectedClient(client);
-  };
-
-  const handleDeleteClient = async (clientId) => {
-    if (!clientId) return;
-    if (!window.confirm('Удалить клиента?')) return;
-
-    try {
-      await authAPI.deleteUser(clientId);
-      setAllUsers((prev) => (prev || []).filter((u) => String(u?.id) !== String(clientId)));
-
-      const chat = getClientChat(clientId);
-      if (chat?.chatId) {
-        setChats((prev) => (prev || []).filter((c) => String(c?.chatId) !== String(chat.chatId)));
-        setOrders((prev) => (prev || []).filter((o) => String(o?.chatId) !== String(chat.chatId)));
-        if (String(activeId) === String(chat.chatId)) {
-          setActiveId(null);
-          setMessages([]);
-        }
-      }
-
-      if (String(selectedClient?.id) === String(clientId)) {
-        setSelectedClient(null);
-      }
-    } catch (err) {
-      console.error('Ошибка удаления клиента:', err);
-      alert('Не удалось удалить клиента');
-    }
-  };
 
   // Навигационные пункты для админа - только основные
   const navItems = [
@@ -1080,13 +1019,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
   useEffect(() => {
     setMobileMenuOpen(false);
     if (activeSection === 'chats') {
-      setMobileChatListOpen(true);
       if (window.innerWidth < 1024) {
-        setActiveId(null);
+        setMobileChatListOpen(!activeId);
+      } else {
+        setMobileChatListOpen(true);
       }
     }
     if (activeSection === 'clients') {
       setSelectedClient(null);
+    }
+    if (activeSection === 'orders') {
+      setSelectedOrdersUserKey(null);
+      setMobileOrdersListOpen(true);
+      setOrdersSearchQuery('');
     }
   }, [activeSection]);
 
@@ -1137,7 +1082,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
           // PWA: перехватываем системный beforeinstallprompt и сохраняем для ручной установки
           const handleBeforeInstallPrompt = (e) => {
             e.preventDefault();
-            setInstallPromptEvent(e);
           };
           installPromptHandlerRef.current = handleBeforeInstallPrompt;
           window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -1162,27 +1106,40 @@ const getAbsoluteFileUrl = (fileUrl) => {
               return next;
             });
           });
+          const upsertIncomingMessage = (incoming) => {
+            const messageId = incoming?._id || incoming?.id;
+            if (!messageId) return;
+            setMessages((prev) => {
+              if (prev.some((m) => (m._id || m.id) === messageId)) return prev;
+              const list = Array.isArray(prev) ? [...prev] : [];
+              if (incoming?.senderId === 'manager') {
+                for (let i = list.length - 1; i >= 0; i -= 1) {
+                  const m = list[i];
+                  const id = String(m?._id || m?.id || '');
+                  if (String(m?.senderId) !== 'manager') continue;
+                  if (!id.startsWith('temp_')) continue;
+                  if (String(m?.text || '') !== String(incoming?.text || '')) continue;
+                  list.splice(i, 1);
+                  break;
+                }
+              }
+              return [...list, incoming];
+            });
+          };
           socket.on('new-chat-message', (payload) => {
             console.log('=== NEW CHAT MESSAGE ===');
             console.log('Payload:', payload);
             if (payload.chatId === activeId) {
-              setMessages(prev => {
-                const exists = prev.find(m => (m._id || m.id) === (payload.message._id || payload.message.id));
-                if (exists) return prev;
-                
-                // Если сообщение содержит файл, используем правильные поля
-                const message = {
-                  ...payload.message,
-                  fileName: payload.message.fileName || payload.message.attachments?.[0]?.originalName,
-                  fileSize: payload.message.fileSize || payload.message.attachments?.[0]?.size,
-                  fileType: payload.message.fileType || payload.message.attachments?.[0]?.mimetype,
-                  fileUrl: payload.message.fileUrl || payload.message.attachments?.[0]?.url
-                };
-                
-                console.log('Processed message:', message);
-                
-                return [...prev, message];
-              });
+              const raw = payload?.message || {};
+              const message = {
+                ...raw,
+                fileName: raw.fileName || raw.attachments?.[0]?.originalName,
+                fileSize: raw.fileSize || raw.attachments?.[0]?.size,
+                fileType: raw.fileType || raw.attachments?.[0]?.mimetype,
+                fileUrl: raw.fileUrl || raw.attachments?.[0]?.url
+              };
+              console.log('Processed message:', message);
+              upsertIncomingMessage(message);
             }
         // Автопрокрутка вниз, если открыта активная переписка
         if (payload.chatId === activeId) {
@@ -1191,6 +1148,22 @@ const getAbsoluteFileUrl = (fileUrl) => {
           } catch { /* ignore */ }
         }
             try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
+          });
+          socket.on('new-message', (message) => {
+            if (!message) return;
+            if (String(message.chatId) !== String(activeId)) return;
+            const raw = message || {};
+            const normalized = {
+              ...raw,
+              fileName: raw.fileName || raw.attachments?.[0]?.originalName,
+              fileSize: raw.fileSize || raw.attachments?.[0]?.size,
+              fileType: raw.fileType || raw.attachments?.[0]?.mimetype,
+              fileUrl: raw.fileUrl || raw.attachments?.[0]?.url
+            };
+            upsertIncomingMessage(normalized);
+            try {
+              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
+            } catch { void 0; }
           });
           
           socket.on('message-deleted', ({ messageId }) => {
@@ -1217,6 +1190,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         socket.off('user-online');
         socket.off('user-offline');
         socket.off('new-chat-message');
+        socket.off('new-message');
         socket.off('message-deleted');
         socket.off('order-created');
       }
@@ -1311,24 +1285,31 @@ const getAbsoluteFileUrl = (fileUrl) => {
     
     try {
       const socket = getSocket();
-      const tempId = Date.now().toString();
+      const replyText = replyToMsg?.text ? String(replyToMsg.text).replace(/\s+/g, ' ').trim().slice(0, 120) : '';
+      const composedText = replyText ? `↩️ ${replyText}\n${textToSend}` : textToSend;
+      const tempId = `temp_${Date.now()}`;
       const newMessage = {
         _id: tempId,
         senderId: 'manager',
-        text: textToSend,
+        text: composedText,
         createdAt: new Date().toISOString()
       };
 
       // Сначала добавляем сообщение в UI для мгновенного отображения
       setMessages(prev => [...prev, newMessage]);
       if (!textOverride) setInputText("");
+      setReplyToMsg(null);
 
       // Затем отправляем через Socket.io или API
       if (socket && socket.connected) {
-        socket.emit('send-message', { chatId: activeId, text: textToSend });
+        socket.emit('send-message', { chatId: activeId, text: composedText, clientTempId: tempId });
       } else {
         // Fallback на API если Socket не работает
-        await messagesAPI.send(activeId, textToSend);
+        const created = await messagesAPI.send(activeId, composedText);
+        if (created && (created._id || created.id)) {
+          const createdId = created._id || created.id;
+          setMessages((prev) => prev.map((m) => ((m._id || m.id) === tempId ? { ...created, _id: createdId } : m)));
+        }
       }
 
       // Обновляем список чатов
@@ -1451,26 +1432,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (!window.confirm("Удалить это сообщение?")) return;
     
     try {
+      const id = String(msgId || '');
       // Сначала удаляем из UI для мгновенного отклика
       setMessages(prev => prev.filter(m => (m._id || m.id) !== msgId));
+      setContextMenuMsg(null);
+      if (!id || id.startsWith('temp_') || id.startsWith('uploading_')) return;
       
       // Затем пытаемся удалить на сервере
       await messagesAPI.delete(msgId);
-      
-      const socket = getSocket();
-      if (socket) {
-        socket.emit('delete-message', { chatId: activeId, messageId: msgId });
-      }
     } catch (err) { 
       console.error('Ошибка удаления сообщения:', err);
       alert('Не удалось удалить сообщение');
       // Откатываем изменения если ошибка
       loadChats();
     }
-  }; // eslint-disable-line no-unused-vars
-
-  // eslint-disable-next-line no-unused-vars
-  const _handleDeleteMessage = handleDeleteMessage;
+  };
 
   const handleDeleteSelectedMessages = async () => {
     if (selectedMessages.size === 0) return;
@@ -1483,25 +1459,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
       // Удаляем на сервере
       await Promise.all(ids.map(id => messagesAPI.delete(id).catch(() => null)));
-
-      const socket = getSocket();
-      if (socket) {
-        ids.forEach(id => {
-          socket.emit('delete-message', { chatId: activeId, messageId: id });
-        });
-      }
     } catch (err) {
       console.error('Ошибка удаления сообщений:', err);
       alert('Не удалось удалить сообщения');
       loadChats();
-    }
-  };
-
-  const handlePinMessage = (msg) => {
-    if (pinnedMessage && (pinnedMessage._id || pinnedMessage.id) === (msg._id || msg.id)) {
-      setPinnedMessage(null);
-    } else {
-      setPinnedMessage(msg);
     }
   };
 
@@ -1517,18 +1478,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
       clearTimeout(longPressTimer);
       setLongPressTimer(null);
     }
-  };
-
-  const toggleMessageSelection = (msgId) => {
-    setSelectedMessages(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(msgId)) {
-        newSet.delete(msgId);
-      } else {
-        newSet.add(msgId);
-      }
-      return newSet;
-    });
   };
 
   const handleClearChat = async () => {
@@ -1674,12 +1623,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
     setServices([...services, newService]);
   };
 
-  const startChat = async (userId) => {
+  const startChat = async (userId, email) => {
     try {
-      const userChat = chats.find(chat => String(chat.userId) === String(userId));
+      const userChat = getClientChat(userId, email);
       if (userChat) {
         setActiveId(userChat.chatId);
         setActiveSection('chats');
+        setMobileChatListOpen(false);
         return;
       }
 
@@ -1692,6 +1642,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         });
         setActiveId(created.chatId);
         setActiveSection('chats');
+        setMobileChatListOpen(false);
       }
     } catch (error) {
       console.error('Error starting chat:', error);
@@ -1718,6 +1669,49 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const newOrders = (orders || []).filter((o) => o?.status === 'new');
   const unseenNewOrdersCount = newOrders.filter((o) => !seenOrders.includes(getOrderKey(o))).length;
 
+  const filteredOrders = (orders || []).filter((order) => filterStatus === 'all' || order?.status === filterStatus);
+  const chatById = new Map((chats || []).map((c) => [String(c?.chatId), c]));
+  const ordersByUser = new Map();
+
+  filteredOrders.forEach((order) => {
+    const chat = chatById.get(String(order?.chatId)) || null;
+    const emailRaw = chat?.userEmail || order?.email || '';
+    const email = normalizeEmail(emailRaw);
+    const key = email || String(order?.chatId || '');
+    if (!key) return;
+
+    const u = email ? (allUsers || []).find((x) => normalizeEmail(x?.email) === email) : null;
+    const name =
+      (u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : '') ||
+      `${order?.firstName || ''} ${order?.lastName || ''}`.trim() ||
+      (email ? email.split('@')[0] : 'User');
+
+    if (!ordersByUser.has(key)) {
+      ordersByUser.set(key, { key, email, name, orders: [] });
+    }
+    ordersByUser.get(key).orders.push(order);
+  });
+
+  const ordersSearchQ = String(ordersSearchQuery || '').trim().toLowerCase();
+  const orderUsers = Array.from(ordersByUser.values())
+    .filter((entry) => {
+      if (!ordersSearchQ) return true;
+      return (
+        String(entry?.name || '').toLowerCase().includes(ordersSearchQ) ||
+        String(entry?.email || '').toLowerCase().includes(ordersSearchQ)
+      );
+    })
+    .map((entry) => {
+      const unseenCount = (entry.orders || []).reduce((acc, o) => acc + (seenOrders.includes(getOrderKey(o)) ? 0 : 1), 0);
+      const newCount = (entry.orders || []).reduce((acc, o) => acc + (o?.status === 'new' ? 1 : 0), 0);
+      return { ...entry, unseenCount, newCount, count: (entry.orders || []).length };
+    })
+    .sort((a, b) => {
+      if (b.newCount !== a.newCount) return b.newCount - a.newCount;
+      if (b.unseenCount !== a.unseenCount) return b.unseenCount - a.unseenCount;
+      return String(a.name).localeCompare(String(b.name));
+    });
+
   const adminLabel = (
     user?.name ||
     user?.login ||
@@ -1726,35 +1720,33 @@ const getAbsoluteFileUrl = (fileUrl) => {
     'Admin'
   );
 
-  const getActiveClientLabel = () => {
-    const chat = (chats || []).find((c) => String(c?.chatId) === String(activeId));
-    const email = chat?.userEmail;
-    return String(email || '').trim() || 'Client';
-  };
-
-  const getActiveClientInitial = () => {
-    const label = getActiveClientLabel();
-    return (label[0] || 'U').toUpperCase();
-  };
-
   const renderChatMessageAvatar = (isManagerSender, userEmail) => {
     if (isManagerSender) {
+      const fallbackLetter = (String(adminLabel)[0] || 'A').toUpperCase();
       return (
-        <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+        <div className="relative w-6 h-6 sm:w-7 sm:h-7 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+          <div className="absolute inset-0 flex items-center justify-center font-bold text-[10px] sm:text-[11px] text-blue-200">
+            {fallbackLetter}
+          </div>
           {adminAvatarUrl ? (
-            <img src={adminAvatarUrl} alt="avatar" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full text-blue-200 flex items-center justify-center font-bold text-[10px] sm:text-[11px]">
-              {(String(adminLabel)[0] || 'A').toUpperCase()}
-            </div>
-          )}
+            <img
+              src={adminAvatarUrl}
+              alt="avatar"
+              className="absolute inset-0 w-full h-full object-cover"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : null}
         </div>
       );
     }
 
+    const key = normalizeEmail(userEmail);
+    const u = (allUsers || []).find((x) => normalizeEmail(x?.email) === key) || null;
+    const name = u ? `${u.firstName || ''} ${u.lastName || ''}`.trim() : (String(userEmail || '').split('@')[0] || 'User');
     return (
       <UserAvatar 
         email={userEmail} 
+        name={name}
         size="w-6 h-6 sm:w-7 sm:h-7" 
         className="shrink-0"
       />
@@ -2077,6 +2069,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     >
                       <UserAvatar 
                         email={client.email} 
+                        name={`${client.firstName || ''} ${client.lastName || ''}`.trim()}
                         size="w-10 h-10" 
                         showStatus={true}
                         isOnline={isUserOnline(client)} 
@@ -2105,6 +2098,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <div className="flex items-center gap-3">
                         <UserAvatar 
                           email={selectedClient.email} 
+                          name={`${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim()}
                           size="w-10 h-10"
                           showStatus={true}
                           isOnline={isUserOnline(selectedClient)} 
@@ -2147,7 +2141,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <div className="flex gap-2">
                         <button
                           onClick={() => {
-                            setActiveSection('chats');
+                            if (!selectedClient) return;
+                            startChat(selectedClient.id, selectedClient.email);
                           }}
                           className="flex-1 px-4 py-2 bg-blue-600/20 border border-blue-500/30 rounded-xl text-blue-300 text-sm hover:bg-blue-600/30"
                         >
@@ -2412,6 +2407,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       >
                         <UserAvatar 
                           email={chat.userEmail} 
+                          name={chatUser ? `${chatUser.firstName || ''} ${chatUser.lastName || ''}`.trim() : (chat.userEmail?.split('@')[0] || 'User')}
                           size="w-14 h-14" 
                           showStatus={true} 
                           isOnline={isOnline} 
@@ -2459,6 +2455,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <div className="flex items-center gap-2 sm:gap-3">
                           <UserAvatar
                             email={chats.find(c => c.chatId === activeId)?.userEmail}
+                            name={(() => {
+                              const email = chats.find(c => c.chatId === activeId)?.userEmail;
+                              const chatUser = (allUsers || []).find(u => normalizeEmail(u?.email) === normalizeEmail(email));
+                              return chatUser ? `${chatUser.firstName || ''} ${chatUser.lastName || ''}`.trim() : (email?.split('@')[0] || 'User');
+                            })()}
                             size="w-8 h-8 sm:w-10 sm:h-10"
                             showStatus={true}
                             isOnline={isUserOnline(allUsers.find(u => u.email === chats.find(c => c.chatId === activeId)?.userEmail))}
@@ -2493,7 +2494,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 <button
                                   onClick={() => {
                                     setChatActionsOpen(false);
-                                    handleClearChat();
+                                    const lastMsg = messages[messages.length - 1];
+                                    if (lastMsg) setReplyToMsg(lastMsg);
                                   }}
                                   className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
                                   type="button"
@@ -2684,9 +2686,24 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     </div>
                                   </div>
                                 )}
-                                {(!msg.fileName || (msg.text && !msg.text.startsWith('📎'))) && (
-                                  <span className="whitespace-pre-wrap break-words leading-tight">{msg.text}</span>
-                                )}
+                                {(!msg.fileName || (msg.text && !msg.text.startsWith('📎'))) && (() => {
+                                  const text = String(msg.text || '');
+                                  if (text.startsWith('↩️ ') && text.includes('\n')) {
+                                    const [head, ...rest] = text.split('\n');
+                                    const body = rest.join('\n').trim();
+                                    return (
+                                      <div className="flex flex-col gap-1">
+                                        <div className="border-l-2 border-white/30 pl-2 text-[11px] text-white/80 line-clamp-2">
+                                          {head.replace(/^↩️\s*/, '')}
+                                        </div>
+                                        {body ? (
+                                          <span className="whitespace-pre-wrap break-words leading-tight">{body}</span>
+                                        ) : null}
+                                      </div>
+                                    );
+                                  }
+                                  return <span className="whitespace-pre-wrap break-words leading-tight">{text}</span>;
+                                })()}
                                 <div className={`text-[8px] mt-0.5 ${msg.senderId === 'manager' ? 'text-blue-100/60' : 'text-white/40'} text-right`}>
                                   {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </div>
@@ -2713,7 +2730,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             <div className="grid grid-cols-1">
                               <button
                                 onClick={() => {
-                                  setInputText(prev => prev + (contextMenuMsg.text ? `\n> ${contextMenuMsg.text}\n` : ''));
+                                  setReplyToMsg(contextMenuMsg);
                                   setContextMenuMsg(null);
                                 }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-white hover:bg-white/5 transition-colors"
@@ -2744,15 +2761,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               </button>
                               <button
                                 onClick={async () => {
-                                  if (window.confirm('Удалить это сообщение?')) {
-                                    try {
-                                      const msgId = contextMenuMsg._id || contextMenuMsg.id;
-                                      await messagesAPI.delete(activeId, msgId);
-                                      setMessages(prev => prev.filter(m => (m._id || m.id) !== msgId));
-                                    } catch (err) {
-                                      alert('Ошибка при удалении');
-                                    }
-                                  }
+                                  const msgId = contextMenuMsg._id || contextMenuMsg.id;
+                                  await handleDeleteMessage(msgId);
                                   setContextMenuMsg(null);
                                 }}
                                 className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 transition-colors border-t border-white/5"
@@ -2762,6 +2772,27 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               </button>
                             </div>
                           </div>
+                        </div>
+                      )}
+                      {replyToMsg && (
+                        <div className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 text-[11px] text-blue-300">
+                              <Reply className="w-3.5 h-3.5" />
+                              <span>Ответ</span>
+                            </div>
+                            <div className="mt-0.5 text-[12px] text-white/80 truncate">
+                              {String(replyToMsg.text || replyToMsg.fileName || 'Сообщение').replace(/\s+/g, ' ').trim()}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setReplyToMsg(null)}
+                            className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                            title="Отменить"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
                         </div>
                       )}
                       <div className="flex items-center gap-2">
@@ -2910,37 +2941,43 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
           {/* Заказы */}
           {activeSection === 'orders' && (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                <h2 className="text-2xl font-bold text-white">Управление заказами</h2>
+                <h2 className="text-lg sm:text-2xl font-bold text-white">Управление заказами</h2>
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
                   <select 
                     value={filterStatus} 
                     onChange={e => setFilterStatus(e.target.value)}
-                    className="bg-slate-900/80 border border-white/20 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
+                    className="bg-slate-900/80 border border-white/20 rounded-lg px-3 py-2 text-sm sm:text-base sm:px-4 text-white focus:outline-none focus:border-blue-500"
                   >
                     <option className="bg-slate-900 text-white" value="all">Все заказы</option>
                     <option className="bg-slate-900 text-white" value="new">Новые</option>
                     <option className="bg-slate-900 text-white" value="accepted">Принятые</option>
                     <option className="bg-slate-900 text-white" value="declined">Отклоненные</option>
                   </select>
+                  <input
+                    value={ordersSearchQuery}
+                    onChange={(e) => setOrdersSearchQuery(e.target.value)}
+                    placeholder="Поиск заказов..."
+                    className="bg-slate-900/80 border border-white/20 rounded-lg px-3 py-2 text-sm sm:text-base sm:px-4 text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                  />
                   <div className="flex items-stretch gap-2">
                     <button
                       onClick={() => {
-                        const filtered = orders.filter(order => filterStatus === 'all' || order.status === filterStatus);
-                        downloadOrdersList(filtered, 'json');
+                        const list = selectedOrdersUserKey ? (ordersByUser.get(selectedOrdersUserKey)?.orders || []) : filteredOrders;
+                        downloadOrdersList(list, 'json');
                       }}
-                      className={`px-4 py-2 ${brandGradient} rounded-lg text-white font-medium flex items-center justify-center space-x-2`}
+                      className={`px-3 py-2 sm:px-4 rounded-lg text-white font-medium flex items-center justify-center space-x-2 text-sm sm:text-base ${brandGradient}`}
                     >
-                      <Download className="w-4 h-4" />
+                      <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>JSON</span>
                     </button>
                     <button
                       onClick={() => {
-                        const filtered = orders.filter(order => filterStatus === 'all' || order.status === filterStatus);
-                        downloadOrdersPdf(filtered);
+                        const list = selectedOrdersUserKey ? (ordersByUser.get(selectedOrdersUserKey)?.orders || []) : filteredOrders;
+                        downloadOrdersPdf(list);
                       }}
-                      className="px-4 py-2 border border-white/20 rounded-lg text-white hover:bg-white/5 font-medium"
+                      className="px-3 py-2 sm:px-4 border border-white/20 rounded-lg text-white hover:bg-white/5 font-medium text-sm sm:text-base"
                     >
                       PDF
                     </button>
@@ -2948,156 +2985,252 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {orders.filter(order => 
-                  filterStatus === 'all' || order.status === filterStatus
-                ).map((order, idx) => (
-                  <div
-                    key={`${order.chatId}-${idx}`}
-                    className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-6"
-                    onClick={() => markOrderSeen(order)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') markOrderSeen(order);
-                    }}
-                  >
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                      <div className="flex items-center justify-between sm:justify-start gap-3">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                        order.status === 'new' ? 'bg-yellow-500/20 text-yellow-400' :
-                        order.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
-                        'bg-red-500/20 text-red-400'
-                      }`}>
-                        {order.status === 'new' ? 'Новый' :
-                         order.status === 'accepted' ? 'Принят' : 'Отклонен'}
-                        </span>
-
-                        <span className={`px-2 py-1 text-xs rounded-full border ${
-                          seenOrders.includes(getOrderKey(order))
-                            ? 'border-green-500/30 text-green-300 bg-green-500/10'
-                            : 'border-yellow-500/30 text-yellow-300 bg-yellow-500/10'
-                        }`}>
-                          {seenOrders.includes(getOrderKey(order)) ? 'Просмотрено' : 'Не просмотрено'}
-                        </span>
-                      </div>
-
-                      <div className="flex flex-wrap items-center justify-end gap-2 sm:justify-end">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openChatWithOrder(order);
-                          }}
-                          className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-blue-400/30 hover:bg-blue-500/10 transition-colors text-xs"
-                          title="Связаться с клиентом"
-                        >
-                          Связаться
-                        </button>
-                        <select
-                          value={order.status || 'new'}
-                          onChange={(e) => handleUpdateOrderStatus(order.chatId, order.orderIndex, e.target.value)}
-                          className="bg-slate-900/80 border border-white/20 rounded-lg px-3 py-2 sm:px-2 sm:py-1 text-white text-xs focus:outline-none focus:border-blue-500"
-                          title="Статус заказа"
-                        >
-                          <option className="bg-slate-900 text-white" value="new">Новый</option>
-                          <option className="bg-slate-900 text-white" value="accepted">Принят</option>
-                          <option className="bg-slate-900 text-white" value="declined">Отклонен</option>
-                        </select>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadOrder(order, 'json');
-                          }}
-                          className="p-3 sm:p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors"
-                          title="Скачать JSON"
-                        >
-                          <Download className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            downloadOrdersPdf([order]);
-                          }}
-                          className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
-                          title="Скачать PDF"
-                        >
-                          PDF
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOrderDetailsEditorOpen(true);
-                            setEditingOrder(order);
-                          }}
-                          className="px-3 py-2 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-xs"
-                          title="Данные менеджера"
-                        >
-                          Данные
-                        </button>
-                        <button
-                          onClick={() => handleDeleteOrder(order.chatId, order.orderIndex)}
-                          className="p-3 sm:p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
-                          title="Удалить заказ"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div>
-                        <p className="text-xs text-gray-400">Клиент</p>
-                        <p className="text-sm font-medium text-white">
-                          {order.firstName} {order.lastName}
-                        </p>
-                        <p className="text-xs text-gray-400">{order.contact}</p>
-                      </div>
-
-                      <div>
-                        <p className="text-xs text-gray-400">Услуги</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {order.services?.map((service, i) => (
-                            <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
-                              {service}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {order.comment && (
-                        <div>
-                          <p className="text-xs text-gray-400">Комментарий</p>
-                          <p className="text-xs text-gray-300 italic">"{order.comment}"</p>
-                        </div>
-                      )}
-
-                      {order.files && order.files.length > 0 && (
-                        <div>
-                          <p className="text-xs text-gray-400">Файлы заказа</p>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                            {order.files.map((file) => (
-                              <div key={file.id || file.url || file.name}>
-                                {renderOrderFile(file)}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="pt-2" />
+              <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 min-h-[60vh] lg:h-[calc(100vh-8rem)] overflow-hidden">
+                <div className={`${mobileOrdersListOpen ? 'flex' : 'hidden'} lg:flex lg:flex-none lg:w-80 flex-col bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden flex-1`}>
+                  <div className="p-3 border-b border-white/10">
+                    <h2 className="text-base sm:text-lg font-bold text-white">Клиенты</h2>
+                    <div className="text-xs text-gray-400 mt-0.5">
+                      {orderUsers.length} {orderUsers.length === 1 ? 'клиент' : orderUsers.length > 1 && orderUsers.length < 5 ? 'клиента' : 'клиентов'}
                     </div>
                   </div>
-                ))}
-              </div>
-
-              {orders.filter(order => 
-                filterStatus === 'all' || order.status === filterStatus
-              ).length === 0 && (
-                <div className="text-center py-16">
-                  <Package className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                  <p className="text-gray-400">Заказы не найдены</p>
+                  <div className="overflow-y-auto flex-1">
+                    {orderUsers.map((ou) => (
+                      <div
+                        key={ou.key}
+                        onClick={() => {
+                          setSelectedOrdersUserKey(ou.key);
+                          setMobileOrdersListOpen(false);
+                        }}
+                        className={`p-2.5 sm:p-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                          selectedOrdersUserKey === ou.key ? 'bg-blue-600/10' : 'hover:bg-white/5'
+                        }`}
+                      >
+                        <UserAvatar
+                          email={ou.email}
+                          name={ou.name}
+                          size="w-9 h-9 sm:w-10 sm:h-10"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] sm:text-sm font-semibold text-white truncate">{ou.name}</div>
+                          <div className="text-[11px] sm:text-xs text-gray-400 truncate">{ou.email || 'Без email'}</div>
+                        </div>
+                        <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded-full border ${
+                          ou.unseenCount > 0
+                            ? 'bg-yellow-500/15 border-yellow-500/25 text-yellow-300'
+                            : 'bg-white/5 border-white/10 text-white/80'
+                        }`}>
+                          {ou.unseenCount > 0 ? ou.unseenCount : ou.count}
+                        </span>
+                      </div>
+                    ))}
+                    {orderUsers.length === 0 && (
+                      <div className="text-center py-10">
+                        <Package className="w-10 h-10 mx-auto mb-3 text-gray-600" />
+                        <p className="text-gray-400 text-sm">Заказы не найдены</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-              )}
+
+                <div className={`flex-1 bg-[#050a18] lg:bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl overflow-hidden ${selectedOrdersUserKey && !mobileOrdersListOpen ? 'flex flex-col' : 'hidden lg:flex flex-col'}`}>
+                  {selectedOrdersUserKey ? (
+                    <>
+                      <div className="p-3 border-b border-white/10 bg-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <button
+                            onClick={() => setMobileOrdersListOpen(true)}
+                            className="lg:hidden p-2 rounded-full text-white hover:bg-white/5"
+                            title="Назад"
+                            type="button"
+                          >
+                            <ChevronLeft className="w-5 h-5" />
+                          </button>
+                          <UserAvatar
+                            email={ordersByUser.get(selectedOrdersUserKey)?.email}
+                            name={ordersByUser.get(selectedOrdersUserKey)?.name}
+                            size="w-9 h-9 sm:w-10 sm:h-10"
+                          />
+                          <div className="min-w-0">
+                            <div className="text-sm sm:text-base font-semibold text-white truncate">
+                              {ordersByUser.get(selectedOrdersUserKey)?.name || 'Клиент'}
+                            </div>
+                            <div className="text-[11px] sm:text-xs text-gray-400 truncate">
+                              {ordersByUser.get(selectedOrdersUserKey)?.email || ''}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-xs text-white/70">
+                          {(ordersByUser.get(selectedOrdersUserKey)?.orders || []).length} заказ(ов)
+                        </div>
+                      </div>
+
+                      <div className="flex-1 overflow-y-auto p-4">
+                        <div className="flex flex-col gap-4">
+                          {(ordersByUser.get(selectedOrdersUserKey)?.orders || []).map((order, idx) => (
+                            <div
+                              key={`${order.chatId}-${order.orderIndex}-${idx}`}
+                              className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl p-4 sm:p-6 w-full"
+                              onClick={() => markOrderSeen(order)}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') markOrderSeen(order);
+                              }}
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                                <div className="flex items-center justify-between sm:justify-start gap-3">
+                                  <span className={`px-2 py-1 text-xs rounded-full ${
+                                    order.status === 'new' ? 'bg-yellow-500/20 text-yellow-400' :
+                                    order.status === 'accepted' ? 'bg-green-500/20 text-green-400' :
+                                    'bg-red-500/20 text-red-400'
+                                  }`}>
+                                    {order.status === 'new' ? 'Новый' :
+                                     order.status === 'accepted' ? 'Принят' : 'Отклонен'}
+                                  </span>
+
+                                  <span className={`px-2 py-1 text-xs rounded-full border ${
+                                    seenOrders.includes(getOrderKey(order))
+                                      ? 'border-green-500/30 text-green-300 bg-green-500/10'
+                                      : 'border-yellow-500/30 text-yellow-300 bg-yellow-500/10'
+                                  }`}>
+                                    {seenOrders.includes(getOrderKey(order)) ? 'Просмотрено' : 'Не просмотрено'}
+                                  </span>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-end gap-2 sm:justify-end">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openChatWithOrder(order);
+                                    }}
+                                    className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-white border border-blue-400/30 hover:bg-blue-500/10 transition-colors text-[11px] sm:text-xs"
+                                    title="Связаться с клиентом"
+                                    type="button"
+                                  >
+                                    Связаться
+                                  </button>
+                                  <select
+                                    value={order.status || 'new'}
+                                    onChange={(e) => handleUpdateOrderStatus(order.chatId, order.orderIndex, e.target.value)}
+                                    className="bg-slate-900/80 border border-white/20 rounded-lg px-2.5 py-1.5 sm:px-2 sm:py-1 text-white text-[11px] sm:text-xs focus:outline-none focus:border-blue-500"
+                                    title="Статус заказа"
+                                  >
+                                    <option className="bg-slate-900 text-white" value="new">Новый</option>
+                                    <option className="bg-slate-900 text-white" value="accepted">Принят</option>
+                                    <option className="bg-slate-900 text-white" value="declined">Отклонен</option>
+                                  </select>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      downloadOrder(order, 'json');
+                                    }}
+                                    className="p-2 rounded-lg text-blue-400 hover:bg-blue-500/10 transition-colors"
+                                    title="Скачать JSON"
+                                    type="button"
+                                  >
+                                    <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      downloadOrdersPdf([order]);
+                                    }}
+                                    className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-[11px] sm:text-xs"
+                                    title="Скачать PDF"
+                                    type="button"
+                                  >
+                                    PDF
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setOrderDetailsEditorOpen(true);
+                                      setEditingOrder(order);
+                                    }}
+                                    className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-[11px] sm:text-xs"
+                                    title="Данные менеджера"
+                                    type="button"
+                                  >
+                                    Данные
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDeleteOrder(order.chatId, order.orderIndex);
+                                    }}
+                                    className="p-2 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                                    title="Удалить заказ"
+                                    type="button"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="space-y-3">
+                                <div>
+                                  <p className="text-xs text-gray-400">Клиент</p>
+                                  <p className="text-sm font-medium text-white">
+                                    {order.firstName} {order.lastName}
+                                  </p>
+                                  <p className="text-xs text-gray-400">{order.contact}</p>
+                                </div>
+
+                                <div>
+                                  <p className="text-xs text-gray-400">Услуги</p>
+                                  <div className="flex flex-wrap gap-1 mt-1">
+                                    {order.services?.map((service, i) => (
+                                      <span key={i} className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
+                                        {service}
+                                      </span>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                {order.comment && (
+                                  <div>
+                                    <p className="text-xs text-gray-400">Комментарий</p>
+                                    <p className="text-xs text-gray-300 italic">"{order.comment}"</p>
+                                  </div>
+                                )}
+
+                                {order.files && order.files.length > 0 && (
+                                  <div>
+                                    <p className="text-xs text-gray-400">Файлы заказа</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                      {order.files.map((file) => (
+                                        <div key={file.id || file.url || file.name}>
+                                          {renderOrderFile(file)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="pt-2" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {(ordersByUser.get(selectedOrdersUserKey)?.orders || []).length === 0 && (
+                          <div className="text-center py-16">
+                            <Package className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                            <p className="text-gray-400">Заказы не найдены</p>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center">
+                      <div className="text-center">
+                        <Package className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                        <p className="text-gray-400">Выберите клиента, чтобы посмотреть заказы</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           
@@ -3740,7 +3873,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       : 'text-gray-200 hover:text-white hover:bg-white/5 border border-white/10'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
+                  <Icon className="w-5 h-5" />
                   {id === 'chats' && unreadMessagesCount > 0 && (
                     <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-0.5 rounded-full bg-red-600 text-white text-[8px]">
                       {unreadMessagesCount}
