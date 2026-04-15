@@ -810,12 +810,12 @@ const ChatWidget = ({ user }) => {
                   <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
                     <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-2" />
                   </div>
-                  <div className="text-white text-sm font-semibold leading-tight truncate">CONNECTOR Support</div>
+                  <div className="text-white text-[10px] font-black tracking-[0.2em] uppercase leading-tight truncate">CONNECTOR SUPPORT</div>
                 </div>
-                {/* Правая часть: статус */}
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                {/* Статус — с отступом справа чтобы не наслаивался на кнопки */}
+                <div className="flex items-center gap-1.5 flex-shrink-0 mr-8">
                   <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
-                  <span className="text-white/60 text-xs">
+                  <span className="text-white/60 text-[10px]">
                     {supportTyping ? 'Печатает…' : (supportOnline ? 'В сети' : 'Не в сети')}
                   </span>
                 </div>
