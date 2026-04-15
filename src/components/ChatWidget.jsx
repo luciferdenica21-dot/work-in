@@ -186,7 +186,7 @@ const ChatWidget = ({ user }) => {
 
     const MAX_FILE_SIZE = 100 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      alert('Файл слишком большой. Максимальный размер — 100 МБ');
+      showAlert(t('err_file_too_large'));
       if (fileInputRef.current) fileInputRef.current.value = '';
       return;
     }
@@ -216,7 +216,7 @@ const ChatWidget = ({ user }) => {
       setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     } catch (error) {
       console.error('Error uploading file:', error);
-      alert('Ошибка загрузки файла: ' + error.message);
+      showAlert(t('err_file_upload') + ': ' + error.message);
     } finally {
       setUploading(false);
       if (fileInputRef.current) {
@@ -646,7 +646,21 @@ const ChatWidget = ({ user }) => {
     return { url: m[0], id: m[1] };
   };
 
-  const [signPosModal, setSignPosModal] = useState({
+  const [alertModal, setAlertModal] = useState(null);
+
+  const showAlert = (msg) => setAlertModal(msg);
+
+  const AlertModal = () => alertModal ? (
+    <div className="fixed inset-0 z-[20000] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70" onClick={() => setAlertModal(null)} />
+      <div className="relative w-full max-w-sm bg-[#0a0f1d] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
+        <div className="text-white text-sm leading-relaxed">{alertModal}</div>
+        <div className="mt-4 flex justify-end">
+          <button onClick={() => setAlertModal(null)} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs hover:bg-blue-700 transition-colors">{t('Закрыть')}</button>
+        </div>
+      </div>
+    </div>
+  ) : null;
     open: false,
     link: null,
     requestId: null,
@@ -675,7 +689,7 @@ const ChatWidget = ({ user }) => {
       const { signaturesAPI } = await import('../config/api');
       const doc = await signaturesAPI.get(sign.id);
       if (doc?.clientSignatureUrl || doc?.status === 'completed') {
-        alert(t('doc_already_signed'));
+      showAlert(t('doc_already_signed'));
         return;
       }
     } catch {/* ignore */}
@@ -816,7 +830,7 @@ const ChatWidget = ({ user }) => {
                 <div className="flex items-center gap-1.5 flex-shrink-0 mr-8">
                   <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
                   <span className="text-white/60 text-[10px]">
-                    {supportTyping ? 'Печатает…' : (supportOnline ? 'В сети' : 'Не в сети')}
+                    {supportTyping ? t('chat_typing') : (supportOnline ? t('chat_online') : t('chat_offline'))}
                   </span>
                 </div>
               </div>
@@ -1050,7 +1064,7 @@ const ChatWidget = ({ user }) => {
               <input 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={supportTyping ? 'Оператор вводит сообщение…' : 'Текст...'}
+                placeholder={supportTyping ? t('chat_typing') : t('Опишите ваши пожелания...')}
                 className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-2xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50"
               />
               <button type="submit" className="text-white/80 hover:text-white transition-colors">
@@ -1110,10 +1124,10 @@ const ChatWidget = ({ user }) => {
                       await import('../config/api'); // ensure dynamic import chunk
                       const { signaturesAPI } = await import('../config/api');
                       await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos || null);
-                      alert(t('sign_sent_success'));
+                      showAlert(t('sign_sent_success'));
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {
-                      alert(t('sign_send_error'));
+                      showAlert(t('sign_send_error'));
                       setSignPosModal(s => ({ ...s, sending: false }));
                     }
                   }}
@@ -1126,6 +1140,7 @@ const ChatWidget = ({ user }) => {
           </div>
         </div>
       )}
+      <AlertModal />
       {legalCardOpen && (
         <div className="fixed inset-0 z-[9999]">
           <div className="absolute inset-0 bg-black/70" onClick={() => setLegalCardOpen(false)} />

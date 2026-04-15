@@ -321,7 +321,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
 
         <div className="mt-6">
           <div className="text-white/30 text-[10px] uppercase tracking-widest text-center">
-            {t("Войти через")}
+            {t('login_via')}
           </div>
           <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button

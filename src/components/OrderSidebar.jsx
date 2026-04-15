@@ -28,6 +28,8 @@ const OrderSidebar = ({
   
   // Состояние для модалки успеха
   const [showSuccess, setShowSuccess] = useState(false);
+  const [alertModal, setAlertModal] = useState(null);
+  const showAlert = (msg) => setAlertModal(msg);
 
   // ВАЖНО: Сбрасываем успех только при НОВОМ открытии, если до этого всё было успешно
   useEffect(() => {
@@ -147,7 +149,7 @@ const OrderSidebar = ({
     });
     if (oversizedFiles.length > 0) {
       console.log('ERROR: Files too large:', oversizedFiles);
-      alert(`Файлы слишком большие. Максимальный размер: фото/видео 100MB, остальные 10MB. Проблемные файлы: ${oversizedFiles.map(f => f.name).join(', ')}`);
+      showAlert(t('err_files_too_large') + ' ' + oversizedFiles.map(f => f.name).join(', '));
       return;
     }
 
@@ -189,7 +191,7 @@ const OrderSidebar = ({
       console.error('=== CLIENT UPLOAD ERROR ===');
       console.error('Error details:', error);
       console.error('Stack trace:', error.stack);
-      alert('Ошибка загрузки файлов: ' + error.message);
+      showAlert(t('err_files_upload') + ': ' + error.message);
     } finally {
       setUploadingFiles([]);
     }
@@ -260,7 +262,7 @@ const handleSubmit = async (e) => {
       console.error('=== CLIENT ORDER ERROR ===');
       console.error('Error details:', error);
       console.error('Stack trace:', error.stack);
-      alert(t('Ошибка при создании заказа') + ': ' + error.message);
+      showAlert(t('err_order_create') + ': ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -497,6 +499,17 @@ const handleSubmit = async (e) => {
       </div>
 
       {/* Селектор услуг (Выпадающий список) */}
+      {alertModal && (
+        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setAlertModal(null)} />
+          <div className="relative w-full max-w-sm bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
+            <div className="text-white text-sm leading-relaxed">{alertModal}</div>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => setAlertModal(null)} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs hover:bg-blue-700 transition-colors">{t('Закрыть')}</button>
+            </div>
+          </div>
+        </div>
+      )}
       {isSelectorOpen && (
         <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsSelectorOpen(false)} />
