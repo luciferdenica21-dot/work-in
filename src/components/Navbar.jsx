@@ -284,18 +284,17 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
             </div>
             <div className="bg-white/5 rounded-xl">
               {servicesList.map((sKey) => (
-                <a
+                <button
                   key={sKey}
-                  href={`#services?service=${t(sKey)}`}
-                  className="group block px-5 py-2.5 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-colors relative"
-                  onClick={(e) => {
-                    handleMobileClick(e, '#services');
-                    try { window.__analyticsTracker?.serviceOpen(sKey); } catch {}
-                    window.location.hash = `services?service=${t(sKey)}`;
+                  className="group block w-full px-5 py-2.5 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-colors"
+                  onClick={() => {
+                    setIsOpen(false);
+                    const key = sKey.replace('_T', '');
+                    window.dispatchEvent(new CustomEvent('service:open', { detail: { key } }));
                   }}
                 >
                   {t(sKey)}
-                </a>
+                </button>
               ))}
             </div>
           </div>

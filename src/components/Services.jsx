@@ -54,6 +54,14 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
   };
 
   useEffect(() => {
+    const handleServiceOpen = (e) => {
+      if (e.detail?.key) setSelectedKey(e.detail.key);
+    };
+    window.addEventListener('service:open', handleServiceOpen);
+    return () => window.removeEventListener('service:open', handleServiceOpen);
+  }, []);
+
+  useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
       if (hash.includes('service=')) {
