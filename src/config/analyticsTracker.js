@@ -30,12 +30,18 @@ export const initAnalyticsTracker = () => {
 
   send({ action: 'visit', timestamp: new Date().toISOString() });
 
+  // Сразу привязываем сессию если есть токен
   try {
-    authAPI.me().then((user) => {
-      if (user && user._id) {
-        analyticsAPI.bindSession(sessionId).catch(() => {});
-      }
-    }).catch(() => {});
+    const token = localStorage.getItem('token');
+    if (token) {
+      analyticsAPI.bindSession(sessionId).catch(() => {});
+    } else {
+      authAPI.me().then((user) => {
+        if (user && user._id) {
+          analyticsAPI.bindSession(sessionId).catch(() => {});
+        }
+      }).catch(() => {});
+    }
   } catch { void 0; }
 
   const sectionTimers = new Map();

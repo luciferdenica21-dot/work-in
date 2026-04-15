@@ -266,4 +266,58 @@ const PORT = process.env.PORT || 5000;
 // Явное указание 0.0.0.0 для приема внешних подключений на VPS
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
+
+  // Создаём таблицу analytics_events если не существует
+  (async () => {
+    try {
+      // Проверяем есть ли таблица
+      const { error: checkErr } = await supabase
+        .from('analytics_events')
+        .select('id')
+        .limit(1);
+
+      if (checkErr && checkErr.code === '42P01') {
+        // Таблица не существует — создаём через SQL
+        const { error: sqlErr } = await supabase.rpc('exec_sql', {
+          sql: `
+            CREATE TABLE IF NOT EXISTS analytics_events (
+              id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+              user_id UUID,
+              session_id TEXT NOT NULL DEFAULT '',
+              action TEXT NOT NULL,
+              path TEXT NOT NULL DEFAULT '/',
+              section TEXT NOT NULL DEFAULT '',
+              element TEXT NOT NULL DEFAULT '',
+              service_key TEXT NOT NULL DEFAULT '',
+              details JSONB NOT NULL DEFAULT '{}',
+              duration_ms INTEGER NOT NULL DEFAULT 0,
+              timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            );
+            CREATE INDEX IF NOT EXISTS idx_analytics_user_id ON analytics_events(user_id);
+            CREATE INDEX IF NOT EXISTS idx_analytics_session_id ON analytics_events(session_id);
+            CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp DESC);
+            ALTER TABLE analytics_events DISABLE ROW LEVEL SECURITY;
+          `
+        });
+        if (sqlErr) {
+          console.warn('analytics_events table creation via RPC failed:', sqlErr.message);
+          console.warn('Please run supabase_setup.sql manually in Supabase Dashboard → SQL Editor');
+        } else {
+          console.log('analytics_events table created successfully');
+        }
+      } else if (!checkErr) {
+        console.log('analytics_events table OK');
+      }
+
+      // Добавляем колонку avatar_url в users если нет
+      await supabase.rpc('exec_sql', {
+        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';`
+      }).catch(() => {});
+
+    } catch (e) {
+      console.warn('DB init check failed:', e.message);
+    }
+  })();
 });
