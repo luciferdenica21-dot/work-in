@@ -804,18 +804,20 @@ const ChatWidget = ({ user }) => {
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
-                  <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-2" />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-white text-sm font-semibold leading-tight truncate">Support</div>
-                  <div className="text-white/60 text-xs leading-tight flex items-center gap-2">
-                    <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
-                    <span className="truncate">
-                      {supportTyping ? 'Оператор вводит сообщение…' : (supportOnline ? 'В сети' : 'Не в сети')}
-                    </span>
+              <div className="flex items-center justify-between w-full min-w-0">
+                {/* Левая часть: лого + название */}
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
+                    <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-2" />
                   </div>
+                  <div className="text-white text-sm font-semibold leading-tight truncate">CONNECTOR Support</div>
+                </div>
+                {/* Правая часть: статус */}
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
+                  <span className="text-white/60 text-xs">
+                    {supportTyping ? 'Печатает…' : (supportOnline ? 'В сети' : 'Не в сети')}
+                  </span>
                 </div>
               </div>
             )}
@@ -1065,6 +1067,11 @@ const ChatWidget = ({ user }) => {
               />
             )}
           </form>
+          <div className="px-4 py-2 border-t border-white/5 text-center">
+            <p className="text-[9px] text-white/20 tracking-widest uppercase">
+              &copy; 2026 Connector Official By PHOENIX.. All rights reserved.
+            </p>
+          </div>
         </div>
       )}
       {signPosModal.open && (
