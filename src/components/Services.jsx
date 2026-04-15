@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 // OrderSidebar здесь больше не нужен, он управляется в App.jsx
 import OrderButton from './OrderButton';
 
-const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
+const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuthForOrder }) => {
   const { t, i18n } = useTranslation();
   const lockedTitles = [t("S2_T"), t("S7_T")];
 
@@ -49,7 +49,11 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
   };
   
   const handleRequireAuthForOrder = () => {
-    setShowOrderAuthPrompt(true);
+    if (typeof onRequireAuthForOrder === 'function') {
+      onRequireAuthForOrder();
+    } else {
+      setShowOrderAuthPrompt(true);
+    }
   };
 
   useEffect(() => {

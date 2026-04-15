@@ -24,6 +24,7 @@ function App() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
+  const pendingOrderRef = useRef(false);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
   // removed unused touchStart
@@ -137,6 +138,15 @@ function App() {
   const handleAuthSuccess = (userData) => {
     setUser(userData);
     setUserRole(userData.role);
+    if (pendingOrderRef.current) {
+      pendingOrderRef.current = false;
+      setIsOrderOpen(true);
+    }
+  };
+
+  const handleRequireAuthForOrder = () => {
+    pendingOrderRef.current = true;
+    setIsAuthOpen(true);
   };
 
   const handleLogout = () => {
@@ -267,6 +277,7 @@ function App() {
         setIsOrderOpen={setIsOrderOpen} 
         isOrderOpen={isOrderOpen} 
         setIsAuthOpen={setIsAuthOpen}
+        onRequireAuthForOrder={handleRequireAuthForOrder}
         user={user}
         onLogout={handleLogout}
       />
@@ -275,9 +286,10 @@ function App() {
        <Services 
   user={user} 
   setIsAuthOpen={setIsAuthOpen} 
-  setIsOrderOpen={setIsOrderOpen} // Передаем функцию управления
-  isOrderOpen={isOrderOpen}       // Передаем текущее состояние
-  onLogout={handleLogout} 
+  setIsOrderOpen={setIsOrderOpen}
+  isOrderOpen={isOrderOpen}
+  onLogout={handleLogout}
+  onRequireAuthForOrder={handleRequireAuthForOrder}
 />
         <Contact />
       </main>

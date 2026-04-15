@@ -5,7 +5,7 @@ import OrderButton from './OrderButton';
 import OrderSidebar from './OrderSidebar';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
-const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
+const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isServicesOpen, setIsServicesOpen] = useState(false);
@@ -71,7 +71,11 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   };
 
   const handleRequireAuthForOrder = () => {
-    setShowOrderAuthPrompt(true);
+    if (typeof onRequireAuthForOrder === 'function') {
+      onRequireAuthForOrder();
+    } else {
+      setShowOrderAuthPrompt(true);
+    }
   };
 
   return (
@@ -157,10 +161,21 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                   <svg className="w-4 h-4 transition-transform group-hover/dropdown:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   <span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover/dropdown:w-full"></span>
                 </button>
-                <div className="absolute left-0 mt-2 w-40 bg-[#0a0a0a] border border-blue-500/20 rounded-xl py-3 opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all duration-300 z-[60] shadow-2xl backdrop-blur-xl">
-                  <div className="flex items-center justify-center gap-4 px-4">
+                <div className="absolute left-0 mt-4 w-52 bg-[#0d0d0d] border border-blue-500/20 rounded-2xl p-4 opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all duration-300 z-[60] shadow-[0_8px_32px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+                  <div className="text-[9px] uppercase tracking-widest text-blue-400/60 mb-3 text-center">{t('КОНТАКТЫ')}</div>
+                  <div className="grid grid-cols-3 gap-3">
                     {contactLinks.map((contact) => (
-                      <a key={contact.name} href={contact.url} target="_blank" rel="noopener noreferrer" title={contact.name} className="text-white/70 hover:text-blue-400 transition-colors">{contact.icon}</a>
+                      <a
+                        key={contact.name}
+                        href={contact.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={contact.name}
+                        className="flex flex-col items-center gap-1.5 p-2 rounded-xl bg-white/5 hover:bg-blue-500/10 text-white/60 hover:text-blue-400 transition-all"
+                      >
+                        {contact.icon}
+                        <span className="text-[8px] uppercase tracking-wide">{contact.name}</span>
+                      </a>
                     ))}
                   </div>
                 </div>
