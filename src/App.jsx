@@ -27,7 +27,6 @@ function App() {
   const pendingOrderRef = useRef(false);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  // removed unused touchStart
 
  useEffect(() => {
   const checkAuth = async () => {
@@ -271,7 +270,7 @@ function App() {
     </div>
   );
 
-  const MainSite = () => (
+  const mainSiteElement = (
     <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'}`} data-section="site">
       <Navbar 
         setIsOrderOpen={setIsOrderOpen} 
@@ -283,30 +282,27 @@ function App() {
       />
       <main className="flex-grow">
         <Hero />
-       <Services 
-  user={user} 
-  setIsAuthOpen={setIsAuthOpen} 
-  setIsOrderOpen={setIsOrderOpen}
-  isOrderOpen={isOrderOpen}
-  onLogout={handleLogout}
-  onRequireAuthForOrder={handleRequireAuthForOrder}
-/>
+        <Services 
+          user={user} 
+          setIsAuthOpen={setIsAuthOpen} 
+          setIsOrderOpen={setIsOrderOpen}
+          isOrderOpen={isOrderOpen}
+          onLogout={handleLogout}
+          onRequireAuthForOrder={handleRequireAuthForOrder}
+        />
         <Contact />
       </main>
-      
       <AuthModal 
         isOpen={isAuthOpen} 
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
       />
-      
       <OrderSidebar 
         isOrderOpen={isOrderOpen} 
         setIsOrderOpen={setIsOrderOpen} 
         user={user} 
         setIsAuthOpen={setIsAuthOpen} 
       />
-      
       {user && userRole !== 'admin' && <ChatWidget user={user} />}
       <TermsInfo />
     </div>
@@ -321,7 +317,7 @@ function App() {
       element={
         user && userRole === 'admin' 
           ? <Navigate to="/manager" replace />
-          : <MainSite />
+          : mainSiteElement
       } 
     />
     <Route path="/auth/callback" element={<AuthCallback />} />
