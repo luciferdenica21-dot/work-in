@@ -160,7 +160,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen }) => {
         <div className="fixed inset-0 z-[100] overflow-y-auto bg-black flex justify-center items-start animate-fadeIn scrollbar-hide">
           <div className="fixed inset-0 z-0 bg-[#050505]/95 backdrop-blur-3xl" />
 
-          <nav className="bg-[#0a0a0a] fixed top-0 left-0 right-0 z-[500] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          <nav className="bg-[#0a0a0a] fixed top-0 left-0 right-0 z-[500] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] tablet-nav">
             <div className="w-full px-4 sm:px-6 lg:px-8">
               <div className="flex items-center justify-between h-20">
                 <div className="flex items-center z-10">

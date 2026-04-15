@@ -74,7 +74,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   return (
     <>
       <nav
-        className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-[120] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)]"
+        className="bg-[#0a0a0a]/90 backdrop-blur-md fixed top-0 left-0 right-0 w-full md:sticky z-[120] text-white text-sm border-b border-blue-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.5)] tablet-nav"
         data-section="navbar"
       >
         <div className="w-full px-4 sm:px-6 lg:px-8">
@@ -101,7 +101,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               </a>
             </div>
 
-            <div className="hidden md:flex items-center space-x-12">
+            <div className="tablet-links hidden md:flex items-center space-x-12">
               <a
                 href="#"
                 onClick={(e) => {
@@ -172,17 +172,17 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               
             </div>
 
-            <div className="flex items-center gap-2 md:gap-4">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                className="hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-lg border border-blue-500/30 text-white text-[10px] font-extrabold uppercase tracking-widest bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
-                title={t('HOW_IT_WORKS_BTN')}
-              >
-                {t('HOW_IT_WORKS_BTN')}
-              </button>
-              
-              <div className="hidden md:block">
+            <div className="tablet-right flex items-center gap-2 md:gap-4">
+              {/* кнопка заказать — только на планшете 770–1200px */}
+              <OrderButton
+                user={user}
+                setIsOrderOpen={setIsOrderOpen}
+                setIsAuthOpen={setIsAuthOpen}
+                onRequireAuth={handleRequireAuthForOrder}
+                className="tablet-order-btn bg-blue-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 active:scale-95 transition-all duration-300"
+              />
+              {/* select языка — только на десктопе >1200px */}
+              <div className="hidden md:block tablet-select">
                 <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-2 outline-none text-xs cursor-pointer">
                   <option value="ru" className="bg-[#0a0a0a]">RU</option>
                   <option value="en" className="bg-[#0a0a0a]">ENG</option>
@@ -190,11 +190,22 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                 </select>
               </div>
 
+              {/* кнопка "Как это работает" — только на десктопе >1200px */}
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
+                className="tablet-how-btn hidden md:inline-flex items-center gap-2 px-5 py-2 rounded-lg border border-blue-500/30 text-white text-[10px] font-extrabold uppercase tracking-widest bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
+                title={t('HOW_IT_WORKS_BTN')}
+              >
+                {t('HOW_IT_WORKS_BTN')}
+              </button>
+
+              {/* вход/выход/кабинет — только на десктопе >1200px */}
               {user ? (
                 <>
                   {user.role !== 'admin' && (
-                    <button onClick={() => navigate('/dashboard')} className="hidden md:flex items-center gap-2 px-3 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
-                      <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
+                    <button onClick={() => navigate('/dashboard')} className="tablet-auth-btn hidden md:flex items-center gap-2 px-3 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
+                      <div className="tablet-avatar w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
                         {avatarUrl ? (
                           <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                         ) : (
@@ -205,30 +216,24 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
                       </div>
                     </button>
                   )}
-                  <button onClick={handleLogout} className="hidden md:flex items-center gap-2 px-4 py-2 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-all group">
+                  <button onClick={handleLogout} className="tablet-auth-btn hidden md:flex items-center gap-2 px-4 py-2 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-all group">
                     <svg className="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                     </svg>
                   </button>
                 </>
               ) : (
-                <button onClick={() => setIsAuthOpen(true)} className="hidden md:flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all group">
+                <button onClick={() => setIsAuthOpen(true)} className="tablet-auth-btn hidden md:flex items-center gap-2 px-4 py-2 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all group">
                   <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                 </button>
               )}
 
+              {/* бургер — мобилка + планшет (скрыт на >1200px через CSS) */}
               <button
-                onClick={() => {
-                  const next = !isOpen;
-                  setIsOpen(next);
-                  if (next) {
-                    setIsServicesOpen(false);
-                    setIsContactOpen(false);
-                  }
-                }}
-                className="md:hidden text-white p-2"
+                onClick={() => setIsOpen(prev => !prev)}
+                className="tablet-burger text-white p-2"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} /></svg>
               </button>
@@ -242,72 +247,69 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
       {isOpen && (
         <div
-          className="md:hidden fixed top-20 left-0 right-0 bottom-16 bg-black/70 z-[500]"
+          className="fixed top-20 left-0 right-0 bottom-0 bg-black/70 z-[500] tablet-menu"
           onClick={() => setIsOpen(false)}
         />
       )}
 
       <div
-        className={`md:hidden fixed left-0 right-0 top-20 bottom-16 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[510] ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
+        className={`fixed left-0 right-0 top-20 bottom-0 bg-[#0a0a0a] border-b border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.6)] transition-all duration-300 ease-in-out z-[510] tablet-menu ${isOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`}
       >
-        <div className="px-4 pt-2 pb-6 h-full flex flex-col overflow-y-auto">
-          <div className="space-y-2 text-center overflow-y-auto">
-            <button onClick={() => setIsServicesOpen(!isServicesOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
+        <div className="px-4 pt-4 pb-6 h-full flex flex-col gap-4 overflow-y-auto">
+
+          {/* УСЛУГИ — уже раскрыты */}
+          <div>
+            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-blue-400 border-b border-white/5 mb-1 text-center">
               {t('УСЛУГИ')}
-              <svg className={`w-4 h-4 transition-transform ${isServicesOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isServicesOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
+            </div>
+            <div className="bg-white/5 rounded-xl">
               {servicesList.map((sKey) => (
-                <a 
-                  key={sKey} 
-                  href={`#services?service=${t(sKey)}`} 
-                  className="group block px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-transform duration-200 transform hover:scale-[1.03] relative"
-                  data-service={sKey}
-                  onClick={(e) => { 
+                <a
+                  key={sKey}
+                  href={`#services?service=${t(sKey)}`}
+                  className="group block px-5 py-2.5 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-colors relative"
+                  onClick={(e) => {
                     handleMobileClick(e, '#services');
-                    try {
-                      const tracker = window.__analyticsTracker;
-                      if (tracker) tracker.serviceOpen(sKey);
-                    } catch { /* ignore */ }
+                    try { window.__analyticsTracker?.serviceOpen(sKey); } catch {}
                     window.location.hash = `services?service=${t(sKey)}`;
                   }}
                 >
                   {t(sKey)}
-                  <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
                 </a>
               ))}
             </div>
           </div>
 
-          <div className="space-y-2 text-center overflow-y-auto">
-            <button onClick={() => setIsContactOpen(!isContactOpen)} className="w-full flex items-center justify-center gap-2 px-3 py-4 text-sm font-bold uppercase tracking-widest text-white/80 border-b border-white/5">
+          {/* КОНТАКТЫ — уже раскрыты, соцсети иконками горизонтально */}
+          <div>
+            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-blue-400 border-b border-white/5 mb-1 text-center">
               {t('КОНТАКТЫ')}
-              <svg className={`w-4 h-4 transition-transform ${isContactOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-            </button>
-            <div className={`bg-white/5 rounded-xl overflow-hidden transition-all duration-300 ${isContactOpen ? 'max-h-[500px] my-2' : 'max-h-0'}`}>
+            </div>
+            <div className="flex items-center justify-center gap-6 py-3">
               {contactLinks.map((contact) => (
                 <a
                   key={contact.name}
                   href={contact.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group flex items-center justify-center gap-3 px-6 py-3 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 transition-transform duration-200 transform hover:scale-[1.03] relative"
+                  title={contact.name}
+                  className="text-white/70 hover:text-blue-400 transition-colors"
                 >
-                  {contact.icon}{contact.name}
-                  <span className="pointer-events-none absolute left-6 right-6 bottom-1 h-[2px] bg-blue-500 w-0 transition-all duration-200 group-hover:w-[calc(100%-3rem)]" />
+                  {contact.icon}
                 </a>
               ))}
             </div>
-            <div className="mt-2">
-              <button
-                type="button"
-                onClick={() => window.dispatchEvent(new Event('useterms:open'))}
-                    className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-blue-500/40 text-white bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 hover:via-blue-600/30 hover:to-blue-700/30 active:scale-95 transition-all"
-              >
-                
-                {t('HOW_IT_WORKS_BTN')}
-              </button>
-            </div>
+          </div>
+
+          {/* Кнопки действий */}
+          <div className="flex flex-col gap-3 mt-auto">
+            <button
+              type="button"
+              onClick={() => { setIsOpen(false); window.dispatchEvent(new Event('useterms:open')); }}
+              className="w-full px-6 py-3 text-[11px] font-bold uppercase tracking-widest rounded-xl border border-blue-500/40 text-white bg-gradient-to-r from-blue-500/20 via-blue-600/20 to-blue-700/20 shadow-[0_0_18px_rgba(37,99,235,0.35)] hover:from-blue-500/30 active:scale-95 transition-all"
+            >
+              {t('HOW_IT_WORKS_BTN')}
+            </button>
           </div>
         </div>
       </div>

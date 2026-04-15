@@ -4,3 +4,88 @@
     font-family: 'Your-Georgian-Font', sans-serif;
   }
 }
+
+/* Кнопка заказать — скрыта по умолчанию, видна только на планшете */
+.tablet-order-btn {
+  display: none;
+}
+
+/* Бургер скрыт на десктопе >1200px */
+.tablet-burger {
+  display: none;
+}
+
+/* На мобилке <770px бургер всегда виден */
+@media (max-width: 769px) {
+  .tablet-burger {
+    display: flex;
+  }
+}
+
+/* Планшеты 770px–1200px */
+@media (min-width: 770px) and (max-width: 1200px) {
+  /* Бургер виден */
+  .tablet-burger {
+    display: flex !important;
+  }
+
+  /* Кнопка заказать — показываем на планшете перед select */
+  .tablet-nav .tablet-order-btn {
+    display: inline-flex !important;
+  }
+
+  /* Нав-ссылки скрыты */
+  .tablet-nav .tablet-links {
+    display: none !important;
+  }
+
+  /* Высота навбара */
+  .tablet-nav .h-20 {
+    height: 3.75rem;
+  }
+
+  /* Логотип */
+  .tablet-nav img[alt="logo"] {
+    width: 34px;
+    height: 34px;
+  }
+
+  /* Правая часть: зазор */
+  .tablet-nav .tablet-right {
+    gap: 0.6rem;
+  }
+
+  /* Кнопка "Как это работает" — скрыта на планшете (есть в бургере) */
+  .tablet-nav .tablet-how-btn {
+    display: none !important;
+  }
+
+  /* Select языка */
+  .tablet-nav .tablet-select select {
+    font-size: 0.65rem;
+    padding: 0.2rem 0.35rem;
+  }
+
+  /* Кнопки вход/выход/кабинет */
+  .tablet-nav .tablet-auth-btn {
+    padding: 0.25rem 0.5rem !important;
+  }
+  .tablet-nav .tablet-auth-btn svg {
+    width: 0.9rem;
+    height: 0.9rem;
+  }
+
+  /* Аватар */
+  .tablet-nav .tablet-avatar {
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  /* Показываем скрытые md:block/md:flex элементы в правой части */
+  .tablet-nav .tablet-select {
+    display: block !important;
+  }
+  .tablet-nav .tablet-auth-btn {
+    display: flex !important;
+  }
+}
