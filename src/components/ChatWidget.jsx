@@ -816,7 +816,7 @@ const ChatWidget = ({ user }) => {
                 <div className="flex items-center gap-1.5 flex-shrink-0 mr-8">
                   <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
                   <span className="text-white/60 text-[10px]">
-                    {supportTyping ? 'Печатает…' : (supportOnline ? 'В сети' : 'Не в сети')}
+                    {supportTyping ? t('chat_typing') : (supportOnline ? t('chat_online') : t('chat_offline'))}
                   </span>
                 </div>
               </div>
@@ -1050,7 +1050,7 @@ const ChatWidget = ({ user }) => {
               <input 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={supportTyping ? 'Оператор вводит сообщение…' : 'Текст...'}
+                placeholder={supportTyping ? t('chat_typing') : t('chat_input_placeholder')}
                 className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-2xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50"
               />
               <button type="submit" className="text-white/80 hover:text-white transition-colors">
