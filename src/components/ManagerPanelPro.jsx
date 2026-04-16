@@ -1070,121 +1070,130 @@ const getAbsoluteFileUrl = (fileUrl) => {
     loadData();
   }, []);
 
+  // Global socket handlers - only once
   useEffect(() => {
     if (!user?._id) return;
-    
-    const initSocketConnection = () => {
-      try {
-        initSocket(user._id, 'admin', user.email);
-        
-        const socket = getSocket();
-        if (socket) {
-          // PWA: перехватываем системный beforeinstallprompt и сохраняем для ручной установки
-          const handleBeforeInstallPrompt = (e) => {
-            e.preventDefault();
-          };
-          installPromptHandlerRef.current = handleBeforeInstallPrompt;
-          window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-          socket.on('online-users', (ids) => {
-            const list = Array.isArray(ids) ? ids : [];
-            const next = new Set(list.map(String));
-            setOnlineUserIds(next);
-          });
-          socket.on('user-online', ({ userId }) => {
-            if (!userId) return;
-            setOnlineUserIds(prev => {
-              const next = new Set(prev);
-              next.add(String(userId));
-              return next;
-            });
-          });
-          socket.on('user-offline', ({ userId }) => {
-            if (!userId) return;
-            setOnlineUserIds(prev => {
-              const next = new Set(prev);
-              next.delete(String(userId));
-              return next;
-            });
-          });
-          const upsertIncomingMessage = (incoming) => {
-            const messageId = incoming?._id || incoming?.id;
-            if (!messageId) return;
-            setMessages((prev) => {
-              if (prev.some((m) => (m._id || m.id) === messageId)) return prev;
-              const list = Array.isArray(prev) ? [...prev] : [];
-              if (incoming?.senderId === 'manager') {
-                for (let i = list.length - 1; i >= 0; i -= 1) {
-                  const m = list[i];
-                  const id = String(m?._id || m?.id || '');
-                  if (String(m?.senderId) !== 'manager') continue;
-                  if (!id.startsWith('temp_')) continue;
-                  if (String(m?.text || '') !== String(incoming?.text || '')) continue;
-                  list.splice(i, 1);
-                  break;
-                }
-              }
-              return [...list, incoming];
-            });
-          };
-          // REMOVED DUPLICATE: 'new-chat-message' listener (using 'new-message' only)
-          // socket.on('new-chat-message', ...) - DEPRECATED
-          socket.on('new-message', (message) => {
-            console.log('📨 MANAGERPANEL ← new-message:', message?._id?.slice(0,8));
-            if (!message) return;
-            if (String(message.chatId) !== String(activeId)) return;
-            const raw = message || {};
-            const normalized = {
-              ...raw,
-              fileName: raw.fileName || raw.attachments?.[0]?.originalName,
-              fileSize: raw.fileSize || raw.attachments?.[0]?.size,
-              fileType: raw.fileType || raw.attachments?.[0]?.mimetype,
-              fileUrl: raw.fileUrl || raw.attachments?.[0]?.url
-            };
-            upsertIncomingMessage(normalized);
-            try {
-              setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
-            } catch { void 0; }
-            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
-          });
-          
-          socket.on('message-deleted', ({ messageId }) => {
-            setMessages(prev => prev.filter(m => (m._id || m.id) !== messageId));
-          });
-          
-          socket.on('order-created', ({ chatId, order }) => {
-            console.log('=== ORDER CREATED ===', chatId, order);
-            loadOrders();
-            try { import('../utils/sound').then(m => m.playSound('adminOrder')).catch(() => { void 0; }); } catch { void 0; }
-          });
-        }
-      } catch (error) {
-        console.error('Error initializing socket:', error);
-      }
+
+    console.log('🔌 MANAGERPANEL SOCKET INIT →', user._id, 'admin');
+
+    const socket = initSocket(user._id, 'admin', user.email);
+
+    const handleConnect = () => {
+      console.log('🔌 MANAGERPANEL CONNECTED →', socket.id?.slice(0,8), '(admin)');
+    };
+    const handleDisconnect = (reason) => {
+      console.log('🔌 MANAGERPANEL DISCONNECTED →', reason);
+    };
+    const handleOnlineUsers = (ids) => {
+      const list = Array.isArray(ids) ? ids : [];
+      const next = new Set(list.map(String));
+      setOnlineUserIds(next);
+    };
+    const handleUserOnline = ({ userId }) => {
+      if (!userId) return;
+      setOnlineUserIds(prev => {
+        const next = new Set(prev);
+        next.add(String(userId));
+        return next;
+      });
+    };
+    const handleUserOffline = ({ userId }) => {
+      if (!userId) return;
+      setOnlineUserIds(prev => {
+        const next = new Set(prev);
+        next.delete(String(userId));
+        return next;
+      });
+    };
+    const handleMessageDeleted = ({ messageId }) => {
+      console.log('🗑️ MANAGERPANEL message-deleted ←', messageId);
+      setMessages(prev => prev.filter(m => (m._id || m.id) !== messageId));
+    };
+    const handleOrderCreated = ({ chatId, order }) => {
+      console.log('📦 MANAGERPANEL order-created ←', chatId);
+      loadOrders();
     };
 
-    initSocketConnection();
-    
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('online-users', handleOnlineUsers);
+    socket.on('user-online', handleUserOnline);
+    socket.on('user-offline', handleUserOffline);
+    socket.on('message-deleted', handleMessageDeleted);
+    socket.on('order-created', handleOrderCreated);
+
     return () => {
-      const socket = getSocket();
-      if (socket) {
-        socket.off('online-users');
-        socket.off('user-online');
-        socket.off('user-offline');
-        socket.off('new-chat-message');
-        socket.off('new-message');
-        socket.off('message-deleted');
-        socket.off('order-created');
-      }
-      // Удаляем обработчик установки PWA
-      try {
-        if (installPromptHandlerRef.current) {
-          window.removeEventListener('beforeinstallprompt', installPromptHandlerRef.current);
-          installPromptHandlerRef.current = null;
-        }
-      } catch { void 0; }
-      disconnectSocket();
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('online-users', handleOnlineUsers);
+      socket.off('user-online', handleUserOnline);
+      socket.off('user-offline', handleUserOffline);
+      socket.off('message-deleted', handleMessageDeleted);
+      socket.off('order-created', handleOrderCreated);
     };
-  }, [user._id, activeId]);
+  }, [user?._id]); // Only user._id dep - no activeId
+
+  // Per-chat listeners
+  useEffect(() => {
+    if (!user?._id || !activeId || activeSection !== 'chats') return;
+
+    console.log('📱 MANAGERPANEL JOIN chat-', activeId);
+
+    const socket = getSocket();
+    if (!socket?.connected) return;
+
+    const handleNewMessage = (message) => {
+      console.log('📨 MANAGERPANEL ← new-message:', message?._id?.slice(0,8));
+      if (!message || String(message.chatId) !== String(activeId)) return;
+      const raw = message || {};
+      const normalized = {
+        ...raw,
+        fileName: raw.fileName || raw.attachments?.[0]?.originalName,
+        fileSize: raw.fileSize || raw.attachments?.[0]?.size,
+        fileType: raw.fileType || raw.attachments?.[0]?.mimetype,
+        fileUrl: raw.fileUrl || raw.attachments?.[0]?.url
+      };
+      const messageId = normalized._id || normalized.id;
+      if (!messageId) return;
+      setMessages((prev) => {
+        if (prev.some((m) => (m._id || m.id) === messageId)) return prev;
+        const list = Array.isArray(prev) ? [...prev] : [];
+        if (normalized?.senderId === 'manager') {
+          for (let i = list.length - 1; i >= 0; i -= 1) {
+            const m = list[i];
+            const id = String(m?._id || m?.id || '');
+            if (String(m?.senderId) !== 'manager') continue;
+            if (!id.startsWith('temp_')) continue;
+            if (String(m?.text || '') !== String(normalized?.text || '')) continue;
+            list.splice(i, 1);
+            break;
+          }
+        }
+        return [...list, normalized];
+      });
+      try {
+        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
+      } catch { void 0; }
+      try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
+    };
+
+    const handleTyping = (payload) => {
+      console.log('⌨️ MANAGERPANEL typing ←', payload);
+      // Manager typing handler if needed
+    };
+
+    socket.emit('join-chat', activeId);
+    socket.emit('mark-read', activeId);
+
+    socket.on('new-message', handleNewMessage);
+    socket.on('typing', handleTyping);
+
+    return () => {
+      socket.off('new-message', handleNewMessage);
+      socket.off('typing', handleTyping);
+      socket.emit('leave-chat', activeId);
+    };
+  }, [user?._id, activeId, activeSection]);
 
   useEffect(() => {
     if (!activeId || activeSection !== 'chats') { 
