@@ -1133,18 +1133,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
     };
   }, [user?._id]); // Only user._id dep - no activeId
 
-  // Per-chat listeners
+// GLOBAL new-message handler (ALL chats)
   useEffect(() => {
-    if (!user?._id || !activeId || activeSection !== 'chats') return;
-
-    console.log('📱 MANAGERPANEL JOIN chat-', activeId);
-
+    if (!user?._id) return;
     const socket = getSocket();
     if (!socket?.connected) return;
 
-    const handleNewMessage = (message) => {
-      console.log('📨 MANAGERPANEL ← new-message:', message?._id?.slice(0,8));
-      if (!message || String(message.chatId) !== String(activeId)) return;
+    const handleGlobalNewMessage = (message) => {
+      console.log('📨 MANAGERPANEL-GLOBAL ← new-message:', message?._id?.slice(0,8), 'chat:', message?.chatId);
+      if (!message) return;
       const raw = message || {};
       const normalized = {
         ...raw,
@@ -1155,7 +1152,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
       };
       const messageId = normalized._id || normalized.id;
       if (!messageId) return;
+
+      // Update messages for ACTIVE chat + notify for others
       setMessages((prev) => {
+        if (String(normalized.chatId) !== String(activeId)) {
+          // NEW message in OTHER chat → Visual bell (unread count?)
+          // Don't add to current messages
+          return prev;
+        }
+        // ACTIVE chat → normal upsert
         if (prev.some((m) => (m._id || m.id) === messageId)) return prev;
         const list = Array.isArray(prev) ? [...prev] : [];
         if (normalized?.senderId === 'manager') {
@@ -1171,29 +1176,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
         }
         return [...list, normalized];
       });
-      try {
-        setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
-      } catch { void 0; }
-      try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
+      if (String(message.chatId) === String(activeId)) {
+        try {
+          setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
+          try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
+        } catch { void 0; }
+      }
     };
 
-    const handleTyping = (payload) => {
-      console.log('⌨️ MANAGERPANEL typing ←', payload);
-      // Manager typing handler if needed
-    };
-
-    socket.emit('join-chat', activeId);
-    socket.emit('mark-read', activeId);
-
-    socket.on('new-message', handleNewMessage);
-    socket.on('typing', handleTyping);
-
-    return () => {
-      socket.off('new-message', handleNewMessage);
-      socket.off('typing', handleTyping);
-      socket.emit('leave-chat', activeId);
-    };
-  }, [user?._id, activeId, activeSection]);
+    socket.on('new-message', handleGlobalNewMessage);
+    return () => socket.off('new-message', handleGlobalNewMessage);
+  }, [user?._id, activeId]); // Re-filter on activeId change
 
   useEffect(() => {
     if (!activeId || activeSection !== 'chats') { 
