@@ -1,22 +1,27 @@
 import { useEffect, useState } from 'react';
 import { gravatarUrl, supabaseProfileAvatarUrl } from '../utils/avatar';
 
-export const useAvatarUrl = (email) => {
-  const [state, setState] = useState({ email: '', url: '' });
+export const useAvatarUrl = (email, directUrl) => {
+  const [supabaseUrl, setSupabaseUrl] = useState('');
 
   useEffect(() => {
+    // Если есть прямой URL из БД — Supabase не нужен
+    if (directUrl) return;
+
     let active = true;
     const e = String(email || '').trim().toLowerCase();
     if (!e) return () => { active = false; };
-    supabaseProfileAvatarUrl(e).then((u) => {
-      if (!active) return;
-      setState({ email: e, url: u || '' });
-    }).catch(() => { void 0; });
-    return () => { active = false; };
-  }, [email]);
 
+    supabaseProfileAvatarUrl(e).then((u) => {
+      if (active) setSupabaseUrl(u || '');
+    }).catch(() => {});
+
+    return () => { active = false; };
+  }, [email, directUrl]);
+
+  // Приоритет: directUrl из БД > Supabase OAuth > Gravatar
+  if (directUrl) return directUrl;
+  if (supabaseUrl) return supabaseUrl;
   const e = String(email || '').trim().toLowerCase();
-  const fallback = gravatarUrl(e);
-  const override = state.email === e ? state.url : '';
-  return override || fallback;
+  return e ? gravatarUrl(e) : '';
 };

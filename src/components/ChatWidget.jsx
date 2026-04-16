@@ -266,7 +266,15 @@ const ChatWidget = ({ user }) => {
   useEffect(() => {
     if (!user?._id) return;
 
-    const socket = initSocket(user._id, user.role || 'user', user.email);
+      const socket = initSocket(user._id, user.role || 'user', user.email);
+      console.log('🔌 CLIENT SOCKET INIT →', user._id, user.role || 'user');
+
+      socket.on('connect', () => {
+        console.log('🔌 CLIENT SOCKET CONNECTED →', socket.id?.slice(0,8), '(' + (user.role || 'user') + ')');
+      });
+      socket.on('disconnect', (reason) => {
+        console.log('🔌 CLIENT SOCKET DISCONNECTED →', reason);
+      });
 
     const loadChat = async () => {
       try {
@@ -274,6 +282,7 @@ const ChatWidget = ({ user }) => {
         setChatId(chat.chatId);
 
         if (socket) {
+          console.log('📱 CLIENT JOIN chat-', chat.chatId);
           socket.emit('join-chat', chat.chatId);
         }
 
@@ -294,6 +303,7 @@ const ChatWidget = ({ user }) => {
 
     if (socket) {
       const handleNewMessage = (newMsg) => {
+        console.log('📨 CLIENT new-message ←', (newMsg?._id || newMsg?.message?._id || 'no-id')?.slice(0,8));
         const incoming = normalizeMessage(newMsg?.message || newMsg);
         setMessages((prev) => {
           const id = incoming?._id || incoming?.id;
@@ -359,9 +369,18 @@ const ChatWidget = ({ user }) => {
 
       socket.on('new-message', handleNewMessage);
       socket.on('message-deleted', handleMessageDeleted);
-      socket.on('support-status', handleSupportStatus);
-      socket.on('typing', handleTyping);
-      socket.on('chat-read', handleChatRead);
+      socket.on('support-status', (payload) => {
+        console.log('📨 CLIENT support-status ←', payload);
+        handleSupportStatus(payload);
+      });
+      socket.on('typing', (payload) => {
+        console.log('📨 CLIENT typing ←', payload);
+        handleTyping(payload);
+      });
+      socket.on('chat-read', (payload) => {
+        console.log('📨 CLIENT chat-read ←', payload);
+        handleChatRead(payload);
+      });
 
       return () => {
         socket.off('new-message', handleNewMessage);
@@ -446,6 +465,7 @@ const ChatWidget = ({ user }) => {
       setMessages((prev) => [...prev, normalizeMessage(optimistic)]);
 
       if (socket && socket.connected) {
+        console.log('📤 CLIENT EMIT send-message →', chatId, text.slice(0,50) + (text.length > 50 ? '...' : ''));
         socket.emit('send-message', { chatId, text });
         // Fallback refresh, но только если не пришел echo в разумный срок
         setTimeout(async () => {
@@ -533,8 +553,10 @@ const ChatWidget = ({ user }) => {
     const socket = getSocket();
     if (!socket || !socket.connected) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    console.log('⌨️ CLIENT TYPING →', !!message ? 'true' : 'false', chatId);
     socket.emit('typing', { chatId, isTyping: !!message });
     typingTimeoutRef.current = setTimeout(() => {
+      console.log('⌨️ CLIENT TYPING → false', chatId);
       try { socket.emit('typing', { chatId, isTyping: false }); } catch { void 0; }
     }, 1200);
     return () => {

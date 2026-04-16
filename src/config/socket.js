@@ -21,17 +21,26 @@ export const initSocket = (userId, role, email) => {
     transports: ['websocket', 'polling'],
   });
 
-  socket.on('connect', () => {
-    console.log('Socket connected');
-  });
+socket.on('connect', () => {
+  console.log(`🔌 SOCKET CONNECTED → ${socket.id?.slice(0,8)} (${socket.auth?.role})`);
+});
 
-  socket.on('disconnect', () => {
-    console.log('Socket disconnected');
-  });
+socket.on('disconnect', (reason) => {
+  console.log(`🔌 SOCKET DISCONNECTED → ${reason} (attempt reconnect)`);
+});
 
-  socket.on('error', (error) => {
-    console.error('Socket error:', error);
-  });
+socket.on('error', (error) => {
+  console.error(`❌ SOCKET ERROR:`, error);
+});
+socket.on('reconnect_attempt', (attempt) => {
+  console.log(`🔄 SOCKET RECONNECT ATTEMPT #${attempt}`);
+});
+socket.on('reconnect', (attempt) => {
+  console.log(`✅ SOCKET RECONNECTED after ${attempt} attempts`);
+});
+socket.on('reconnect_failed', () => {
+  console.error('❌ SOCKET RECONNECT FAILED');
+});
 
   return socket;
 };

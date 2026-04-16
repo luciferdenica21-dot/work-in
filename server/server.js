@@ -113,7 +113,8 @@ io.use((socket, next) => {
 });
 
 io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.userId} (${socket.role})`);
+  console.log(`🔌 User connected: ${socket.userId} (${socket.role})`);
+
   
   // Учитываем онлайн только для роли "user" (клиенты сайта)
   if (socket.role === 'user') {
@@ -131,11 +132,12 @@ io.on('connection', (socket) => {
     socket.emit('support-status', { online: supportOnlineCount > 0 });
   }
 
-  socket.on('join-chat', async (chatId) => {
-    try {
-      socket.join(`chat-${chatId}`);
-      console.log(`User ${socket.userId} joined chat ${chatId}`);
-    } catch (error) {
+socket.on('join-chat', async (chatId) => {
+  try {
+    socket.join(`chat-${chatId}`);
+    console.log(`📱 User ${socket.userId} (${socket.role}) JOINED chat-${chatId}`);
+  } catch (error) {
+
       console.error('Join chat error:', error);
     }
   });
@@ -210,10 +212,13 @@ io.on('connection', (socket) => {
         createdAt: inserted.created_at
       };
 
-      io.to(`chat-${chatId}`).emit('new-message', message);
-      if (socket.role !== 'admin') {
-        io.emit('new-chat-message', { chatId, message });
-      }
+console.log(`📤 EMIT new-message to chat-${chatId} → ${message._id?.slice(0,8)} from ${senderId}`);
+  io.to(`chat-${chatId}`).emit('new-message', message);
+  if (socket.role !== 'admin') {
+    console.log(`📤 EMIT new-chat-message globally → ${message._id?.slice(0,8)}`);
+    io.emit('new-chat-message', { chatId, message });
+  }
+
 
       const senderType = socket.role === 'admin' ? 'Менеджер' : 'Клиент';
       sendTelegram([

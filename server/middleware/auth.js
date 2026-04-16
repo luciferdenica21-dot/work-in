@@ -21,7 +21,7 @@ export const protect = async (req, res, next) => {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       const { data: row, error } = await supabase
         .from('users')
-        .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+        .select('id,email,login,role,phone,city,first_name,last_name,avatar_url,quick_scripts,created_at,updated_at')
         .eq('id', decoded.id)
         .maybeSingle();
       if (error) throw error;
@@ -39,6 +39,7 @@ export const protect = async (req, res, next) => {
         city: row.city || '',
         firstName: row.first_name || '',
         lastName: row.last_name || '',
+        avatarUrl: row.avatar_url || '',
         quickScripts: row.quick_scripts || [],
         createdAt: row.created_at,
         updatedAt: row.updated_at

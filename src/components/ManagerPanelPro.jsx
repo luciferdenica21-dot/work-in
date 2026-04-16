@@ -1126,30 +1126,10 @@ const getAbsoluteFileUrl = (fileUrl) => {
               return [...list, incoming];
             });
           };
-          socket.on('new-chat-message', (payload) => {
-            console.log('=== NEW CHAT MESSAGE ===');
-            console.log('Payload:', payload);
-            if (payload.chatId === activeId) {
-              const raw = payload?.message || {};
-              const message = {
-                ...raw,
-                fileName: raw.fileName || raw.attachments?.[0]?.originalName,
-                fileSize: raw.fileSize || raw.attachments?.[0]?.size,
-                fileType: raw.fileType || raw.attachments?.[0]?.mimetype,
-                fileUrl: raw.fileUrl || raw.attachments?.[0]?.url
-              };
-              console.log('Processed message:', message);
-              upsertIncomingMessage(message);
-            }
-        // Автопрокрутка вниз, если открыта активная переписка
-        if (payload.chatId === activeId) {
-          try {
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
-          } catch { /* ignore */ }
-        }
-            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
-          });
+          // REMOVED DUPLICATE: 'new-chat-message' listener (using 'new-message' only)
+          // socket.on('new-chat-message', ...) - DEPRECATED
           socket.on('new-message', (message) => {
+            console.log('📨 MANAGERPANEL ← new-message:', message?._id?.slice(0,8));
             if (!message) return;
             if (String(message.chatId) !== String(activeId)) return;
             const raw = message || {};
@@ -1164,6 +1144,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             try {
               setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40);
             } catch { void 0; }
+            try { import('../utils/sound').then(m => m.playSound('adminMsg')).catch(() => { void 0; }); } catch { void 0; }
           });
           
           socket.on('message-deleted', ({ messageId }) => {
