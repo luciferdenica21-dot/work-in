@@ -305,6 +305,7 @@ const ChatWidget = ({ user }) => {
       const handleNewMessage = (newMsg) => {
         console.log('📨 CLIENT new-message ←', (newMsg?._id || newMsg?.message?._id || 'no-id')?.slice(0,8));
         const incoming = normalizeMessage(newMsg?.message || newMsg);
+        console.log('📨 CLIENT MESSAGE PROCESSED →', incoming?._id?.slice(0,8), incoming?.text?.slice(0,50));
         setMessages((prev) => {
           const id = incoming?._id || incoming?.id;
           // Удаляем оптимистичное временное сообщение пользователя с таким же текстом
@@ -372,10 +373,12 @@ const ChatWidget = ({ user }) => {
       socket.on('support-status', (payload) => {
         console.log('📨 CLIENT support-status ←', payload);
         handleSupportStatus(payload);
+        console.log('📨 CLIENT SUPPORT ONLINE →', !!payload?.online);
       });
       socket.on('typing', (payload) => {
         console.log('📨 CLIENT typing ←', payload);
         handleTyping(payload);
+        console.log('⌨️ CLIENT SUPPORT TYPING →', !!payload?.isTyping);
       });
       socket.on('chat-read', (payload) => {
         console.log('📨 CLIENT chat-read ←', payload);

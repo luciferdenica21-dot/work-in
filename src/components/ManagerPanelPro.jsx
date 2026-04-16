@@ -1070,7 +1070,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
     loadData();
   }, []);
 
-  // Global socket handlers - only once
+// FIXED: Global handlers moved to separate useEffect (runs once)
+// Socket listeners for online status + deletes (NOT messages)
   useEffect(() => {
     if (!user?._id) return;
 
@@ -1131,7 +1132,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       socket.off('message-deleted', handleMessageDeleted);
       socket.off('order-created', handleOrderCreated);
     };
-  }, [user?._id]); // Only user._id dep - no activeId
+  }, [user?._id]);
 
 // GLOBAL new-message handler (ALL chats)
   useEffect(() => {
