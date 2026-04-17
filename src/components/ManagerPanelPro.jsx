@@ -698,30 +698,32 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const saved = localStorage.getItem('manager_scripts');
     if (!saved) {
       return [
-        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?' },
-        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.' }
+        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
+        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
       ];
     }
 
     try {
       const parsed = JSON.parse(saved);
-      return Array.isArray(parsed) ? parsed : [
-        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?' },
-        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.' }
+      const base = Array.isArray(parsed) ? parsed : [
+        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
+        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
       ];
+      return base.map((s) => ({ ...s, files: Array.isArray(s.files) ? s.files : [] }));
     } catch {
       return [
-      { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?' },
-      { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.' }
+      { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
+      { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
       ];
     }
   });
 
-  const [newScript, setNewScript] = useState({ title: '', text: '' });
+  const [newScript, setNewScript] = useState({ title: '', text: '', files: [] });
   const [editingScriptId, setEditingScriptId] = useState(null);
   const [showScriptMenu, setShowScriptMenu] = useState(false);
   const [scriptSearch, setScriptSearch] = useState('');
   const [scriptEditorOpen, setScriptEditorOpen] = useState(false);
+  const [scriptFilesUploading, setScriptFilesUploading] = useState(false);
   const [signatureComposerOpen, setSignatureComposerOpen] = useState(false);
   const [editingService, setEditingService] = useState(null);
   const [orderDetailsEditorOpen, setOrderDetailsEditorOpen] = useState(false);
@@ -743,9 +745,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
         const local = Array.isArray(scripts) ? scripts : [];
         const same =
           srv.length === local.length &&
-          srv.every((s, i) => s.title === local[i]?.title && s.text === local[i]?.text);
+          srv.every((s, i) => s.title === local[i]?.title && s.text === local[i]?.text && JSON.stringify(s.files || []) === JSON.stringify(local[i]?.files || []));
         if (!same) {
-          setScripts(srv.map(s => ({ id: String(s.id || Date.now()), title: s.title, text: s.text })));
+          setScripts(srv.map(s => ({ id: String(s.id || Date.now()), title: s.title, text: s.text, files: Array.isArray(s.files) ? s.files : [] })));
         }
       }
     } catch { /* ignore */ }
@@ -759,7 +761,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
           const payload = (Array.isArray(scripts) ? scripts : []).map(s => ({
             id: String(s.id || Date.now()),
             title: String(s.title || ''),
-            text: String(s.text || '')
+            text: String(s.text || ''),
+            files: Array.isArray(s.files) ? s.files : []
           }));
           await authAPI.updateProfile({ quickScripts: payload });
         }
@@ -1413,7 +1416,32 @@ const getAbsoluteFileUrl = (fileUrl) => {
         }
       })();
     } else {
-      executeSend(script.text);
+      (async () => {
+        try {
+          const text = String(script?.text || '').trim();
+          if (text) {
+            await executeSend(text);
+          }
+          const files = Array.isArray(script?.files) ? script.files : [];
+          for (const f of files) {
+            const url = filesAPI.getFileUrl(f?.url);
+            if (!url) continue;
+            try {
+              const resp = await fetch(url);
+              const blob = await resp.blob();
+              const fileName = String(f?.name || 'file');
+              const fileType = String(f?.type || blob.type || '');
+              const fileObj = new File([blob], fileName, { type: fileType });
+              await filesAPI.upload(fileObj, activeId);
+            } catch {
+              const fallbackName = String(f?.name || 'file');
+              await executeSend(`📎 ${fallbackName}\n${url}`);
+            }
+          }
+        } catch {
+          alert('Не удалось отправить скрипт');
+        }
+      })();
     }
     setShowScriptMenu(false);
   };
@@ -1623,7 +1651,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   const handleSaveScript = () => {
-    if (!newScript.title || !newScript.text) return;
+    const hasText = !!String(newScript.text || '').trim();
+    const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
+    if (!newScript.title || (!hasText && !hasFiles)) return;
 
     const payload = { ...newScript, title: String(newScript.title).trim(), text: String(newScript.text).trim() };
 
@@ -1636,17 +1666,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
     });
 
     if (editingScriptId) setEditingScriptId(null);
-    setNewScript({ title: '', text: '' });
+    setNewScript({ title: '', text: '', files: [] });
   };
 
   const handleEditScript = (s) => {
-    setNewScript({ title: s.title, text: s.text });
+    setNewScript({ title: s.title, text: s.text, files: Array.isArray(s.files) ? s.files : [] });
     setEditingScriptId(s.id);
   };
 
   const openNewScript = () => {
     setEditingScriptId(null);
-    setNewScript({ title: '', text: '' });
+    setNewScript({ title: '', text: '', files: [] });
     setScriptEditorOpen(true);
   };
 
@@ -1658,7 +1688,36 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const closeScriptEditor = () => {
     setScriptEditorOpen(false);
     setEditingScriptId(null);
-    setNewScript({ title: '', text: '' });
+    setNewScript({ title: '', text: '', files: [] });
+  };
+
+  const handleScriptFilesSelect = async (e) => {
+    const list = Array.from(e.target.files || []);
+    if (list.length === 0) return;
+    setScriptFilesUploading(true);
+    try {
+      const uploaded = [];
+      for (const file of list) {
+        const res = await filesAPI.upload(file, null);
+        const url = res?.fileUrl || res?.fileUrl?.url || res?.attachment?.url || res?.message?.fileUrl || res?.data?.fileUrl;
+        const name = res?.fileName || file.name;
+        const type = res?.fileType || file.type || '';
+        const size = res?.fileSize || file.size || 0;
+        if (url) uploaded.push({ name, type, size, url });
+      }
+      if (uploaded.length > 0) {
+        setNewScript((prev) => ({ ...prev, files: [...(prev.files || []), ...uploaded] }));
+      }
+    } catch (err) {
+      alert('Не удалось загрузить файл для скрипта');
+    } finally {
+      setScriptFilesUploading(false);
+      try { e.target.value = ''; } catch { void 0; }
+    }
+  };
+
+  const removeScriptFile = (idx) => {
+    setNewScript((prev) => ({ ...prev, files: (prev.files || []).filter((_, i) => i !== idx) }));
   };
 
   const handleSaveSiteContent = async () => {
@@ -2965,7 +3024,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
                                           <div className="text-base font-semibold text-white truncate">{script.title}</div>
-                                          <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                                          {String(script.text || '').trim() ? (
+                                            <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                                          ) : (
+                                            <div className="mt-1 text-sm text-white/40">Без текста</div>
+                                          )}
+                                          {(script.files || []).length > 0 && (
+                                            <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
+                                          )}
                                         </div>
                                         <div className="shrink-0 text-xs text-blue-300/80">Отправить</div>
                                       </div>
@@ -2992,6 +3058,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 >
                                   <div className="font-medium">{script.title}</div>
                                   <div className="text-xs text-gray-500 truncate">{script.text}</div>
+                                  {(script.files || []).length > 0 && (
+                                    <div className="text-[10px] text-gray-500">Вложения: {(script.files || []).length}</div>
+                                  )}
                                 </button>
                               ))}
                             </div>
@@ -3434,7 +3503,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <div className="min-w-0 w-full">
                             <div className="text-base font-semibold text-white truncate">{script.title}</div>
                             {!isSig ? (
-                              <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                              <>
+                                {String(script.text || '').trim() ? (
+                                  <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                                ) : (
+                                  <div className="mt-1 text-sm text-white/40">Без текста</div>
+                                )}
+                                {(script.files || []).length > 0 && (
+                                  <div className="mt-2 text-xs text-white/70">Вложения: {(script.files || []).length}</div>
+                                )}
+                              </>
                             ) : (
                               <div className="mt-2 space-y-2">
                                 <div className="text-xs text-white/70">Шаблон подписи</div>
@@ -3511,6 +3589,42 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           rows={4}
                           className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500 resize-none"
                         />
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs text-white/70">Вложения</div>
+                            <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 ${scriptFilesUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                              <Paperclip className="w-4 h-4" />
+                              <span className="text-xs">{scriptFilesUploading ? 'Загрузка...' : 'Добавить файлы'}</span>
+                              <input
+                                type="file"
+                                multiple
+                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                                onChange={handleScriptFilesSelect}
+                                className="hidden"
+                              />
+                            </label>
+                          </div>
+                          {(newScript.files || []).length > 0 && (
+                            <div className="flex flex-col gap-2">
+                              {(newScript.files || []).map((f, idx) => (
+                                <div key={`${f.url}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                                  <div className="min-w-0">
+                                    <div className="text-xs text-white truncate">{f.name}</div>
+                                    <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeScriptFile(idx)}
+                                    className="p-1.5 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                                    aria-label="Удалить вложение"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                         <div className="grid grid-cols-2 gap-3">
                           <button
                             onClick={closeScriptEditor}
@@ -3520,11 +3634,13 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </button>
                           <button
                             onClick={() => {
-                              if (!newScript.title || !newScript.text) return;
+                              const hasText = !!String(newScript.text || '').trim();
+                              const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
+                              if (!newScript.title || (!hasText && !hasFiles)) return;
                               handleSaveScript();
                               closeScriptEditor();
                             }}
-                            disabled={!newScript.title || !newScript.text}
+                            disabled={!newScript.title || (!(String(newScript.text || '').trim()) && !((newScript.files || []).length))}
                             className={`px-4 py-3 rounded-xl ${brandGradient} text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {editingScriptId ? 'Обновить' : 'Сохранить'}
@@ -3562,10 +3678,46 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
                     />
                   </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Вложения</label>
+                      <label className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white hover:bg-white/15 ${scriptFilesUploading ? 'opacity-60 pointer-events-none' : ''}`}>
+                        <Paperclip className="w-4 h-4" />
+                        <span className="text-sm">{scriptFilesUploading ? 'Загрузка...' : 'Добавить файлы'}</span>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar"
+                          onChange={handleScriptFilesSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                    {(newScript.files || []).length > 0 && (
+                      <div className="space-y-2">
+                        {(newScript.files || []).map((f, idx) => (
+                          <div key={`${f.url}-${idx}`} className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                            <div className="min-w-0">
+                              <div className="text-sm text-white truncate">{f.name}</div>
+                              <div className="text-xs text-white/50 truncate">{f.type || 'file'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeScriptFile(idx)}
+                              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                              title="Удалить"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleSaveScript}
-                      disabled={!newScript.title || !newScript.text}
+                      disabled={!newScript.title || (!(String(newScript.text || '').trim()) && !((newScript.files || []).length))}
                       className={`px-4 py-2 ${brandGradient} rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto`}
                     >
                       {editingScriptId ? 'Обновить' : 'Сохранить'}
@@ -3574,7 +3726,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <button
                         onClick={() => {
                           setEditingScriptId(null);
-                          setNewScript({ title: '', text: '' });
+                          setNewScript({ title: '', text: '', files: [] });
                         }}
                         className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 w-full sm:w-auto"
                       >
@@ -3613,7 +3765,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </div>
                       </div>
                       {!isSig ? (
-                        <p className="text-sm text-gray-300">{script.text}</p>
+                        <div className="space-y-2">
+                          {String(script.text || '').trim() ? (
+                            <p className="text-sm text-gray-300">{script.text}</p>
+                          ) : (
+                            <p className="text-sm text-gray-500">Без текста</p>
+                          )}
+                          {(script.files || []).length > 0 && (
+                            <div className="text-xs text-gray-400">Вложения: {(script.files || []).length}</div>
+                          )}
+                        </div>
                       ) : (
                         <div className="space-y-2">
                           <div className="text-xs text-white/70">Шаблон подписи</div>

@@ -230,7 +230,17 @@ router.put('/me', protect, async (req, res) => {
         .map(s => ({
           id: String(s.id || Date.now().toString(36)),
           title: String(s.title),
-          text: String(s.text)
+          text: String(s.text),
+          files: Array.isArray(s.files)
+            ? s.files
+                .filter(f => f && typeof f.url === 'string')
+                .map(f => ({
+                  name: String(f.name || ''),
+                  type: String(f.type || ''),
+                  size: Number(f.size) || 0,
+                  url: String(f.url)
+                }))
+            : []
         }));
     }
     update.updated_at = new Date().toISOString();

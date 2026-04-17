@@ -788,14 +788,14 @@ const ChatWidget = ({ user }) => {
   };
 
   return (
-    <div className="fixed bottom-24 right-6 md:bottom-8 md:right-8 z-150">
+    <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[150]">
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className={`w-16 h-16 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
         ${isMobile && scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
         {hasNewMessage && !isOpen && (
-          <div className="absolute -top-12 right-0 bg-[#050a18]/95 border border-white/10 text-white text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md whitespace-nowrap">
+          <div className="absolute -top-14 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-top-12 md:right-0 bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
             {getNewMessageToastText()}
           </div>
         )}
