@@ -1391,7 +1391,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     }
   };
 
-  const handleSendScript = (script) => {
+  const handleSendScript = async (script) => {
     if (!activeId) {
       alert('Выберите чат для отправки сообщения');
       return;
@@ -1402,46 +1402,42 @@ const getAbsoluteFileUrl = (fileUrl) => {
         alert('Шаблон подписи некорректен');
         return;
       }
-      (async () => {
-        try {
-          await signaturesAPI.create({
-            chatId: activeId,
-            file: payload.file,
-            managerSignatureDataUrl: payload.managerSignatureDataUrl || null,
-            managerSignPos: payload.managerSignPos || null
-          });
-          setActiveSection('chats');
-        } catch {
-          alert('Не удалось создать запрос подписи');
-        }
-      })();
+      try {
+        await signaturesAPI.create({
+          chatId: activeId,
+          file: payload.file,
+          managerSignatureDataUrl: payload.managerSignatureDataUrl || null,
+          managerSignPos: payload.managerSignPos || null
+        });
+        setActiveSection('chats');
+      } catch {
+        alert('Не удалось создать запрос подписи');
+      }
     } else {
-      (async () => {
-        try {
-          const text = String(script?.text || '').trim();
-          if (text) {
-            await executeSend(text);
-          }
-          const files = Array.isArray(script?.files) ? script.files : [];
-          for (const f of files) {
-            const url = filesAPI.getFileUrl(f?.url);
-            if (!url) continue;
-            try {
-              const resp = await fetch(url);
-              const blob = await resp.blob();
-              const fileName = String(f?.name || 'file');
-              const fileType = String(f?.type || blob.type || '');
-              const fileObj = new File([blob], fileName, { type: fileType });
-              await filesAPI.upload(fileObj, activeId);
-            } catch {
-              const fallbackName = String(f?.name || 'file');
-              await executeSend(`📎 ${fallbackName}\n${url}`);
-            }
-          }
-        } catch {
-          alert('Не удалось отправить скрипт');
+      try {
+        const text = String(script?.text || '').trim();
+        if (text) {
+          await executeSend(text);
         }
-      })();
+        const files = Array.isArray(script?.files) ? script.files : [];
+        for (const f of files) {
+          const url = filesAPI.getFileUrl(f?.url);
+          if (!url) continue;
+          try {
+            const resp = await fetch(url);
+            const blob = await resp.blob();
+            const fileName = String(f?.name || 'file');
+            const fileType = String(f?.type || blob.type || '');
+            const fileObj = new File([blob], fileName, { type: fileType });
+            await filesAPI.upload(fileObj, activeId);
+          } catch {
+            const fallbackName = String(f?.name || 'file');
+            await executeSend(`📎 ${fallbackName}\n${url}`);
+          }
+        }
+      } catch {
+        alert('Не удалось отправить скрипт');
+      }
     }
     setShowScriptMenu(false);
   };
@@ -2975,16 +2971,17 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <>
                           <div className="lg:hidden">
                             <div
-                              className="fixed inset-0 bg-black/70 backdrop-blur-[1px] z-40"
+                              className="fixed inset-0 bg-black/70 backdrop-blur-[1px] z-[110]"
                               onClick={() => {
                                 setShowScriptMenu(false);
                                 setScriptSearch('');
                               }}
                             />
-                            <div className="fixed inset-x-0 bottom-0 z-50 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4">
+                            <div className="fixed inset-x-0 bottom-0 z-[120] bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4">
                               <div className="flex items-center justify-between">
                                 <div className="text-sm font-semibold text-white">Быстрые ответы</div>
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setShowScriptMenu(false);
                                     setScriptSearch('');
@@ -3017,6 +3014,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                   })
                                   .map((script) => (
                                     <button
+                                      type="button"
                                       key={script.id}
                                       onClick={() => handleSendScript(script)}
                                       className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition"
@@ -3047,11 +3045,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             </div>
                           </div>
 
-                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-50">
+                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[120]">
                             <div className="p-2">
                               <div className="text-xs font-medium text-gray-600 px-2 py-1">Быстрые ответы</div>
                               {scripts.map(script => (
                                 <button
+                                  type="button"
                                   key={script.id}
                                   onClick={() => handleSendScript(script)}
                                   className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 rounded transition-colors"
