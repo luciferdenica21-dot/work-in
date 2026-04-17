@@ -2977,7 +2977,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 setScriptSearch('');
                               }}
                             />
-                            <div className="fixed inset-x-0 bottom-0 z-[120] bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4">
+                            <div className="fixed inset-x-0 bottom-0 z-[120] bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4 pointer-events-auto">
                               <div className="flex items-center justify-between">
                                 <div className="text-sm font-semibold text-white">Быстрые ответы</div>
                                 <button
@@ -3016,8 +3016,12 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     <button
                                       type="button"
                                       key={script.id}
-                                      onClick={() => handleSendScript(script)}
-                                      className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition"
+                                      onPointerUp={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleSendScript(script);
+                                      }}
+                                      className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition cursor-pointer select-none"
                                     >
                                       <div className="flex items-start justify-between gap-3">
                                         <div className="min-w-0">
@@ -3045,14 +3049,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             </div>
                           </div>
 
-                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[120]">
+                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[120] pointer-events-auto">
                             <div className="p-2">
                               <div className="text-xs font-medium text-gray-600 px-2 py-1">Быстрые ответы</div>
                               {scripts.map(script => (
                                 <button
                                   type="button"
                                   key={script.id}
-                                  onClick={() => handleSendScript(script)}
+                                  onPointerUp={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleSendScript(script);
+                                  }}
                                   className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 rounded transition-colors"
                                 >
                                   <div className="font-medium">{script.title}</div>
