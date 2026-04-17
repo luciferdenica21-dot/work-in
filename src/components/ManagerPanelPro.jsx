@@ -3058,14 +3058,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             document.body
                           )}
 
-                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[120] pointer-events-auto">
+                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[9999] pointer-events-auto">
                             <div className="p-2">
                               <div className="text-xs font-medium text-gray-600 px-2 py-1">Быстрые ответы</div>
                               {scripts.map(script => (
                                 <button
                                   type="button"
                                   key={script.id}
-                                  onPointerUp={(e) => {
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  onClick={(e) => {
                                     e.preventDefault();
                                     e.stopPropagation();
                                     handleSendScript(script);
