@@ -792,6 +792,32 @@ const getAbsoluteFileUrl = (fileUrl) => {
     return `${chatId}:${orderIndex}`;
   };
 
+  const setOrderStatusOverride = (orderKey, status) => {
+    if (!orderKey) return;
+    try {
+      const raw = localStorage.getItem('manager_order_status_overrides');
+      const parsed = raw ? JSON.parse(raw) : {};
+      const next = parsed && typeof parsed === 'object' ? { ...parsed } : {};
+      next[orderKey] = status;
+      localStorage.setItem('manager_order_status_overrides', JSON.stringify(next));
+    } catch { void 0; }
+  };
+
+  const applyOrderStatusOverrides = (list) => {
+    try {
+      const raw = localStorage.getItem('manager_order_status_overrides');
+      const parsed = raw ? JSON.parse(raw) : {};
+      const map = parsed && typeof parsed === 'object' ? parsed : {};
+      return (list || []).map((o) => {
+        const key = getOrderKey(o);
+        const ov = key ? map[key] : null;
+        return ov ? { ...o, status: ov } : o;
+      });
+    } catch {
+      return list || [];
+    }
+  };
+
   const markOrderSeen = (order) => {
     const key = getOrderKey(order);
     if (!key) return;
@@ -905,7 +931,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const loadOrders = async () => {
     try {
       const data = await ordersAPI.getAll();
-      setOrders(data || []);
+      setOrders(applyOrderStatusOverrides(data || []));
     } catch (error) { 
       console.error('Error loading orders:', error);
       setOrders([]);
@@ -948,6 +974,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
           firstName: user.firstName || user.name?.split(' ')[0] || 'User',
           lastName: user.lastName || user.name?.split(' ')[1] || '',
           phone: user.phone || '',
+          city: user.city || '',
           role: user.role || 'user',
           status: user.status || 'offline',
           lastSeen: user.lastSeen || new Date(),
@@ -970,6 +997,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
             firstName: chat.userEmail?.split('@')[0] || 'User',
             lastName: '',
             phone: '',
+            city: '',
             role: 'user',
             status: chat.unread ? 'online' : 'offline',
             lastSeen: chat.lastMessageTime || new Date(),
@@ -981,16 +1009,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
       });
 
       // Обновляем статистику из заказов
-      orders.forEach(order => {
-        const orderUid = String(order.userId || '').trim();
-        const resolvedOrderUserId = usersMap.has(orderUid) ? orderUid : null;
-        if (resolvedOrderUserId && usersMap.has(resolvedOrderUserId)) {
-          const user = usersMap.get(resolvedOrderUserId);
-          user.firstName = order.firstName || user.firstName;
-          user.lastName = order.lastName || user.lastName;
-          user.phone = order.contact || user.phone;
-          user.ordersCount = (user.ordersCount || 0) + 1;
-        }
+      const chatIdToUserId = new Map((chats || []).map((c) => [String(c?.chatId || ''), String(c?.userId || '')]));
+      orders.forEach((order) => {
+        const chatId = String(order?.chatId || '').trim();
+        if (!chatId) return;
+        const rawId = String(chatIdToUserId.get(chatId) || '').trim();
+        const emailKey = String((chats || []).find((c) => String(c?.chatId) === chatId)?.userEmail || '').toLowerCase();
+        const mappedId = emailToId.get(emailKey) ? String(emailToId.get(emailKey)) : '';
+        const resolvedId = usersMap.has(rawId) ? rawId : (mappedId || rawId);
+        if (!resolvedId || !usersMap.has(resolvedId)) return;
+
+        const u = usersMap.get(resolvedId);
+        u.firstName = order.firstName || u.firstName;
+        u.lastName = order.lastName || u.lastName;
+        u.phone = order.contact || u.phone;
+        u.ordersCount = (u.ordersCount || 0) + 1;
       });
 
       // Считаем чаты для каждого пользователя
@@ -1549,6 +1582,11 @@ const getAbsoluteFileUrl = (fileUrl) => {
     try {
       console.log('Updating order status:', { chatId, orderIndex, status });
       await ordersAPI.updateStatus(chatId, orderIndex, status);
+      setOrders((prev) => {
+        const list = Array.isArray(prev) ? prev : [];
+        return list.map((o) => (String(o?.chatId) === String(chatId) && Number(o?.orderIndex) === Number(orderIndex) ? { ...o, status } : o));
+      });
+      setOrderStatusOverride(`${chatId}:${orderIndex}`, status);
       loadOrders();
     } catch (err) { 
       console.error('Error updating order status:', err); 
@@ -2156,18 +2194,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <div className="text-[12px] text-white">{clientsSelectedClient.phone || 'Не указан'}</div>
                         </div>
                         <div className="bg-white/5 border border-white/10 rounded-xl p-2.5">
+                          <div className="text-[11px] text-gray-400 mb-1">Город</div>
+                          <div className="text-[12px] text-white">{clientsSelectedClient.city || 'Не указан'}</div>
+                        </div>
+                        <div className="bg-white/5 border border-white/10 rounded-xl p-2.5">
                           <div className="text-[11px] text-gray-400 mb-1">Заказы</div>
                           <div className="text-[12px] text-white">{clientsSelectedClient.ordersCount || 0}</div>
                         </div>
                         <div className="bg-white/5 border border-white/10 rounded-xl p-2.5">
                           <div className="text-[11px] text-gray-400 mb-1">Чаты</div>
                           <div className="text-[12px] text-white">{clientsSelectedClient.chatsCount || 0}</div>
-                        </div>
-                        <div className="bg-white/5 border border-white/10 rounded-xl p-2.5">
-                          <div className="text-[11px] text-gray-400 mb-1">Статус</div>
-                          <div className={`text-[12px] ${isUserOnline(clientsSelectedClient) ? 'text-green-400' : 'text-gray-400'}`}>
-                            {isUserOnline(clientsSelectedClient) ? 'Онлайн' : 'Офлайн'}
-                          </div>
                         </div>
                       </div>
                       <div className="flex gap-2">

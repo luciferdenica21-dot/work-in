@@ -7,7 +7,7 @@ import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, Check
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
 const ChatWidget = ({ user }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
@@ -29,6 +29,7 @@ const ChatWidget = ({ user }) => {
   }
 
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [showNewMessageToast, setShowNewMessageToast] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -280,6 +281,9 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         setChatId(chat.chatId);
+        if (chat?.unread) {
+          setHasNewMessage(true);
+        }
 
         if (socket) {
           console.log('📱 CLIENT JOIN chat-', chat.chatId);
@@ -398,6 +402,24 @@ const ChatWidget = ({ user }) => {
       disconnectSocket();
     };
   }, [user?._id, user?.email, user?.role, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setShowNewMessageToast(false);
+      return;
+    }
+    if (!hasNewMessage) return;
+    setShowNewMessageToast(true);
+    const t = setTimeout(() => setShowNewMessageToast(false), 4000);
+    return () => clearTimeout(t);
+  }, [hasNewMessage, isOpen]);
+
+  const getNewMessageToastText = () => {
+    const lang = String(i18n?.language || '').toLowerCase();
+    if (lang.startsWith('ka')) return 'ახალი შეტყობინება';
+    if (lang.startsWith('en')) return 'New message';
+    return 'Новое сообщение';
+  };
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -784,8 +806,10 @@ const ChatWidget = ({ user }) => {
         className={`w-16 h-16 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
         ${isMobile && scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
-        {hasNewMessage && (
-          <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-pulse border-2 border-[#0a0a0a]"></span>
+        {showNewMessageToast && (
+          <div className="absolute -top-12 right-0 bg-[#050a18]/95 border border-white/10 text-white text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md whitespace-nowrap">
+            {getNewMessageToastText()}
+          </div>
         )}
         <svg className="w-6 h-6 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
