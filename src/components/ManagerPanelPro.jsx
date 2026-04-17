@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI, signaturesAPI } from '../config/api';
@@ -2969,85 +2970,93 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       {/* Меню скриптов */}
                       {showScriptMenu && (
                         <>
-                          <div className="lg:hidden">
-                            <div
-                              className="fixed inset-0 bg-black/70 backdrop-blur-[1px] z-[110]"
-                              onClick={() => {
-                                setShowScriptMenu(false);
-                                setScriptSearch('');
-                              }}
-                            />
-                            <div className="fixed inset-x-0 bottom-0 z-[120] bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4 pointer-events-auto">
-                              <div className="flex items-center justify-between">
-                                <div className="text-sm font-semibold text-white">Быстрые ответы</div>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowScriptMenu(false);
-                                    setScriptSearch('');
-                                  }}
-                                  className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
-                                  aria-label="Закрыть"
-                                >
-                                  <X className="w-5 h-5" />
-                                </button>
-                              </div>
+                          {typeof document !== 'undefined' && createPortal(
+                            <div className="lg:hidden fixed inset-0 z-[220]">
+                              <div
+                                className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"
+                                onClick={() => {
+                                  setShowScriptMenu(false);
+                                  setScriptSearch('');
+                                }}
+                              />
+                              <div className="absolute inset-x-0 bottom-0 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4 pointer-events-auto">
+                                <div className="flex items-center justify-between">
+                                  <div className="text-sm font-semibold text-white">Быстрые ответы</div>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowScriptMenu(false);
+                                      setScriptSearch('');
+                                    }}
+                                    className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                                    aria-label="Закрыть"
+                                  >
+                                    <X className="w-5 h-5" />
+                                  </button>
+                                </div>
 
-                              <div className="mt-3">
-                                <input
-                                  value={scriptSearch}
-                                  onChange={(e) => setScriptSearch(e.target.value)}
-                                  placeholder="Поиск по скриптам..."
-                                  className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
-                                />
-                              </div>
+                                <div className="mt-3">
+                                  <input
+                                    value={scriptSearch}
+                                    onChange={(e) => setScriptSearch(e.target.value)}
+                                    placeholder="Поиск по скриптам..."
+                                    className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                                  />
+                                </div>
 
-                              <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-2">
-                                {(scripts || [])
-                                  .filter((s) => {
-                                    const q = scriptSearch.trim().toLowerCase();
-                                    if (!q) return true;
-                                    return (
-                                      String(s?.title || '').toLowerCase().includes(q) ||
-                                      String(s?.text || '').toLowerCase().includes(q)
-                                    );
-                                  })
-                                  .map((script) => (
-                                    <button
-                                      type="button"
-                                      key={script.id}
-                                      onPointerUp={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleSendScript(script);
-                                      }}
-                                      className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition cursor-pointer select-none"
-                                    >
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                          <div className="text-base font-semibold text-white truncate">{script.title}</div>
-                                          {String(script.text || '').trim() ? (
-                                            <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
-                                          ) : (
-                                            <div className="mt-1 text-sm text-white/40">Без текста</div>
-                                          )}
-                                          {(script.files || []).length > 0 && (
-                                            <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
-                                          )}
+                                <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-2">
+                                  {(scripts || [])
+                                    .filter((s) => {
+                                      const q = scriptSearch.trim().toLowerCase();
+                                      if (!q) return true;
+                                      return (
+                                        String(s?.title || '').toLowerCase().includes(q) ||
+                                        String(s?.text || '').toLowerCase().includes(q)
+                                      );
+                                    })
+                                    .map((script) => (
+                                      <button
+                                        type="button"
+                                        key={script.id}
+                                        onClick={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleSendScript(script);
+                                        }}
+                                        onTouchEnd={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          handleSendScript(script);
+                                        }}
+                                        className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition cursor-pointer select-none"
+                                      >
+                                        <div className="flex items-start justify-between gap-3">
+                                          <div className="min-w-0">
+                                            <div className="text-base font-semibold text-white truncate">{script.title}</div>
+                                            {String(script.text || '').trim() ? (
+                                              <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                                            ) : (
+                                              <div className="mt-1 text-sm text-white/40">Без текста</div>
+                                            )}
+                                            {(script.files || []).length > 0 && (
+                                              <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
+                                            )}
+                                          </div>
+                                          <div className="shrink-0 text-xs text-blue-300/80">Отправить</div>
                                         </div>
-                                        <div className="shrink-0 text-xs text-blue-300/80">Отправить</div>
-                                      </div>
-                                    </button>
-                                  ))}
+                                      </button>
+                                    ))}
 
-                                {(scripts || []).length === 0 && (
-                                  <div className="py-8 text-center text-sm text-white/60">
-                                    Нет скриптов
-                                  </div>
-                                )}
+                                  {(scripts || []).length === 0 && (
+                                    <div className="py-8 text-center text-sm text-white/60">
+                                      Нет скриптов
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </div>
+                            </div>,
+                            document.body
+                          )}
 
                           <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[120] pointer-events-auto">
                             <div className="p-2">
