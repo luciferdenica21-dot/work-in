@@ -29,7 +29,6 @@ const ChatWidget = ({ user }) => {
   }
 
   const [hasNewMessage, setHasNewMessage] = useState(false);
-  const [showNewMessageToast, setShowNewMessageToast] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [isMaximized, setIsMaximized] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -402,17 +401,6 @@ const ChatWidget = ({ user }) => {
       disconnectSocket();
     };
   }, [user?._id, user?.email, user?.role, isOpen]);
-
-  useEffect(() => {
-    if (isOpen) {
-      setShowNewMessageToast(false);
-      return;
-    }
-    if (!hasNewMessage) return;
-    setShowNewMessageToast(true);
-    const t = setTimeout(() => setShowNewMessageToast(false), 4000);
-    return () => clearTimeout(t);
-  }, [hasNewMessage, isOpen]);
 
   const getNewMessageToastText = () => {
     const lang = String(i18n?.language || '').toLowerCase();
@@ -806,7 +794,7 @@ const ChatWidget = ({ user }) => {
         className={`w-16 h-16 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
         ${isMobile && scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
-        {showNewMessageToast && (
+        {hasNewMessage && !isOpen && (
           <div className="absolute -top-12 right-0 bg-[#050a18]/95 border border-white/10 text-white text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md whitespace-nowrap">
             {getNewMessageToastText()}
           </div>
