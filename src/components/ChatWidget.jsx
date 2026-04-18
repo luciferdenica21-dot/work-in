@@ -5,10 +5,12 @@ import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
+import SmartOrderSystem from './SmartOrderSystem/SmartOrderSystem';
 
 const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
+  const [smartMode, setSmartMode] = useState('locked');
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
@@ -38,6 +40,11 @@ const ChatWidget = ({ user }) => {
   const scrollRef = useRef();
   const fileInputRef = useRef();
   const widgetRef = useRef(null);
+  const isOpenRef = useRef(false);
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
   const [scrolled, setScrolled] = useState(false);
   const avatarUrl = useAvatarUrl(user?.email);
   const [supportOnline, setSupportOnline] = useState(false);
@@ -339,7 +346,7 @@ const ChatWidget = ({ user }) => {
         if (incoming?.senderId === 'manager') {
           try { playSound('chat'); } catch { void 0; }
         }
-        if (!isOpen && (incoming?.senderId === 'manager')) {
+        if (!isOpenRef.current && (incoming?.senderId === 'manager')) {
           setHasNewMessage(true);
         }
       };
@@ -407,7 +414,7 @@ const ChatWidget = ({ user }) => {
     return () => {
       disconnectSocket();
     };
-  }, [user?._id, user?.email, user?.role, isOpen]);
+  }, [user?._id, user?.email, user?.role]);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -448,6 +455,17 @@ const ChatWidget = ({ user }) => {
     if (lang.startsWith('ka')) return 'ახალი შეტყობინება';
     if (lang.startsWith('en')) return 'New message';
     return 'Новое сообщение';
+  };
+
+  const appendAssistantMessage = (text) => {
+    const s = String(text || '').trim();
+    if (!s) return;
+    const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    setMessages((prev) => [
+      ...(prev || []),
+      { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt: new Date().toISOString() }
+    ]);
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   };
 
   useEffect(() => {
@@ -974,6 +992,17 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
           
+          {smartMode !== 'manager' && (
+            <SmartOrderSystem
+              mode={smartMode}
+              onModeChange={setSmartMode}
+              onAssistantMessage={appendAssistantMessage}
+              onOrderPrepared={(payload) => {
+                console.log('SMART_ORDER_PREPARED_FOR_API', payload);
+              }}
+            />
+          )}
+
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
@@ -1088,7 +1117,14 @@ const ChatWidget = ({ user }) => {
             <div ref={scrollRef} />
           </div>
 
-          <form onSubmit={sendMessage} className="px-4 py-3 border-t border-white/10 flex flex-col gap-2 bg-white/5">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (smartMode !== 'manager') return;
+              sendMessage(e);
+            }}
+            className="px-4 py-3 border-t border-white/10 flex flex-col gap-2 bg-white/5"
+          >
             {replyTo && (
               <div className="flex items-start justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/10">
                 <div className="min-w-0">
@@ -1118,7 +1154,7 @@ const ChatWidget = ({ user }) => {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || smartMode !== 'manager'}
                 className="text-white/60 hover:text-white transition-colors disabled:opacity-50"
                 title="Прикрепить файл"
               >
@@ -1131,10 +1167,11 @@ const ChatWidget = ({ user }) => {
               <input 
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={supportTyping ? t('chat_typing') : t('chat_input_placeholder')}
+                disabled={smartMode !== 'manager'}
+                placeholder={smartMode !== 'manager' ? t('smart_input_locked') : (supportTyping ? t('chat_typing') : t('chat_input_placeholder'))}
                 className="flex-1 bg-[#0a0a0a] border border-white/10 rounded-2xl px-4 py-3 text-white text-sm outline-none focus:border-blue-500/50"
               />
-              <button type="submit" className="text-white/80 hover:text-white transition-colors">
+              <button type="submit" disabled={smartMode !== 'manager'} className="text-white/80 hover:text-white transition-colors disabled:opacity-40">
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                   <path d="M10.894 2.553a1 1 0 00-1.788 0l-7 14a1 1 0 001.169 1.409l5-1.429A1 1 0 009 15.571V11a1 1 0 112 0v4.571a1 1 0 00.725.962l5 1.428a1 1 0 001.17-1.408l-7-14z"/>
                 </svg>
