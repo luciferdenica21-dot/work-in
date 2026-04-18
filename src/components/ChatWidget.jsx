@@ -1460,7 +1460,7 @@ const ChatWidget = ({ user }) => {
               setSmartMode(next);
             }}
             resetNonce={smartResetNonce}
-            onCloseAssistant={() => {
+            onCloseAssistant={async () => {
               const ok = window.confirm(t('smart_close_confirm'));
               if (!ok) return;
               clearSmartTranscript();

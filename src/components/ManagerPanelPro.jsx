@@ -3050,6 +3050,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             )}
                             </div>
                           </div>
+                        </div>
                         );
                       })}
                       <div ref={messagesEndRef} />
