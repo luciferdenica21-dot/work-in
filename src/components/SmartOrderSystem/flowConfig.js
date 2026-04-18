@@ -16,8 +16,7 @@ export const flowConfig = {
     start: {
       messageKeys: ['smart_greeting'],
       actions: [
-        { id: 'start_ai', labelKey: 'smart_start_ai', type: 'next', nextStepId: 'q_specific' },
-        { id: 'contact_manager', labelKey: 'smart_contact_manager', type: 'contact_manager' }
+        { id: 'start_ai', labelKey: 'smart_start_ai', type: 'next', nextStepId: 'q_specific' }
       ],
       inputLocked: true
     },

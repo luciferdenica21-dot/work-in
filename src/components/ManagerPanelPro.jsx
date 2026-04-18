@@ -2680,79 +2680,162 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </button>
                           {chatActionsOpen && (
                             <>
-                              <div
-                                className="fixed inset-0 z-40"
-                                onClick={() => setChatActionsOpen(false)}
-                              />
-                              <div className="absolute right-0 mt-2 mr-2 w-48 bg-[#050a18] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
-                                <button
-                                  onClick={() => {
-                                    setChatActionsOpen(false);
-                                    const lastMsg = messages[messages.length - 1];
-                                    if (lastMsg) setReplyToMsg(lastMsg);
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <Reply className="w-4 h-4" /> Ответить
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const lastMsg = messages[messages.length - 1];
-                                    if (lastMsg) {
-                                      setPinnedMessage(lastMsg);
-                                    }
-                                    setChatActionsOpen(false);
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <Pin className="w-4 h-4" /> Закрепить
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    if (messages.length > 0) {
-                                      const lastMsg = messages[messages.length - 1];
-                                      setSelectedMessages(new Set([lastMsg._id || lastMsg.id]));
-                                    }
-                                    setChatActionsOpen(false);
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <CheckSquare className="w-4 h-4" /> Отметить одно
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedMessages(new Set(messages.map(m => m._id || m.id)));
-                                    setChatActionsOpen(false);
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <CheckSquare className="w-4 h-4" /> Отметить все
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setChatActionsOpen(false);
-                                    handleClearChat();
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <Trash2 className="w-4 h-4" /> Очистить чат
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setChatActionsOpen(false);
-                                    handleDeleteChat();
-                                  }}
-                                  className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10 flex items-center gap-2"
-                                  type="button"
-                                >
-                                  <Trash2 className="w-4 h-4" /> Удалить чат
-                                </button>
-                              </div>
+                              {typeof document !== 'undefined' && window.innerWidth < 1024 ? (
+                                createPortal(
+                                  <div className="fixed inset-0 z-[220]">
+                                    <div className="absolute inset-0 bg-black/70" onClick={() => setChatActionsOpen(false)} />
+                                    <div className="absolute inset-x-0 bottom-0 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4">
+                                      <div className="flex items-center justify-between">
+                                        <div className="text-sm font-semibold text-white">Действия</div>
+                                        <button type="button" onClick={() => setChatActionsOpen(false)} className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10">
+                                          <X className="w-5 h-5" />
+                                        </button>
+                                      </div>
+                                      <div className="mt-3 space-y-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setChatActionsOpen(false);
+                                            const lastMsg = messages[messages.length - 1];
+                                            if (lastMsg) setReplyToMsg(lastMsg);
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 hover:bg-white/10 flex items-center gap-2"
+                                        >
+                                          <Reply className="w-4 h-4" /> Ответить
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const lastMsg = messages[messages.length - 1];
+                                            if (lastMsg) setPinnedMessage(lastMsg);
+                                            setChatActionsOpen(false);
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 hover:bg-white/10 flex items-center gap-2"
+                                        >
+                                          <Pin className="w-4 h-4" /> Закрепить
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (messages.length > 0) {
+                                              const lastMsg = messages[messages.length - 1];
+                                              setSelectedMessages(new Set([lastMsg._id || lastMsg.id]));
+                                            }
+                                            setChatActionsOpen(false);
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 hover:bg-white/10 flex items-center gap-2"
+                                        >
+                                          <CheckSquare className="w-4 h-4" /> Отметить одно
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSelectedMessages(new Set(messages.map(m => m._id || m.id)));
+                                            setChatActionsOpen(false);
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 hover:bg-white/10 flex items-center gap-2"
+                                        >
+                                          <CheckSquare className="w-4 h-4" /> Отметить все
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setChatActionsOpen(false);
+                                            handleClearChat();
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/90 hover:bg-white/10 flex items-center gap-2"
+                                        >
+                                          <Trash2 className="w-4 h-4" /> Очистить чат
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setChatActionsOpen(false);
+                                            handleDeleteChat();
+                                          }}
+                                          className="w-full text-left px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-200 hover:bg-red-500/20 flex items-center gap-2"
+                                        >
+                                          <Trash2 className="w-4 h-4" /> Удалить чат
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>,
+                                  document.body
+                                )
+                              ) : (
+                                <>
+                                  <div className="fixed inset-0 z-40" onClick={() => setChatActionsOpen(false)} />
+                                  <div className="absolute right-0 mt-2 mr-2 w-48 bg-[#050a18] border border-white/10 rounded-xl shadow-2xl z-50 overflow-hidden">
+                                    <button
+                                      onClick={() => {
+                                        setChatActionsOpen(false);
+                                        const lastMsg = messages[messages.length - 1];
+                                        if (lastMsg) setReplyToMsg(lastMsg);
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <Reply className="w-4 h-4" /> Ответить
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        const lastMsg = messages[messages.length - 1];
+                                        if (lastMsg) {
+                                          setPinnedMessage(lastMsg);
+                                        }
+                                        setChatActionsOpen(false);
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <Pin className="w-4 h-4" /> Закрепить
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (messages.length > 0) {
+                                          const lastMsg = messages[messages.length - 1];
+                                          setSelectedMessages(new Set([lastMsg._id || lastMsg.id]));
+                                        }
+                                        setChatActionsOpen(false);
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <CheckSquare className="w-4 h-4" /> Отметить одно
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setSelectedMessages(new Set(messages.map(m => m._id || m.id)));
+                                        setChatActionsOpen(false);
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <CheckSquare className="w-4 h-4" /> Отметить все
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setChatActionsOpen(false);
+                                        handleClearChat();
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-white/90 hover:bg-white/5 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <Trash2 className="w-4 h-4" /> Очистить чат
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setChatActionsOpen(false);
+                                        handleDeleteChat();
+                                      }}
+                                      className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-red-500/10 flex items-center gap-2"
+                                      type="button"
+                                    >
+                                      <Trash2 className="w-4 h-4" /> Удалить чат
+                                    </button>
+                                  </div>
+                                </>
+                              )}
                             </>
                           )}
                           <button

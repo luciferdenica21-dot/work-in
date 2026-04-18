@@ -14,7 +14,8 @@ export default function SmartOrderSystem({
   mode,
   onModeChange,
   onAssistantMessage,
-  onOrderPrepared
+  onOrderPrepared,
+  onRestart
 }) {
   const { t, i18n } = useTranslation();
   const lang2 = pickLang2(i18n?.language);
@@ -39,7 +40,7 @@ export default function SmartOrderSystem({
   const prevStepRef = useRef(null);
 
   const step = flowConfig.steps[stepId];
-  const isAssistantActive = mode === 'assistant' || mode === 'locked';
+  const isAssistantActive = mode === 'assistant' || mode === 'locked' || mode === 'manager';
 
   useEffect(() => {
     if (!isAssistantActive) return;
@@ -198,13 +199,26 @@ export default function SmartOrderSystem({
             {t('smart_panel_title')}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => chooseAction({ type: 'contact_manager' })}
-              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
-            >
-              {t('smart_contact_manager')}
-            </button>
+            {mode === 'manager' ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onModeChange?.('assistant');
+                  onRestart?.();
+                }}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_start_ai')}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => chooseAction({ type: 'contact_manager' })}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_contact_manager')}
+              </button>
+            )}
           </div>
         </div>
 

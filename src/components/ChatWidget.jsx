@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { chatsAPI, messagesAPI, filesAPI } from '../config/api';
+import { chatsAPI, messagesAPI, filesAPI, ordersAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
@@ -290,6 +290,10 @@ const ChatWidget = ({ user }) => {
         if (chat?.unread) {
           setHasNewMessage(true);
         }
+        try {
+          const socket = getSocket();
+          if (socket && chat?.chatId) socket.emit('join-chat', chat.chatId);
+        } catch { void 0; }
 
         if (socket) {
           console.log('📱 CLIENT JOIN chat-', chat.chatId);
@@ -415,6 +419,16 @@ const ChatWidget = ({ user }) => {
       disconnectSocket();
     };
   }, [user?._id, user?.email, user?.role]);
+
+  useEffect(() => {
+    if (!chatId) return;
+    const socket = getSocket();
+    if (!socket) return;
+    try { socket.emit('join-chat', chatId); } catch { void 0; }
+    return () => {
+      try { socket.emit('leave-chat', chatId); } catch { void 0; }
+    };
+  }, [chatId]);
 
   useEffect(() => {
     if (!user?._id) return;
@@ -850,7 +864,7 @@ const ChatWidget = ({ user }) => {
   return (
     <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[150]">
       {hasNewMessage && !isOpen && (
-        <div className="pointer-events-none fixed bottom-[7.5rem] right-4 md:bottom-[5.5rem] md:right-8 z-[160]">
+        <div className="pointer-events-none fixed bottom-[7.5rem] right-4 md:bottom-[5.5rem] md:right-8 z-[9999]">
           <div className="bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
             {getNewMessageToastText()}
           </div>
@@ -992,16 +1006,50 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
           
-          {smartMode !== 'manager' && (
-            <SmartOrderSystem
-              mode={smartMode}
-              onModeChange={setSmartMode}
-              onAssistantMessage={appendAssistantMessage}
-              onOrderPrepared={(payload) => {
-                console.log('SMART_ORDER_PREPARED_FOR_API', payload);
-              }}
-            />
-          )}
+          <SmartOrderSystem
+            mode={smartMode}
+            onModeChange={setSmartMode}
+            onRestart={() => {
+              appendAssistantMessage(t('smart_greeting'));
+            }}
+            onAssistantMessage={appendAssistantMessage}
+            onOrderPrepared={async (payload) => {
+              try {
+                if (!user?._id) return;
+                const services = (payload?.orderSession?.selectedServices || []).map((id) => String(id));
+                const fixed = i18n.getFixedT('ru');
+                const serviceNames = services.map((sid) => {
+                  const map = {
+                    svc_bending: 'smart_svc_bending',
+                    svc_laser_engraving: 'smart_svc_laser_engraving',
+                    svc_laser_cut_metal: 'smart_svc_laser_cut_metal',
+                    svc_laser_cut_nonmetal: 'smart_svc_laser_cut_nonmetal',
+                    svc_powder_paint: 'smart_svc_powder_paint',
+                    svc_welding: 'smart_svc_welding',
+                    svc_mech: 'smart_svc_mech',
+                    svc_cnc: 'smart_svc_cnc',
+                    svc_liquid_paint: 'smart_svc_liquid_paint',
+                    svc_materials: 'smart_svc_materials'
+                  };
+                  return fixed(map[sid] || sid);
+                });
+
+                const orderData = {
+                  firstName: user?.firstName || '',
+                  lastName: user?.lastName || '',
+                  contact: user?.email || '',
+                  services: serviceNames,
+                  comment: `SMART_ORDER_SESSION\n${JSON.stringify(payload, null, 2)}`,
+                  files: (payload?.orderSession?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+                };
+
+                await ordersAPI.create(orderData);
+                appendAssistantMessage(t('smart_order_sent'));
+              } catch {
+                appendAssistantMessage(t('smart_order_send_failed'));
+              }
+            }}
+          />
 
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
