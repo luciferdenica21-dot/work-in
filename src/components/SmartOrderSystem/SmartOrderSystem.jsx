@@ -19,8 +19,7 @@ export default function SmartOrderSystem({
   onTransferToManager,
   onContractCompleted,
   onCloseAssistant,
-  resetNonce,
-  getContractTemplateText
+  resetNonce
 }) {
   const { t, i18n } = useTranslation();
   const lang2 = pickLang2(i18n?.language);
@@ -58,7 +57,7 @@ export default function SmartOrderSystem({
       email: '',
       phone: ''
     },
-    contractText: ''
+    specialWishes: ''
   });
 
   const fileInputRef = useRef(null);
@@ -89,7 +88,7 @@ export default function SmartOrderSystem({
         answers: {},
         files: [],
         brief: { firstName: '', lastName: '', email: '', phone: '' },
-        contractText: ''
+        specialWishes: ''
       });
       onModeChangeRef.current?.('locked');
     }, 0);
@@ -145,7 +144,7 @@ export default function SmartOrderSystem({
         answers: {},
         files: [],
         brief: { firstName: '', lastName: '', email: '', phone: '' },
-        contractText: ''
+        specialWishes: ''
       });
       onModeChangeRef.current?.('locked');
       return;
@@ -315,33 +314,42 @@ export default function SmartOrderSystem({
               className="space-y-3"
             >
               {step?.type === 'service_grid' ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {flowConfig.services.map((svc) => {
-                    const active = (orderSession.selectedServices || []).includes(svc.id);
-                    const disabled = !svc.enabled;
-                    return (
-                      <button
-                        key={svc.id}
-                        type="button"
-                        disabled={disabled}
-                        onClick={() => toggleService(svc.id)}
-                        className={[
-                          'min-h-[44px] px-3 py-3 rounded-xl border text-left transition',
-                          disabled ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed' : 'bg-white/5 border-white/10 text-white hover:bg-white/10',
-                          active ? 'ring-1 ring-blue-500/60 border-blue-500/40' : ''
-                        ].join(' ')}
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="text-[13px] leading-snug">{t(svc.labelKey)}</div>
-                          {svc.badgeKey && (
-                            <span className="shrink-0 px-2 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] text-white/60">
-                              {t(svc.badgeKey)}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    );
-                  })}
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {flowConfig.services.map((svc) => {
+                      const active = (orderSession.selectedServices || []).includes(svc.id);
+                      const disabled = !svc.enabled;
+                      return (
+                        <button
+                          key={svc.id}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => toggleService(svc.id)}
+                          className={[
+                            'min-h-[44px] px-3 py-3 rounded-xl border text-left transition',
+                            disabled ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed' : 'bg-white/5 border-white/10 text-white hover:bg-white/10',
+                            active ? 'ring-1 ring-blue-500/60 border-blue-500/40' : ''
+                          ].join(' ')}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="text-[13px] leading-snug">{t(svc.labelKey)}</div>
+                            {svc.badgeKey && (
+                              <span className="shrink-0 px-2 py-1 rounded-full bg-white/10 border border-white/10 text-[10px] text-white/60">
+                                {t(svc.badgeKey)}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <textarea
+                    value={orderSession.specialWishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_special_wishes')}
+                  />
                 </div>
               ) : null}
 
@@ -390,15 +398,20 @@ export default function SmartOrderSystem({
                           try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
                           return;
                         }
-                        const tpl = typeof getContractTemplateText === 'function' ? getContractTemplateText() : t('smart_contract_template');
-                        setOrderSession((p) => ({ ...p, contractText: p.contractText || String(tpl || '') }));
-                        setStepId('design_contract');
+                        setStepId('services_select');
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                     >
                       {t('smart_continue')}
                     </button>
                   </div>
+                  <textarea
+                    value={orderSession.specialWishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_special_wishes')}
+                  />
                   {(orderSession.files || []).length > 0 && (
                     <div className="space-y-2">
                       <div className="text-[11px] text-white/60">{t('smart_files')}</div>
@@ -422,44 +435,6 @@ export default function SmartOrderSystem({
                       </div>
                     </div>
                   )}
-                </div>
-              ) : null}
-
-              {step?.type === 'contract_editor' ? (
-                <div className="space-y-2">
-                  <textarea
-                    value={orderSession.contractText || ''}
-                    onChange={(e) => setOrderSession((p) => ({ ...p, contractText: e.target.value }))}
-                    rows={6}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
-                    placeholder={t('smart_contract_template')}
-                  />
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const b = orderSession.brief || {};
-                        const ok = String(b.firstName || '').trim() && String(b.lastName || '').trim() && String(b.email || '').trim() && String(b.phone || '').trim();
-                        if (!ok) {
-                          try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
-                          setStepId('brief_form');
-                          return;
-                        }
-                        try { await onContractCompletedRef.current?.({ ...orderSession, language: lang2 }); } catch { void 0; }
-                        try { onAssistantMessageRef.current?.(t('smart_docs_review_notice')); } catch { void 0; }
-                      }}
-                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
-                    >
-                      {t('smart_sign_contract')}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setStepId('design_work')}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
-                    >
-                      {t('smart_continue_to_services')}
-                    </button>
-                  </div>
                 </div>
               ) : null}
 
@@ -487,6 +462,13 @@ export default function SmartOrderSystem({
                       {t('smart_upload_files')}
                     </button>
                   </div>
+                  <textarea
+                    value={orderSession.specialWishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_special_wishes')}
+                  />
 
                   {(orderSession.files || []).length > 0 && (
                     <div className="space-y-2">
@@ -514,7 +496,7 @@ export default function SmartOrderSystem({
                 </div>
               ) : null}
 
-              {step?.type !== 'service_grid' && step?.type !== 'questionnaire_single' && step?.type !== 'questionnaire_multi' && step?.type !== 'brief_form' && step?.type !== 'contract_editor' ? (
+              {step?.type !== 'service_grid' && step?.type !== 'questionnaire_single' && step?.type !== 'questionnaire_multi' && step?.type !== 'brief_form' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {quickActions.map((a) => (
                     <button

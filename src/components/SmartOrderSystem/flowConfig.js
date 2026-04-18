@@ -126,11 +126,6 @@ export const flowConfig = {
       type: 'brief_form',
       inputLocked: true
     },
-    design_contract: {
-      messageKeys: ['smart_design_contract'],
-      type: 'contract_editor',
-      inputLocked: true
-    },
     design_work: {
       messageKeys: ['smart_design_work'],
       actions: [

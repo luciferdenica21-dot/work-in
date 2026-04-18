@@ -724,14 +724,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
             en: 'DESIGN CONTRACT (draft)\n\n1. Parties\nProvider: Connector\nClient: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Scope\nProvider agrees to perform design/preparation work based on the Client’s brief.\n\n3. Terms and pricing\nTerms and pricing will be confirmed by the manager after reviewing the brief.\n\n4. Delivery\nResults are delivered electronically.\n\n5. Signatures\nSigning is performed via e-signature.\n',
             ka: 'პროექტირების კონტრაქტი (შავი ვარიანტი)\n\n1. მხარეები\nშემსრულებელი: Connector\nდამკვეთი: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. ხელშეკრულების საგანი\nშემსრულებელი ვალდებულია შეასრულოს პროექტირების/დოკუმენტაციის მომზადების სამუშაოები ბრიფის საფუძველზე.\n\n3. ვადები და ღირებულება\nვადები და ღირებულება დაზუსტდება მენეჯერთან ბრიფის განხილვის შემდეგ.\n\n4. გადაცემა\nშედეგები გადაეცემა ელექტრონულად.\n\n5. ხელმოწერა\nხელმოწერა შესრულდება ელექტრონული ხელმოწერით.\n'
           }
-        },
-        {
-          id: 'act_signature_template',
-          title: 'Акт приема‑передачи (шаблон подписи)',
-          text: '__SIGNREQ__:' + JSON.stringify({ file: { name: 'act.pdf', type: 'application/pdf', size: 0, url: '' }, managerSignatureDataUrl: null, managerSignPos: null }),
-          files: [],
-          titleByLang: { ru: 'Акт приема‑передачи (шаблон подписи)', en: 'Acceptance act (signature template)', ka: 'მიღება‑ჩაბარების აქტი (ხელმოწერის შაბლონი)' },
-          textByLang: { ru: '', en: '', ka: '' }
         }
       ];
     }
@@ -754,7 +746,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }));
       const hasBrief = normalized.some((s) => String(s.id) === 'brief_template' || String(s.title || '').toLowerCase().includes('бриф'));
       const hasContract = normalized.some((s) => String(s.id) === 'contract_template' || String(s.title || '').toLowerCase().includes('договор'));
-      const hasAct = normalized.some((s) => String(s.id) === 'act_signature_template' || String(s.title || '').toLowerCase().includes('акт'));
       const next = [...normalized];
       if (!hasBrief) {
         next.push({
@@ -782,16 +773,6 @@ const getAbsoluteFileUrl = (fileUrl) => {
             en: 'DESIGN CONTRACT (draft)\n\n1. Parties\nProvider: Connector\nClient: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Scope\nProvider agrees to perform design/preparation work based on the Client’s brief.\n\n3. Terms and pricing\nTerms and pricing will be confirmed by the manager after reviewing the brief.\n\n4. Delivery\nResults are delivered electronically.\n\n5. Signatures\nSigning is performed via e-signature.\n',
             ka: 'პროექტირების კონტრაქტი (შავი ვარიანტი)\n\n1. მხარეები\nშემსრულებელი: Connector\nდამკვეთი: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. ხელშეკრულების საგანი\nშემსრულებელი ვალდებულია შეასრულოს პროექტირების/დოკუმენტაციის მომზადების სამუშაოები ბრიფის საფუძველზე.\n\n3. ვადები და ღირებულება\nვადები და ღირებულება დაზუსტდება მენეჯერთან ბრიფის განხილვის შემდეგ.\n\n4. გადაცემა\nშედეგები გადაეცემა ელექტრონულად.\n\n5. ხელმოწერა\nხელმოწერა შესრულდება ელექტრონული ხელმოწერით.\n'
           }
-        });
-      }
-      if (!hasAct) {
-        next.push({
-          id: 'act_signature_template',
-          title: 'Акт приема‑передачи (шаблон подписи)',
-          text: '__SIGNREQ__:' + JSON.stringify({ file: { name: 'act.pdf', type: 'application/pdf', size: 0, url: '' }, managerSignatureDataUrl: null, managerSignPos: null }),
-          files: [],
-          titleByLang: { ru: 'Акт приема‑передачи (шаблон подписи)', en: 'Acceptance act (signature template)', ka: 'მიღება‑ჩაბარების აქტი (ხელმოწერის შაბლონი)' },
-          textByLang: { ru: '', en: '', ka: '' }
         });
       }
       return next;

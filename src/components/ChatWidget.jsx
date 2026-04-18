@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI, aiAPI } from '../config/api';
+import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
@@ -14,7 +14,6 @@ const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [smartMode, setSmartMode] = useState('locked');
   const [smartResetNonce, setSmartResetNonce] = useState(0);
-  const [aiTemplates, setAiTemplates] = useState({ scripts: [] });
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
@@ -46,30 +45,6 @@ const ChatWidget = ({ user }) => {
   const widgetRef = useRef(null);
   const isOpenRef = useRef(false);
   const aiDocsRef = useRef(null);
-  const contractTemplateRef = useRef(null);
-  const actTemplateRef = useRef(null);
-
-  useEffect(() => {
-    const scripts = Array.isArray(aiTemplates?.scripts) ? aiTemplates.scripts : [];
-    const contract = scripts.find((s) => String(s?.id) === 'contract_template') || null;
-    contractTemplateRef.current = contract;
-    const SIGNATURE_MARKER = '__SIGNREQ__:';
-    const act = scripts.find((s) => String(s?.id) === 'act_signature_template' || String(s?.title || '').toLowerCase().includes('акт')) || null;
-    if (act && typeof act.text === 'string' && act.text.startsWith(SIGNATURE_MARKER)) {
-      try {
-        const raw = act.text.slice(SIGNATURE_MARKER.length);
-        const obj = JSON.parse(raw);
-        if (obj?.file?.url) {
-          actTemplateRef.current = {
-            name: obj.file.name || 'act.pdf',
-            type: obj.file.type || 'application/pdf',
-            size: obj.file.size || 0,
-            url: obj.file.url
-          };
-        }
-      } catch { void 0; }
-    }
-  }, [aiTemplates]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -344,13 +319,6 @@ const ChatWidget = ({ user }) => {
 
     loadChat();
 
-    (async () => {
-      try {
-        const tpl = await aiAPI.getTemplates();
-        setAiTemplates({ scripts: Array.isArray(tpl?.scripts) ? tpl.scripts : [] });
-      } catch { void 0; }
-    })();
-
     if (socket) {
       const handleNewMessage = (newMsg) => {
         console.log('📨 CLIENT new-message ←', (newMsg?._id || newMsg?.message?._id || 'no-id')?.slice(0,8));
@@ -558,42 +526,6 @@ const ChatWidget = ({ user }) => {
     return await filesAPI.upload(zipFile, chatId);
   }, [chatId]);
 
-  const makeContractPdf = useCallback(async (text) => {
-    const doc = await PDFDocument.create();
-    let page = doc.addPage([595.28, 841.89]);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 11;
-    const margin = 48;
-    const maxWidth = 595.28 - margin * 2;
-    const lines = String(text || '').split('\n');
-    let y = 841.89 - margin;
-    for (const line of lines) {
-      const words = String(line || '').split(' ');
-      let row = '';
-      for (const w of words) {
-        const next = row ? `${row} ${w}` : w;
-        const width = font.widthOfTextAtSize(next, fontSize);
-        if (width > maxWidth && row) {
-          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-          y -= 16;
-          row = w;
-        } else {
-          row = next;
-        }
-      }
-      if (row) {
-        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-        y -= 16;
-      }
-      if (y < margin + 16) {
-        page = doc.addPage([595.28, 841.89]);
-        y = 841.89 - margin;
-      }
-    }
-    const bytes = await doc.save();
-    return new Blob([bytes], { type: 'application/pdf' });
-  }, []);
-
   const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files }) => {
     const doc = await PDFDocument.create();
     let page = doc.addPage([595.28, 841.89]);
@@ -724,18 +656,148 @@ const ChatWidget = ({ user }) => {
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
-  }, [aiTemplates?.scripts, i18n]);
+  }, [i18n]);
 
-  const finalizeContractPackage = useCallback(async (session) => {
+  const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes }) => {
+    const doc = await PDFDocument.create();
+    let page = doc.addPage([595.28, 841.89]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 11;
+    const margin = 48;
+    const maxWidth = 595.28 - margin * 2;
+    let y = 841.89 - margin;
+
+    const pushLine = (line) => {
+      const words = String(line || '').split(' ');
+      let row = '';
+      for (const w of words) {
+        const next = row ? `${row} ${w}` : w;
+        const width = font.widthOfTextAtSize(next, fontSize);
+        if (width > maxWidth && row) {
+          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+          y -= 16;
+          row = w;
+        } else {
+          row = next;
+        }
+      }
+      if (row) {
+        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+        y -= 16;
+      }
+      if (y < margin + 16) {
+        page = doc.addPage([595.28, 841.89]);
+        y = 841.89 - margin;
+      }
+    };
+
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
+
+    pushLine(fixed('smart_order_pdf_title'));
+    pushLine('');
+
+    pushLine(fixed('smart_order_pdf_section_client'));
+    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
+    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
+    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
+    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
+    pushLine('');
+
+    pushLine(fixed('smart_order_pdf_section_services'));
+    const svcMap = {
+      svc_bending: 'smart_svc_bending',
+      svc_laser_engraving: 'smart_svc_laser_engraving',
+      svc_laser_cut_metal: 'smart_svc_laser_cut_metal',
+      svc_laser_cut_nonmetal: 'smart_svc_laser_cut_nonmetal',
+      svc_powder_paint: 'smart_svc_powder_paint',
+      svc_welding: 'smart_svc_welding',
+      svc_mech: 'smart_svc_mech',
+      svc_cnc: 'smart_svc_cnc',
+      svc_liquid_paint: 'smart_svc_liquid_paint',
+      svc_materials: 'smart_svc_materials'
+    };
+    (selectedServices || []).forEach((sid) => {
+      const key = svcMap[String(sid)] || String(sid);
+      pushLine(`- ${fixed(key)}`);
+    });
+    if ((selectedServices || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
+    pushLine('');
+
+    pushLine(fixed('smart_order_pdf_section_answers'));
+    const answerLabels = {
+      deadline: fixed('smart_q_deadline'),
+      material: fixed('smart_q_material'),
+      quantity: fixed('smart_q_quantity'),
+      priority: fixed('smart_q_priority')
+    };
+    const optionLabels = {
+      asap: fixed('smart_deadline_asap'),
+      week: fixed('smart_deadline_week'),
+      month: fixed('smart_deadline_month'),
+      metal: fixed('smart_material_metal'),
+      plastic: fixed('smart_material_plastic'),
+      wood: fixed('smart_material_wood'),
+      '1': fixed('smart_qty_1'),
+      '2_10': fixed('smart_qty_2_10'),
+      '10_plus': fixed('smart_qty_10_plus'),
+      price: fixed('smart_priority_price'),
+      speed: fixed('smart_priority_speed'),
+      quality: fixed('smart_priority_quality')
+    };
+    Object.entries(answers || {}).forEach(([k, v]) => {
+      const label = answerLabels[k] || k;
+      const val = optionLabels[String(v)] || String(v ?? '');
+      if (String(val).trim()) pushLine(`- ${label}: ${val}`);
+    });
+    if (Object.keys(answers || {}).length === 0) pushLine(`- ${fixed('smart_no')}`);
+    pushLine('');
+
+    pushLine(fixed('smart_order_pdf_section_wishes'));
+    const wishes = String(specialWishes || '').trim();
+    pushLine(wishes || fixed('smart_no'));
+    pushLine('');
+
+    pushLine(fixed('smart_order_pdf_section_files'));
+    (files || []).forEach((f) => pushLine(`- ${String(f?.name || '')}`));
+    if ((files || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
+
+    const bytes = await doc.save();
+    return new Blob([bytes], { type: 'application/pdf' });
+  }, [i18n]);
+
+  const trackAiServerMessageId = useCallback((id) => {
+    if (!chatId || !id) return;
+    try {
+      const key = `smart_server_ids_${chatId}`;
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(parsed) ? parsed : [];
+      list.push(String(id));
+      localStorage.setItem(key, JSON.stringify(Array.from(new Set(list)).slice(-200)));
+    } catch { void 0; }
+  }, [chatId]);
+
+  const loadAiServerMessageIds = useCallback(() => {
+    if (!chatId) return [];
+    try {
+      const raw = localStorage.getItem(`smart_server_ids_${chatId}`);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.map(String) : [];
+    } catch {
+      return [];
+    }
+  }, [chatId]);
+
+  const clearAiServerMessageIds = useCallback(() => {
+    if (!chatId) return;
+    try { localStorage.removeItem(`smart_server_ids_${chatId}`); } catch { void 0; }
+  }, [chatId]);
+
+  const finalizeOrderPackage = useCallback(async (session) => {
     if (!chatId) return;
     const brief = session?.brief || {};
-    const contractTemplate = String(session?.contractText || '');
-    const contractText = contractTemplate
-      .replaceAll('{{firstName}}', String(brief.firstName || ''))
-      .replaceAll('{{lastName}}', String(brief.lastName || ''))
-      .replaceAll('{{email}}', String(brief.email || ''))
-      .replaceAll('{{phone}}', String(brief.phone || ''));
-    const contractPdf = await makeContractPdf(contractText);
+
     const briefPdf = await makeBriefPdf({
       brief,
       meta: session?.meta || {},
@@ -743,9 +805,17 @@ const ChatWidget = ({ user }) => {
       answers: session?.answers || {},
       files: session?.files || []
     });
+    const orderPdf = await makeOrderPdf({
+      brief,
+      selectedServices: session?.selectedServices || [],
+      answers: session?.answers || {},
+      files: session?.files || [],
+      specialWishes: session?.specialWishes || ''
+    });
+
     const zip = new JSZip();
+    zip.file('order.pdf', orderPdf);
     zip.file('brief.pdf', briefPdf);
-    zip.file('contract.pdf', contractPdf);
     for (const f of (session?.files || [])) {
       try {
         const fileObj = f?.file;
@@ -757,66 +827,19 @@ const ChatWidget = ({ user }) => {
     }
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-    const zipResp = await uploadZipToChat(zipBlob, 'ai_documents.zip');
+    const zipResp = await uploadZipToChat(zipBlob, 'ai_order.zip');
+    if (zipResp?.messageId) trackAiServerMessageId(zipResp.messageId);
     const briefResp = await filesAPI.upload(new File([briefPdf], 'brief.pdf', { type: 'application/pdf' }), chatId);
-    const contractUploadResp = await filesAPI.upload(new File([contractPdf], 'contract.pdf', { type: 'application/pdf' }), chatId);
+    if (briefResp?.messageId) trackAiServerMessageId(briefResp.messageId);
+    const orderResp = await filesAPI.upload(new File([orderPdf], 'order.pdf', { type: 'application/pdf' }), chatId);
+    if (orderResp?.messageId) trackAiServerMessageId(orderResp.messageId);
 
-    const zipUrl = zipResp?.message?.fileUrl || zipResp?.fileUrl || zipResp?.attachment?.url || zipResp?.message?.attachments?.[0]?.url;
-    const briefUrl = briefResp?.message?.fileUrl || briefResp?.fileUrl || briefResp?.attachment?.url || briefResp?.message?.attachments?.[0]?.url;
-    const contractUrl = contractUploadResp?.message?.fileUrl || contractUploadResp?.fileUrl || contractUploadResp?.attachment?.url || contractUploadResp?.message?.attachments?.[0]?.url;
-    const contractName = contractUploadResp?.message?.fileName || contractUploadResp?.fileName || 'contract.pdf';
-    const contractType = contractUploadResp?.message?.fileType || contractUploadResp?.fileType || 'application/pdf';
-    const contractSize = contractUploadResp?.message?.fileSize || contractUploadResp?.fileSize || 0;
-
-    let signLink = null;
-    if (contractUrl) {
-      try {
-        const created = await signaturesAPI.clientCreate({
-          chatId,
-          file: { name: contractName, type: contractType, size: contractSize, url: contractUrl }
-        });
-        if (created?.link) signLink = created.link;
-      } catch { void 0; }
-    }
-
-    if (signLink) {
-      const full = signLink.startsWith('http') ? signLink : `${window.location.origin}${signLink}`;
-      setLegalCardMsg({
-        _id: `smart_sign_${Date.now()}`,
-        chatId,
-        text: `Документ на подпись: ${full}`,
-        attachments: contractUrl ? [{ url: contractUrl, originalName: contractName, mimetype: contractType, size: contractSize }] : [],
-        createdAt: new Date().toISOString()
-      });
-      setLegalCardOpen(true);
-    }
-
-    aiDocsRef.current = { zipUrl, briefUrl, contractUrl };
-
-    try {
-      const lines = ['🤖 AI: Документы сформированы'];
-      if (briefUrl) lines.push(`brief.pdf: ${briefUrl}`);
-      if (contractUrl) lines.push(`contract.pdf: ${contractUrl}`);
-      if (zipUrl) lines.push(`ai_documents.zip: ${zipUrl}`);
-      await messagesAPI.send(chatId, lines.join('\n'));
-    } catch { void 0; }
-  }, [chatId, makeBriefPdf, makeContractPdf, uploadZipToChat]);
-
-  const getContractTemplateText = useCallback(() => {
-    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
-    const s = contractTemplateRef.current;
-    const tb = s?.textByLang && typeof s.textByLang === 'object' ? s.textByLang : null;
-    if (tb) {
-      const ru = String(tb.ru || '').trim();
-      const en = String(tb.en || '').trim();
-      const ka = String(tb.ka || '').trim();
-      if (lang2 === 'en' && en) return en;
-      if (lang2 === 'ka' && ka) return ka;
-      if (ru) return ru;
-      return en || ka || '';
-    }
-    return t('smart_contract_template');
-  }, [i18n?.language, t]);
+    aiDocsRef.current = {
+      zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url,
+      briefUrl: briefResp?.fileUrl || briefResp?.message?.attachments?.[0]?.url,
+      orderUrl: orderResp?.fileUrl || orderResp?.message?.attachments?.[0]?.url
+    };
+  }, [chatId, makeBriefPdf, makeOrderPdf, trackAiServerMessageId, uploadZipToChat]);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -1370,12 +1393,18 @@ const ChatWidget = ({ user }) => {
             onModeChange={(next) => {
               setSmartMode(next);
             }}
-            getContractTemplateText={getContractTemplateText}
             resetNonce={smartResetNonce}
             onCloseAssistant={() => {
               const ok = window.confirm(t('smart_close_confirm'));
               if (!ok) return;
               clearSmartTranscript();
+              const ids = loadAiServerMessageIds();
+              (async () => {
+                for (const id of ids) {
+                  try { await messagesAPI.delete(id); } catch { void 0; }
+                }
+                clearAiServerMessageIds();
+              })();
               setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
               setSmartMode('locked');
               setSmartResetNonce((n) => n + 1);
@@ -1390,15 +1419,13 @@ const ChatWidget = ({ user }) => {
               } catch { void 0; }
               appendAssistantMessage(t('smart_manager_soon'));
             }}
-            onContractCompleted={async (session) => {
-              try {
-                await finalizeContractPackage(session);
-              } catch { void 0; }
-            }}
             onOrderPrepared={async (payload) => {
               try {
-                if (!user?._id) return;
-                const services = (payload?.orderSession?.selectedServices || []).map((id) => String(id));
+                const session = payload?.orderSession || {};
+                const brief = session?.brief || {};
+                const services = (session?.selectedServices || []).map((id) => String(id));
+                await finalizeOrderPackage(session);
+
                 const fixed = i18n.getFixedT('ru');
                 const serviceNames = services.map((sid) => {
                   const map = {
@@ -1417,16 +1444,15 @@ const ChatWidget = ({ user }) => {
                 });
 
                 const orderData = {
-                  firstName: user?.firstName || '',
-                  lastName: user?.lastName || '',
-                  contact: user?.email || '',
+                  firstName: String(brief?.firstName || ''),
+                  lastName: String(brief?.lastName || ''),
+                  contact: String(brief?.email || ''),
                   services: serviceNames,
-                  comment: `SMART_ORDER_SESSION\n${JSON.stringify(payload, null, 2)}`,
-                  files: (payload?.orderSession?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+                  comment: '',
+                  files: (session?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
                 };
 
                 await ordersAPI.create(orderData);
-                appendAssistantMessage(t('smart_order_sent'));
               } catch {
                 appendAssistantMessage(t('smart_order_send_failed'));
               }
@@ -1654,41 +1680,7 @@ const ChatWidget = ({ user }) => {
                   onClick={async () => {
                     try {
                       setSignPosModal(s => ({ ...s, sending: true }));
-                      await messagesAPI.getByChatId; // no-op to keep ESLint calm
-                      await import('../config/api'); // ensure dynamic import chunk
-                      const { signaturesAPI } = await import('../config/api');
                       await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos || null);
-                      try {
-                        setSmartMode('manager');
-                        const docs = aiDocsRef.current || {};
-                        const lines = ['✅ Клиент подписал договор.'];
-                        if (docs.contractUrl) lines.push(`contract.pdf: ${docs.contractUrl}`);
-                        if (docs.briefUrl) lines.push(`brief.pdf: ${docs.briefUrl}`);
-                        if (docs.zipUrl) lines.push(`ai_documents.zip: ${docs.zipUrl}`);
-                        await messagesAPI.send(chatId, lines.join('\n'));
-                      } catch { void 0; }
-                      try {
-                        const actTpl = actTemplateRef.current;
-                        if (chatId && actTpl?.url) {
-                          const created = await signaturesAPI.clientCreate({
-                            chatId,
-                            file: { name: actTpl.name || 'act.pdf', type: actTpl.type || 'application/pdf', size: actTpl.size || 0, url: actTpl.url }
-                          });
-                          const link = created?.link ? (created.link.startsWith('http') ? created.link : `${window.location.origin}${created.link}`) : null;
-                          if (link) {
-                            setLegalCardMsg({
-                              _id: `smart_act_sign_${Date.now()}`,
-                              chatId,
-                              text: `Документ на подпись: ${link}`,
-                              attachments: [{ url: actTpl.url, originalName: actTpl.name || 'act.pdf', mimetype: actTpl.type || 'application/pdf', size: actTpl.size || 0 }],
-                              createdAt: new Date().toISOString()
-                            });
-                            setLegalCardOpen(true);
-                          }
-                        }
-                      } catch { void 0; }
-                      try { appendAssistantMessage(t('smart_docs_review_notice')); } catch { void 0; }
-                      try { appendAssistantMessage(t('smart_manager_soon')); } catch { void 0; }
                       alert(t('sign_sent_success'));
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {
