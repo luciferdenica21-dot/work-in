@@ -172,7 +172,12 @@ export default function SmartOrderSystem({
         language: lang2,
         orderSession: {
           ...orderSession,
-          files: (orderSession.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+          files: (orderSession.files || []).map((f) => ({ 
+            name: f.name, 
+            type: f.type, 
+            size: f.size,
+            file: f.file // Keep the original file object for ZIP generation
+          }))
         }
       };
 

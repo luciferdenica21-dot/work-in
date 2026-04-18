@@ -154,8 +154,7 @@ export const flowConfig = {
     finalize: {
       messageKeys: ['smart_finalize'],
       actions: [
-        { id: 'generate_order', labelKey: 'smart_generate_order', type: 'generate_order' },
-        { id: 'sign_act', labelKey: 'smart_sign_act', type: 'sign_act' }
+        { id: 'generate_order', labelKey: 'smart_generate_order', type: 'generate_order' }
       ],
       inputLocked: true
     }

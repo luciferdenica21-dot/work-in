@@ -8,6 +8,7 @@ import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import SmartOrderSystem from './SmartOrderSystem/SmartOrderSystem';
 import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
+import fontkit from '@pdf-lib/fontkit';
 
 const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
@@ -17,6 +18,8 @@ const ChatWidget = ({ user }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
+  const [aiOrderReady, setAiOrderReady] = useState(false);
+  const [aiDocs, setAiDocs] = useState(null);
   
 
   const [selectedMessages, setSelectedMessages] = useState(new Set());
@@ -526,37 +529,66 @@ const ChatWidget = ({ user }) => {
     return await filesAPI.upload(zipFile, chatId);
   }, [chatId]);
 
+  const loadCyrillicFont = async (doc) => {
+    try {
+      // Use a reliable CDN for Roboto font that supports Cyrillic
+      const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf';
+      const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      doc.registerFontkit(fontkit);
+      return await doc.embedFont(fontBytes);
+    } catch (e) {
+      console.error('Failed to load Cyrillic font, falling back to Helvetica', e);
+      return await doc.embedFont(StandardFonts.Helvetica);
+    }
+  };
+
   const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files }) => {
     const doc = await PDFDocument.create();
+    const font = await loadCyrillicFont(doc);
     let page = doc.addPage([595.28, 841.89]);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 11;
-    const margin = 48;
+    const fontSize = 10;
+    const titleSize = 18;
+    const sectionSize = 12;
+    const margin = 50;
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
-    const pushLine = (line) => {
+    const pushLine = (line, size = fontSize, isBold = false) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
         const next = row ? `${row} ${w}` : w;
-        const width = font.widthOfTextAtSize(next, fontSize);
+        const width = font.widthOfTextAtSize(next, size);
         if (width > maxWidth && row) {
-          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-          y -= 16;
+          page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+          y -= size * 1.4;
           row = w;
         } else {
           row = next;
         }
       }
       if (row) {
-        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-        y -= 16;
+        page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+        y -= size * 1.4;
       }
-      if (y < margin + 16) {
+      if (y < margin + 40) {
         page = doc.addPage([595.28, 841.89]);
         y = 841.89 - margin;
       }
+    };
+
+    const drawSection = (title) => {
+      y -= 10;
+      page.drawRectangle({
+        x: margin,
+        y: y - 2,
+        width: maxWidth,
+        height: 1,
+        color: rgb(0.8, 0.8, 0.8)
+      });
+      y -= 15;
+      pushLine(title, sectionSize, true);
+      y -= 5;
     };
 
     const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
@@ -570,32 +602,35 @@ const ChatWidget = ({ user }) => {
       return `${b} B`;
     };
 
+    // Header
+    pushLine(fixed('smart_brief_pdf_title'), titleSize, true);
+    y -= 10;
+    pushLine(`${new Date().toLocaleString()}`, 8);
+    y -= 10;
+
+    // Client Info
+    drawSection(fixed('smart_brief_pdf_section_client'));
+    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
+    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
+    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
+    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
+
+    // Project Info
+    drawSection(fixed('smart_brief_pdf_section_meta'));
     const metaLabels = {
       hasSpecificRequest: fixed('smart_q_specific'),
       consultFormat: fixed('smart_consult_format'),
       hasProject: fixed('smart_project_have'),
       needsCorrection: fixed('smart_project_need_correction')
     };
-
-    pushLine(fixed('smart_brief_pdf_title'));
-    pushLine('');
-
-    pushLine(fixed('smart_brief_pdf_section_client'));
-    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
-    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
-    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
-    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
-    pushLine('');
-
-    pushLine(fixed('smart_brief_pdf_section_meta'));
     Object.entries(meta || {}).forEach(([k, v]) => {
       const label = metaLabels[k] || k;
       const value = v === true ? fixed('smart_yes') : v === false ? fixed('smart_no') : String(v ?? '');
-      if (String(value).trim()) pushLine(`- ${label}: ${value}`);
+      if (String(value).trim()) pushLine(`• ${label}: ${value}`);
     });
-    pushLine('');
 
-    pushLine(fixed('smart_brief_pdf_section_services'));
+    // Services
+    drawSection(fixed('smart_brief_pdf_section_services'));
     const svcMap = {
       svc_bending: 'smart_svc_bending',
       svc_laser_engraving: 'smart_svc_laser_engraving',
@@ -610,12 +645,12 @@ const ChatWidget = ({ user }) => {
     };
     (selectedServices || []).forEach((sid) => {
       const key = svcMap[String(sid)] || String(sid);
-      pushLine(`☑ ${fixed(key)}`);
+      pushLine(`[x] ${fixed(key)}`);
     });
-    if ((selectedServices || []).length === 0) pushLine(`☐ ${fixed('smart_pick_at_least_one')}`);
-    pushLine('');
+    if ((selectedServices || []).length === 0) pushLine(`[ ] ${fixed('smart_no')}`);
 
-    pushLine(fixed('smart_brief_pdf_section_answers'));
+    // Answers
+    drawSection(fixed('smart_brief_pdf_section_answers'));
     const answerLabels = {
       deadline: fixed('smart_q_deadline'),
       material: fixed('smart_q_material'),
@@ -639,20 +674,19 @@ const ChatWidget = ({ user }) => {
     Object.entries(answers || {}).forEach(([k, v]) => {
       const label = answerLabels[k] || k;
       const val = optionLabels[String(v)] || String(v ?? '');
-      if (String(val).trim()) pushLine(`- ${label}: ${val}`);
+      if (String(val).trim()) pushLine(`• ${label}: ${val}`);
     });
-    if (Object.keys(answers || {}).length === 0) pushLine(`- ${fixed('smart_no')}`);
-    pushLine('');
 
-    pushLine(fixed('smart_brief_pdf_section_files'));
+    // Files
+    drawSection(fixed('smart_brief_pdf_section_files'));
     (files || []).forEach((f) => {
       const name = String(f?.name || '');
       const type = String(f?.type || '');
       const size = fmtSize(f?.size);
       const tail = [type, size].filter(Boolean).join(', ');
-      pushLine(`- ${name}${tail ? ` (${tail})` : ''}`);
+      pushLine(`• ${name}${tail ? ` (${tail})` : ''}`);
     });
-    if ((files || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
+    if ((files || []).length === 0) pushLine(fixed('smart_no'));
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
@@ -660,51 +694,71 @@ const ChatWidget = ({ user }) => {
 
   const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes }) => {
     const doc = await PDFDocument.create();
+    const font = await loadCyrillicFont(doc);
     let page = doc.addPage([595.28, 841.89]);
-    const font = await doc.embedFont(StandardFonts.Helvetica);
-    const fontSize = 11;
-    const margin = 48;
+    const fontSize = 10;
+    const titleSize = 18;
+    const sectionSize = 12;
+    const margin = 50;
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
-    const pushLine = (line) => {
+    const pushLine = (line, size = fontSize, isBold = false) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
         const next = row ? `${row} ${w}` : w;
-        const width = font.widthOfTextAtSize(next, fontSize);
+        const width = font.widthOfTextAtSize(next, size);
         if (width > maxWidth && row) {
-          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-          y -= 16;
+          page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+          y -= size * 1.4;
           row = w;
         } else {
           row = next;
         }
       }
       if (row) {
-        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
-        y -= 16;
+        page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+        y -= size * 1.4;
       }
-      if (y < margin + 16) {
+      if (y < margin + 40) {
         page = doc.addPage([595.28, 841.89]);
         y = 841.89 - margin;
       }
     };
 
+    const drawSection = (title) => {
+      y -= 10;
+      page.drawRectangle({
+        x: margin,
+        y: y - 2,
+        width: maxWidth,
+        height: 1,
+        color: rgb(0.8, 0.8, 0.8)
+      });
+      y -= 15;
+      pushLine(title, sectionSize, true);
+      y -= 5;
+    };
+
     const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
     const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
-    pushLine(fixed('smart_order_pdf_title'));
-    pushLine('');
+    // Header
+    pushLine(fixed('smart_order_pdf_title'), titleSize, true);
+    y -= 10;
+    pushLine(`${new Date().toLocaleString()}`, 8);
+    y -= 10;
 
-    pushLine(fixed('smart_order_pdf_section_client'));
+    // Client
+    drawSection(fixed('smart_order_pdf_section_client'));
     pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
     pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
     pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
     pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
-    pushLine('');
 
-    pushLine(fixed('smart_order_pdf_section_services'));
+    // Services
+    drawSection(fixed('smart_order_pdf_section_services'));
     const svcMap = {
       svc_bending: 'smart_svc_bending',
       svc_laser_engraving: 'smart_svc_laser_engraving',
@@ -719,12 +773,12 @@ const ChatWidget = ({ user }) => {
     };
     (selectedServices || []).forEach((sid) => {
       const key = svcMap[String(sid)] || String(sid);
-      pushLine(`- ${fixed(key)}`);
+      pushLine(`• ${fixed(key)}`);
     });
-    if ((selectedServices || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
-    pushLine('');
+    if ((selectedServices || []).length === 0) pushLine(fixed('smart_no'));
 
-    pushLine(fixed('smart_order_pdf_section_answers'));
+    // Answers
+    drawSection(fixed('smart_order_pdf_section_answers'));
     const answerLabels = {
       deadline: fixed('smart_q_deadline'),
       material: fixed('smart_q_material'),
@@ -748,19 +802,18 @@ const ChatWidget = ({ user }) => {
     Object.entries(answers || {}).forEach(([k, v]) => {
       const label = answerLabels[k] || k;
       const val = optionLabels[String(v)] || String(v ?? '');
-      if (String(val).trim()) pushLine(`- ${label}: ${val}`);
+      if (String(val).trim()) pushLine(`• ${label}: ${val}`);
     });
-    if (Object.keys(answers || {}).length === 0) pushLine(`- ${fixed('smart_no')}`);
-    pushLine('');
 
-    pushLine(fixed('smart_order_pdf_section_wishes'));
+    // Wishes
+    drawSection(fixed('smart_order_pdf_section_wishes'));
     const wishes = String(specialWishes || '').trim();
     pushLine(wishes || fixed('smart_no'));
-    pushLine('');
 
-    pushLine(fixed('smart_order_pdf_section_files'));
-    (files || []).forEach((f) => pushLine(`- ${String(f?.name || '')}`));
-    if ((files || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
+    // Files
+    drawSection(fixed('smart_order_pdf_section_files'));
+    (files || []).forEach((f) => pushLine(`• ${String(f?.name || '')}`));
+    if ((files || []).length === 0) pushLine(fixed('smart_no'));
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
@@ -834,11 +887,14 @@ const ChatWidget = ({ user }) => {
     const orderResp = await filesAPI.upload(new File([orderPdf], 'order.pdf', { type: 'application/pdf' }), chatId);
     if (orderResp?.messageId) trackAiServerMessageId(orderResp.messageId);
 
-    aiDocsRef.current = {
+    const docs = {
       zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url,
       briefUrl: briefResp?.fileUrl || briefResp?.message?.attachments?.[0]?.url,
       orderUrl: orderResp?.fileUrl || orderResp?.message?.attachments?.[0]?.url
     };
+    aiDocsRef.current = docs;
+    setAiDocs(docs);
+    setAiOrderReady(true);
   }, [chatId, makeBriefPdf, makeOrderPdf, trackAiServerMessageId, uploadZipToChat]);
 
   useEffect(() => {
@@ -1458,6 +1514,49 @@ const ChatWidget = ({ user }) => {
               }
             }}
           />
+
+          {aiOrderReady && aiDocs && (
+            <div className="px-4 py-3 border-b border-white/10 bg-blue-600/10 space-y-2">
+              <div className="text-[10px] uppercase tracking-widest text-blue-300 font-medium">
+                {t('smart_docs_ready')}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {aiDocs.zipUrl && (
+                  <a
+                    href={aiDocs.zipUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-xs hover:bg-blue-600/30 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {t('smart_download_zip')}
+                  </a>
+                )}
+                {aiDocs.orderUrl && (
+                  <a
+                    href={aiDocs.orderUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-xs hover:bg-white/10 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {t('smart_download_order')}
+                  </a>
+                )}
+                {aiDocs.briefUrl && (
+                  <a
+                    href={aiDocs.briefUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-xs hover:bg-white/10 transition"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {t('smart_download_brief')}
+                  </a>
+                )}
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
