@@ -93,15 +93,15 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
     try {
       const tracker = window.__analyticsTracker;
       if (tracker) tracker.sectionOpen('services');
-      return () => { try { window.__analyticsTracker?.sectionClose('services'); } catch {} };
-    } catch {}
+      return () => { try { window.__analyticsTracker?.sectionClose('services'); } catch { void 0; } };
+    } catch { void 0; }
   }, []);
 
   useEffect(() => {
     try {
       if (selectedKey) window.__analyticsTracker?.serviceOpen(selectedKey);
-      return () => { try { if (selectedKey) window.__analyticsTracker?.serviceClose(selectedKey); } catch {} };
-    } catch {}
+      return () => { try { if (selectedKey) window.__analyticsTracker?.serviceClose(selectedKey); } catch { void 0; } };
+    } catch { void 0; }
   }, [selectedKey]);
 
   const handleGoHome = () => {

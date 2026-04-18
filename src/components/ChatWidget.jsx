@@ -323,8 +323,15 @@ const ChatWidget = ({ user }) => {
           const mineIncoming = isUserMessage(incoming);
           const withStatus = mineIncoming ? { ...incoming, __status: 'delivered' } : incoming;
 
-          // Если такое серверное сообщение уже есть — не добавляем повторно
-          if (id && withoutTemps.some((m) => (m._id || m.id) === id)) return withoutTemps;
+          // Если такое серверное сообщение уже есть — обновляем (нужно для доклеивания вложений)
+          if (id && withoutTemps.some((m) => (m._id || m.id) === id)) {
+            return withoutTemps.map((m) => {
+              const mid = m._id || m.id;
+              if (mid !== id) return m;
+              const st = m.__status;
+              return st ? { ...m, ...withStatus, __status: st } : { ...m, ...withStatus };
+            });
+          }
           return [...withoutTemps, withStatus];
         });
         setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -401,6 +408,27 @@ const ChatWidget = ({ user }) => {
       disconnectSocket();
     };
   }, [user?._id, user?.email, user?.role, isOpen]);
+
+  useEffect(() => {
+    if (!user?._id) return;
+    let mounted = true;
+
+    const pollUnread = async () => {
+      if (isOpen) return;
+      try {
+        const chat = await chatsAPI.getMyChat();
+        if (!mounted) return;
+        setHasNewMessage(!!chat?.unread);
+      } catch { void 0; }
+    };
+
+    pollUnread();
+    const id = setInterval(pollUnread, 8000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
+    };
+  }, [user?._id, isOpen]);
 
   const getNewMessageToastText = () => {
     const lang = String(i18n?.language || '').toLowerCase();
@@ -566,8 +594,9 @@ const ChatWidget = ({ user }) => {
     const socket = getSocket();
     if (!socket || !socket.connected) return;
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-    console.log('⌨️ CLIENT TYPING →', !!message ? 'true' : 'false', chatId);
-    socket.emit('typing', { chatId, isTyping: !!message });
+    const isTyping = (message || '').length > 0;
+    console.log('⌨️ CLIENT TYPING →', isTyping ? 'true' : 'false', chatId);
+    socket.emit('typing', { chatId, isTyping });
     typingTimeoutRef.current = setTimeout(() => {
       console.log('⌨️ CLIENT TYPING → false', chatId);
       try { socket.emit('typing', { chatId, isTyping: false }); } catch { void 0; }

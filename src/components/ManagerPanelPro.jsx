@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI, signaturesAPI } from '../config/api';
 import SignatureRequestComposer from './SignatureRequestComposer';
-import { initSocket, getSocket, disconnectSocket } from '../config/socket';
+import { initSocket, getSocket } from '../config/socket';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import {
   LogOut, Send, ChevronLeft, User, Mail, Phone, MapPin, Edit, Save, X,
@@ -648,7 +648,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [orderDetailsDraft, setOrderDetailsDraft] = useState({});
   const [onlineUserIds, setOnlineUserIds] = useState(new Set());
   const [showInstallModal, setShowInstallModal] = useState(false);
-  const installPromptHandlerRef = useRef(null);
+  const _installPromptHandlerRef = useRef(null);
 
   useEffect(() => {
     try {
@@ -1148,7 +1148,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       console.log('🗑️ MANAGERPANEL message-deleted ←', messageId);
       setMessages(prev => prev.filter(m => (m._id || m.id) !== messageId));
     };
-    const handleOrderCreated = ({ chatId, order }) => {
+    const handleOrderCreated = ({ chatId }) => {
       console.log('📦 MANAGERPANEL order-created ←', chatId);
       loadOrders();
     };
@@ -1200,7 +1200,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
           return prev;
         }
         // ACTIVE chat → normal upsert
-        if (prev.some((m) => (m._id || m.id) === messageId)) return prev;
+        if (prev.some((m) => (m._id || m.id) === messageId)) {
+          return prev.map((m) => ((m._id || m.id) === messageId ? { ...m, ...normalized } : m));
+        }
         const list = Array.isArray(prev) ? [...prev] : [];
         if (normalized?.senderId === 'manager') {
           for (let i = list.length - 1; i >= 0; i -= 1) {
@@ -1416,21 +1418,36 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }
     } else {
       try {
-        const text = String(script?.text || '').trim();
-        if (text) {
-          await executeSend(text);
-        }
         const files = Array.isArray(script?.files) ? script.files : [];
+        const text = String(script?.text || '').trim();
+
+        if (files.length === 0) {
+          if (!text) return;
+          await executeSend(text);
+          return;
+        }
+
+        const baseText = text || '📎';
+        const created = await messagesAPI.send(activeId, baseText);
+        const messageId = created?._id || created?.id;
+        if (created && messageId) {
+          setMessages((prev) => {
+            const exists = (prev || []).some((m) => (m._id || m.id) === messageId);
+            return exists ? prev : [...(prev || []), created];
+          });
+          try { setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 40); } catch { void 0; }
+        }
+
         for (const f of files) {
           const url = filesAPI.getFileUrl(f?.url);
-          if (!url) continue;
+          if (!url || !messageId) continue;
           try {
             const resp = await fetch(url);
             const blob = await resp.blob();
             const fileName = String(f?.name || 'file');
             const fileType = String(f?.type || blob.type || '');
             const fileObj = new File([blob], fileName, { type: fileType });
-            await filesAPI.upload(fileObj, activeId);
+            await filesAPI.upload(fileObj, null, messageId);
           } catch {
             const fallbackName = String(f?.name || 'file');
             await executeSend(`📎 ${fallbackName}\n${url}`);
@@ -1705,7 +1722,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
       if (uploaded.length > 0) {
         setNewScript((prev) => ({ ...prev, files: [...(prev.files || []), ...uploaded] }));
       }
-    } catch (err) {
+    } catch {
       alert('Не удалось загрузить файл для скрипта');
     } finally {
       setScriptFilesUploading(false);
@@ -2925,13 +2942,18 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       )}
                       <div className="flex items-center gap-2">
                         <button
+                          type="button"
                           onClick={() => fileInputRef.current?.click()}
                           className="p-2 text-blue-400 hover:bg-white/5 rounded-full shrink-0"
                         >
                           <Plus className="w-5 h-5" />
                         </button>
                         <button
-                          onClick={() => setShowScriptMenu(true)}
+                          type="button"
+                          onClick={() => {
+                            setScriptSearch('');
+                            setShowScriptMenu((v) => !v);
+                          }}
                           disabled={!activeId}
                           className="p-2 text-purple-400 hover:bg-white/5 rounded-full shrink-0 disabled:opacity-30"
                           title="Скрипты"
@@ -2952,6 +2974,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           }}
                         />
                         <button
+                          type="button"
                           onClick={() => executeSend()}
                           disabled={!inputText.trim() || !activeId || uploading}
                           className="p-2 text-blue-400 hover:bg-white/5 rounded-full shrink-0 disabled:opacity-30"
@@ -2968,124 +2991,151 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     </div>
 
                       {/* Меню скриптов */}
-                      {showScriptMenu && (
-                        <>
-                          {typeof document !== 'undefined' && createPortal(
-                            <div className="lg:hidden fixed inset-0 z-[220]">
-                              <div
-                                className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"
+                      {showScriptMenu && typeof document !== 'undefined' && createPortal(
+                        <div className="fixed inset-0 z-[220]">
+                          <div
+                            className="absolute inset-0 bg-black/70 backdrop-blur-[1px]"
+                            onClick={() => {
+                              setShowScriptMenu(false);
+                              setScriptSearch('');
+                            }}
+                          />
+
+                          <div className="lg:hidden absolute inset-x-0 bottom-0 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4 pointer-events-auto">
+                            <div className="flex items-center justify-between">
+                              <div className="text-sm font-semibold text-white">Быстрые ответы</div>
+                              <button
+                                type="button"
                                 onClick={() => {
                                   setShowScriptMenu(false);
                                   setScriptSearch('');
                                 }}
+                                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                                aria-label="Закрыть"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+
+                            <div className="mt-3">
+                              <input
+                                value={scriptSearch}
+                                onChange={(e) => setScriptSearch(e.target.value)}
+                                placeholder="Поиск по скриптам..."
+                                className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
                               />
-                              <div className="absolute inset-x-0 bottom-0 bg-[#050a18]/95 border-t border-white/10 rounded-t-2xl p-4 pointer-events-auto">
-                                <div className="flex items-center justify-between">
-                                  <div className="text-sm font-semibold text-white">Быстрые ответы</div>
+                            </div>
+
+                            <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-2">
+                              {(scripts || [])
+                                .filter((s) => {
+                                  const q = scriptSearch.trim().toLowerCase();
+                                  if (!q) return true;
+                                  return (
+                                    String(s?.title || '').toLowerCase().includes(q) ||
+                                    String(s?.text || '').toLowerCase().includes(q)
+                                  );
+                                })
+                                .map((script) => (
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      setShowScriptMenu(false);
-                                      setScriptSearch('');
+                                    key={script.id}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleSendScript(script);
                                     }}
-                                    className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
-                                    aria-label="Закрыть"
+                                    className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition cursor-pointer select-none"
                                   >
-                                    <X className="w-5 h-5" />
-                                  </button>
-                                </div>
-
-                                <div className="mt-3">
-                                  <input
-                                    value={scriptSearch}
-                                    onChange={(e) => setScriptSearch(e.target.value)}
-                                    placeholder="Поиск по скриптам..."
-                                    className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
-                                  />
-                                </div>
-
-                                <div className="mt-3 max-h-[50vh] overflow-y-auto space-y-2">
-                                  {(scripts || [])
-                                    .filter((s) => {
-                                      const q = scriptSearch.trim().toLowerCase();
-                                      if (!q) return true;
-                                      return (
-                                        String(s?.title || '').toLowerCase().includes(q) ||
-                                        String(s?.text || '').toLowerCase().includes(q)
-                                      );
-                                    })
-                                    .map((script) => (
-                                      <button
-                                        type="button"
-                                        key={script.id}
-                                        onClick={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          handleSendScript(script);
-                                        }}
-                                        onTouchEnd={(e) => {
-                                          e.preventDefault();
-                                          e.stopPropagation();
-                                          handleSendScript(script);
-                                        }}
-                                        className="w-full text-left p-4 bg-white/5 border border-white/10 rounded-2xl active:scale-[0.99] transition cursor-pointer select-none"
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div className="min-w-0">
-                                            <div className="text-base font-semibold text-white truncate">{script.title}</div>
-                                            {String(script.text || '').trim() ? (
-                                              <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
-                                            ) : (
-                                              <div className="mt-1 text-sm text-white/40">Без текста</div>
-                                            )}
-                                            {(script.files || []).length > 0 && (
-                                              <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
-                                            )}
-                                          </div>
-                                          <div className="shrink-0 text-xs text-blue-300/80">Отправить</div>
-                                        </div>
-                                      </button>
-                                    ))}
-
-                                  {(scripts || []).length === 0 && (
-                                    <div className="py-8 text-center text-sm text-white/60">
-                                      Нет скриптов
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="text-base font-semibold text-white truncate">{script.title}</div>
+                                        {String(script.text || '').trim() ? (
+                                          <div className="mt-1 text-sm text-white/60 line-clamp-2">{script.text}</div>
+                                        ) : (
+                                          <div className="mt-1 text-sm text-white/40">Без текста</div>
+                                        )}
+                                        {(script.files || []).length > 0 && (
+                                          <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
+                                        )}
+                                      </div>
+                                      <div className="shrink-0 text-xs text-blue-300/80">Отправить</div>
                                     </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>,
-                            document.body
-                          )}
+                                  </button>
+                                ))}
 
-                          <div className="hidden lg:block absolute bottom-full left-0 mb-2 w-64 bg-white/95 backdrop-blur-md border border-white/20 rounded-lg shadow-xl z-[9999] pointer-events-auto">
-                            <div className="p-2">
-                              <div className="text-xs font-medium text-gray-600 px-2 py-1">Быстрые ответы</div>
-                              {scripts.map(script => (
-                                <button
-                                  type="button"
-                                  key={script.id}
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                  }}
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleSendScript(script);
-                                  }}
-                                  className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-blue-50 rounded transition-colors"
-                                >
-                                  <div className="font-medium">{script.title}</div>
-                                  <div className="text-xs text-gray-500 truncate">{script.text}</div>
-                                  {(script.files || []).length > 0 && (
-                                    <div className="text-[10px] text-gray-500">Вложения: {(script.files || []).length}</div>
-                                  )}
-                                </button>
-                              ))}
+                              {(scripts || []).length === 0 && (
+                                <div className="py-8 text-center text-sm text-white/60">
+                                  Нет скриптов
+                                </div>
+                              )}
                             </div>
                           </div>
-                        </>
+
+                          <div className="hidden lg:block absolute right-6 bottom-28 w-[420px] bg-[#050a18]/95 border border-white/10 rounded-2xl shadow-2xl overflow-hidden pointer-events-auto">
+                            <div className="p-3 border-b border-white/10 flex items-center justify-between">
+                              <div className="text-sm font-semibold text-white">Быстрые ответы</div>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShowScriptMenu(false);
+                                  setScriptSearch('');
+                                }}
+                                className="p-2 rounded-lg text-white/80 hover:text-white hover:bg-white/10"
+                                aria-label="Закрыть"
+                              >
+                                <X className="w-5 h-5" />
+                              </button>
+                            </div>
+                            <div className="p-3">
+                              <input
+                                value={scriptSearch}
+                                onChange={(e) => setScriptSearch(e.target.value)}
+                                placeholder="Поиск по скриптам..."
+                                className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div className="px-3 pb-3 max-h-[55vh] overflow-y-auto space-y-2">
+                              {(scripts || [])
+                                .filter((s) => {
+                                  const q = scriptSearch.trim().toLowerCase();
+                                  if (!q) return true;
+                                  return (
+                                    String(s?.title || '').toLowerCase().includes(q) ||
+                                    String(s?.text || '').toLowerCase().includes(q)
+                                  );
+                                })
+                                .map((script) => (
+                                  <button
+                                    type="button"
+                                    key={script.id}
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
+                                      handleSendScript(script);
+                                    }}
+                                    className="w-full text-left p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition cursor-pointer"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="text-sm font-semibold text-white truncate">{script.title}</div>
+                                        {String(script.text || '').trim() ? (
+                                          <div className="mt-1 text-xs text-white/60 line-clamp-2">{script.text}</div>
+                                        ) : (
+                                          <div className="mt-1 text-xs text-white/40">Без текста</div>
+                                        )}
+                                        {(script.files || []).length > 0 && (
+                                          <div className="mt-1 text-[11px] text-white/60">Вложения: {(script.files || []).length}</div>
+                                        )}
+                                      </div>
+                                      <div className="shrink-0 text-[11px] text-blue-300/80">Отправить</div>
+                                    </div>
+                                  </button>
+                                ))}
+                            </div>
+                          </div>
+                        </div>,
+                        document.body
                       )}
                   </>
                 ) : (

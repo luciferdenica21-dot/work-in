@@ -82,7 +82,16 @@ router.post('/', protect, async (req, res) => {
     ].join('\n');
     sendTelegram(tgText);
 
-    res.status(201).json(toMessage(inserted));
+    const mapped = toMessage(inserted);
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`chat-${chatId}`).emit('new-message', mapped);
+      if (req.user.role !== 'admin') {
+        io.emit('new-chat-message', { chatId: chatId.toString(), message: mapped });
+      }
+    }
+
+    res.status(201).json(mapped);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

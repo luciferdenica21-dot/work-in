@@ -92,13 +92,16 @@ export const messagesAPI = {
 };
 
 export const filesAPI = {
-  upload: async (file, chatId) => {
+  upload: async (file, chatId, messageId) => {
     const formData = new FormData();
     formData.append('file', file);
     
     // Добавляем chatId только если он не null
     if (chatId) {
       formData.append('chatId', chatId);
+    }
+    if (messageId) {
+      formData.append('messageId', messageId);
     }
 
     const token = getToken();

@@ -8,8 +8,8 @@ import { useAvatarUrl } from '../hooks/useAvatarUrl';
 const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
-  const [isServicesOpen, setIsServicesOpen] = useState(false);
-  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [_isServicesOpen, setIsServicesOpen] = useState(false);
+  const [_isContactOpen, setIsContactOpen] = useState(false);
   const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
 
   const servicesList = [
