@@ -220,6 +220,14 @@ export default function SmartOrderSystem({
   }, [currentQuestion, isAssistantActive, questionIndex, stepId, t]);
 
   const chooseOption = (questionId, optionId) => {
+    const question = currentQuestion;
+    const option = (question?.options || []).find(o => o.id === optionId);
+    if (question && option) {
+      try {
+        onAssistantMessageRef.current?.(`✅ ${t('smart_log_answer')}: ${t(question.messageKey)} — ${t(option.labelKey)}`);
+      } catch { void 0; }
+    }
+
     setOrderSession((prev) => ({ ...prev, answers: { ...(prev.answers || {}), [questionId]: optionId } }));
     const total =
       step.type === 'questionnaire_single'
@@ -235,10 +243,17 @@ export default function SmartOrderSystem({
   };
 
   const toggleService = (serviceId) => {
+    const svc = flowConfig.services.find(s => s.id === serviceId);
     setOrderSession((prev) => {
       const set0 = new Set(prev.selectedServices || []);
-      if (set0.has(serviceId)) set0.delete(serviceId);
-      else set0.add(serviceId);
+      const active = set0.has(serviceId);
+      if (active) {
+        set0.delete(serviceId);
+        if (svc) try { onAssistantMessageRef.current?.(`➖ ${t('smart_log_service_removed')}: ${t(svc.labelKey)}`); } catch { void 0; }
+      } else {
+        set0.add(serviceId);
+        if (svc) try { onAssistantMessageRef.current?.(`➕ ${t('smart_log_service_added')}: ${t(svc.labelKey)}`); } catch { void 0; }
+      }
       return { ...prev, selectedServices: Array.from(set0) };
     });
   };

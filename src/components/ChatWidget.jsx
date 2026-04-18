@@ -510,7 +510,7 @@ const ChatWidget = ({ user }) => {
     } catch { void 0; }
   }, [chatId]);
 
-  const appendAssistantMessage = useCallback((text) => {
+  const appendAssistantMessage = useCallback(async (text) => {
     const s = String(text || '').trim();
     if (!s) return;
     const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -520,6 +520,16 @@ const ChatWidget = ({ user }) => {
       { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt }
     ]);
     saveSmartTranscript({ _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt });
+    
+    // Отправляем на сервер, чтобы менеджер видел действия
+    if (chatId) {
+      try {
+        await messagesAPI.send(chatId, `🤖 ${s}`);
+      } catch (e) {
+        console.error('Failed to send assistant log to server', e);
+      }
+    }
+
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, [chatId, saveSmartTranscript]);
 
@@ -1464,7 +1474,7 @@ const ChatWidget = ({ user }) => {
               setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
               setSmartMode('locked');
               setSmartResetNonce((n) => n + 1);
-              appendAssistantMessage(t('smart_closed'));
+              await appendAssistantMessage(t('smart_closed'));
             }}
             onRestart={() => { void 0; }}
             onAssistantMessage={appendAssistantMessage}
@@ -1473,13 +1483,15 @@ const ChatWidget = ({ user }) => {
               try {
                 await messagesAPI.send(chatId, `👤 Клиент запросил менеджера.\nПричина: ${t(reasonKey || 'smart_reason_contact_manager')}`);
               } catch { void 0; }
-              appendAssistantMessage(t('smart_manager_soon'));
+              await appendAssistantMessage(t('smart_manager_soon'));
             }}
             onOrderPrepared={async (payload) => {
               try {
                 const session = payload?.orderSession || {};
                 const brief = session?.brief || {};
                 const services = (session?.selectedServices || []).map((id) => String(id));
+                
+                await appendAssistantMessage(t('smart_order_processing'));
                 await finalizeOrderPackage(session);
 
                 const fixed = i18n.getFixedT('ru');
@@ -1508,9 +1520,14 @@ const ChatWidget = ({ user }) => {
                   files: (session?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
                 };
 
-                await ordersAPI.create(orderData);
-              } catch {
-                appendAssistantMessage(t('smart_order_send_failed'));
+                console.log('Sending order data to API:', orderData);
+                const resp = await ordersAPI.create(orderData);
+                console.log('Order created response:', resp);
+
+                await appendAssistantMessage(t('smart_order_sent'));
+              } catch (err) {
+                console.error('Order preparation/sending failed:', err);
+                await appendAssistantMessage(t('smart_order_send_failed'));
               }
             }}
           />

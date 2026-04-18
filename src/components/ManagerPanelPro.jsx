@@ -2982,21 +2982,27 @@ const getAbsoluteFileUrl = (fileUrl) => {
 
                     {/* Сообщения */}
                     <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 bg-[#050a18]">
-                      {messages.map(msg => (
-                        <div key={msg._id || msg.id} className={`flex ${msg.senderId === 'manager' ? 'justify-end' : 'justify-start'}`}>
-                          <div className={`flex items-end gap-1 max-w-[85%] ${msg.senderId === 'manager' ? 'flex-row-reverse' : 'flex-row'}`}>
-                            {renderChatMessageAvatar(msg.senderId === 'manager', chats.find(c => c.chatId === activeId)?.userEmail)}
-                            <div className={`min-w-0 px-2.5 py-1.5 rounded-2xl text-[12px] ${
-                              msg.senderId === 'manager'
-                                ? 'bg-blue-600 text-white rounded-br-none'
-                                : 'bg-white/10 text-white rounded-bl-none'
-                            } shadow-sm ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
-                              onMouseDown={() => handleMessageMouseDown(msg)}
-                              onMouseUp={handleMessageMouseUp}
-                              onMouseLeave={handleMessageMouseUp}
-                              onTouchStart={() => handleMessageMouseDown(msg)}
-                              onTouchEnd={handleMessageMouseUp}
-                            >
+                      {messages.map(msg => {
+                        const isManager = msg.senderId === 'manager';
+                        const isAssistant = String(msg.text || '').startsWith('🤖') || String(msg.text || '').startsWith('➕') || String(msg.text || '').startsWith('➖') || String(msg.text || '').startsWith('✅');
+                        
+                        return (
+                          <div key={msg._id || msg.id} className={`flex ${isManager ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`flex items-end gap-1 max-w-[85%] ${isManager ? 'flex-row-reverse' : 'flex-row'}`}>
+                              {renderChatMessageAvatar(isManager, chats.find(c => c.chatId === activeId)?.userEmail)}
+                              <div className={`min-w-0 px-2.5 py-1.5 rounded-2xl text-[12px] ${
+                                isManager
+                                  ? 'bg-blue-600 text-white rounded-br-none'
+                                  : isAssistant 
+                                    ? 'bg-purple-600/30 text-purple-100 border border-purple-500/30 rounded-bl-none'
+                                    : 'bg-white/10 text-white rounded-bl-none'
+                              } shadow-sm ${selectedMessages.has(msg._id || msg.id) ? 'ring-2 ring-blue-400' : ''}`}
+                                onMouseDown={() => handleMessageMouseDown(msg)}
+                                onMouseUp={handleMessageMouseUp}
+                                onMouseLeave={handleMessageMouseUp}
+                                onTouchStart={() => handleMessageMouseDown(msg)}
+                                onTouchEnd={handleMessageMouseUp}
+                              >
                             {msg.isUploading ? (
                               <div className="flex items-center space-x-2">
                                 <RefreshCw className="w-3 h-3 animate-spin" />
@@ -3044,8 +3050,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             )}
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       <div ref={messagesEndRef} />
                     </div>
 
