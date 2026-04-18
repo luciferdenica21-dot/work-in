@@ -700,7 +700,31 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (!saved) {
       return [
         { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },
-        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } }
+        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } },
+        {
+          id: 'brief_template',
+          title: 'Бриф (шаблон)',
+          text: 'БРИФ\n\nИмя: \nФамилия: \nПочта: \nТелефон: \n\nОписание задачи:\n\nСроки:\n\nМатериал/габариты:\n\nФайлы/референсы: (прикрепите)\n',
+          files: [],
+          titleByLang: { ru: 'Бриф (шаблон)', en: 'Brief (template)', ka: 'ბრიფი (შაბლონი)' },
+          textByLang: {
+            ru: 'БРИФ\n\nИмя: \nФамилия: \nПочта: \nТелефон: \n\nОписание задачи:\n\nСроки:\n\nМатериал/габариты:\n\nФайлы/референсы: (прикрепите)\n',
+            en: 'BRIEF\n\nFirst name: \nLast name: \nEmail: \nPhone: \n\nTask description:\n\nDeadline:\n\nMaterial/dimensions:\n\nFiles/references: (attach)\n',
+            ka: 'ბრიფი\n\nსახელი: \nგვარი: \nელფოსტა: \nტელეფონი: \n\nამოცანის აღწერა:\n\nვადები:\n\nმასალა/ზომები:\n\nფაილები/რეფერენსები: (დაამაგრეთ)\n'
+          }
+        },
+        {
+          id: 'contract_template',
+          title: 'Договор (шаблон)',
+          text: 'ДОГОВОР НА ПРОЕКТИРОВАНИЕ (черновик)\n\n1. Стороны\nИсполнитель: Connector\nЗаказчик: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Предмет договора\nИсполнитель обязуется выполнить работы по проектированию/подготовке документации по запросу Заказчика.\n\n3. Сроки и стоимость\nСроки и стоимость согласуются с менеджером после анализа брифа.\n\n4. Передача результатов\nРезультаты передаются в электронном виде.\n\n5. Подписи\nПодписание выполняется через электронную подпись (e-signature).\n',
+          files: [],
+          titleByLang: { ru: 'Договор (шаблон)', en: 'Contract (template)', ka: 'კონტრაქტი (შაბლონი)' },
+          textByLang: {
+            ru: 'ДОГОВОР НА ПРОЕКТИРОВАНИЕ (черновик)\n\n1. Стороны\nИсполнитель: Connector\nЗаказчик: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Предмет договора\nИсполнитель обязуется выполнить работы по проектированию/подготовке документации по запросу Заказчика.\n\n3. Сроки и стоимость\nСроки и стоимость согласуются с менеджером после анализа брифа.\n\n4. Передача результатов\nРезультаты передаются в электронном виде.\n\n5. Подписи\nПодписание выполняется через электронную подпись (e-signature).\n',
+            en: 'DESIGN CONTRACT (draft)\n\n1. Parties\nProvider: Connector\nClient: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Scope\nProvider agrees to perform design/preparation work based on the Client’s brief.\n\n3. Terms and pricing\nTerms and pricing will be confirmed by the manager after reviewing the brief.\n\n4. Delivery\nResults are delivered electronically.\n\n5. Signatures\nSigning is performed via e-signature.\n',
+            ka: 'პროექტირების კონტრაქტი (შავი ვარიანტი)\n\n1. მხარეები\nშემსრულებელი: Connector\nდამკვეთი: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. ხელშეკრულების საგანი\nშემსრულებელი ვალდებულია შეასრულოს პროექტირების/დოკუმენტაციის მომზადების სამუშაოები ბრიფის საფუძველზე.\n\n3. ვადები და ღირებულება\nვადები და ღირებულება დაზუსტდება მენეჯერთან ბრიფის განხილვის შემდეგ.\n\n4. გადაცემა\nშედეგები გადაეცემა ელექტრონულად.\n\n5. ხელმოწერა\nხელმოწერა შესრულდება ელექტრონული ხელმოწერით.\n'
+          }
+        }
       ];
     }
 
@@ -710,7 +734,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
         { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },
         { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } }
       ];
-      return base.map((s) => ({
+      const normalized = base.map((s) => ({
         ...s,
         files: Array.isArray(s.files) ? s.files : [],
         titleByLang: s.titleByLang && typeof s.titleByLang === 'object'
@@ -720,6 +744,38 @@ const getAbsoluteFileUrl = (fileUrl) => {
           ? { ru: String(s.textByLang.ru || ''), en: String(s.textByLang.en || ''), ka: String(s.textByLang.ka || '') }
           : { ru: String(s.text || ''), en: '', ka: '' }
       }));
+      const hasBrief = normalized.some((s) => String(s.id) === 'brief_template' || String(s.title || '').toLowerCase().includes('бриф'));
+      const hasContract = normalized.some((s) => String(s.id) === 'contract_template' || String(s.title || '').toLowerCase().includes('договор'));
+      const next = [...normalized];
+      if (!hasBrief) {
+        next.push({
+          id: 'brief_template',
+          title: 'Бриф (шаблон)',
+          text: 'БРИФ\n\nИмя: \nФамилия: \nПочта: \nТелефон: \n\nОписание задачи:\n\nСроки:\n\nМатериал/габариты:\n\nФайлы/референсы: (прикрепите)\n',
+          files: [],
+          titleByLang: { ru: 'Бриф (шаблон)', en: 'Brief (template)', ka: 'ბრიფი (შაბლონი)' },
+          textByLang: {
+            ru: 'БРИФ\n\nИмя: \nФамилия: \nПочта: \nТелефон: \n\nОписание задачи:\n\nСроки:\n\nМатериал/габариты:\n\nФайлы/референсы: (прикрепите)\n',
+            en: 'BRIEF\n\nFirst name: \nLast name: \nEmail: \nPhone: \n\nTask description:\n\nDeadline:\n\nMaterial/dimensions:\n\nFiles/references: (attach)\n',
+            ka: 'ბრიფი\n\nსახელი: \nგვარი: \nელფოსტა: \nტელეფონი: \n\nამოცანის აღწერა:\n\nვადები:\n\nმასალა/ზომები:\n\nფაილები/რეფერენსები: (დაამაგრეთ)\n'
+          }
+        });
+      }
+      if (!hasContract) {
+        next.push({
+          id: 'contract_template',
+          title: 'Договор (шаблон)',
+          text: 'ДОГОВОР НА ПРОЕКТИРОВАНИЕ (черновик)\n\n1. Стороны\nИсполнитель: Connector\nЗаказчик: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Предмет договора\nИсполнитель обязуется выполнить работы по проектированию/подготовке документации по запросу Заказчика.\n\n3. Сроки и стоимость\nСроки и стоимость согласуются с менеджером после анализа брифа.\n\n4. Передача результатов\nРезультаты передаются в электронном виде.\n\n5. Подписи\nПодписание выполняется через электронную подпись (e-signature).\n',
+          files: [],
+          titleByLang: { ru: 'Договор (шаблон)', en: 'Contract (template)', ka: 'კონტრაქტი (შაბლონი)' },
+          textByLang: {
+            ru: 'ДОГОВОР НА ПРОЕКТИРОВАНИЕ (черновик)\n\n1. Стороны\nИсполнитель: Connector\nЗаказчик: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Предмет договора\nИсполнитель обязуется выполнить работы по проектированию/подготовке документации по запросу Заказчика.\n\n3. Сроки и стоимость\nСроки и стоимость согласуются с менеджером после анализа брифа.\n\n4. Передача результатов\nРезультаты передаются в электронном виде.\n\n5. Подписи\nПодписание выполняется через электронную подпись (e-signature).\n',
+            en: 'DESIGN CONTRACT (draft)\n\n1. Parties\nProvider: Connector\nClient: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. Scope\nProvider agrees to perform design/preparation work based on the Client’s brief.\n\n3. Terms and pricing\nTerms and pricing will be confirmed by the manager after reviewing the brief.\n\n4. Delivery\nResults are delivered electronically.\n\n5. Signatures\nSigning is performed via e-signature.\n',
+            ka: 'პროექტირების კონტრაქტი (შავი ვარიანტი)\n\n1. მხარეები\nშემსრულებელი: Connector\nდამკვეთი: {{firstName}} {{lastName}}, {{email}}, {{phone}}\n\n2. ხელშეკრულების საგანი\nშემსრულებელი ვალდებულია შეასრულოს პროექტირების/დოკუმენტაციის მომზადების სამუშაოები ბრიფის საფუძველზე.\n\n3. ვადები და ღირებულება\nვადები და ღირებულება დაზუსტდება მენეჯერთან ბრიფის განხილვის შემდეგ.\n\n4. გადაცემა\nშედეგები გადაეცემა ელექტრონულად.\n\n5. ხელმოწერა\nხელმოწერა შესრულდება ელექტრონული ხელმოწერით.\n'
+          }
+        });
+      }
+      return next;
     } catch {
       return [
       { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },

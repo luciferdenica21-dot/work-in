@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, memo } from 'react';
+import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { chatsAPI, messagesAPI, filesAPI, ordersAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
@@ -6,6 +6,8 @@ import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import SmartOrderSystem from './SmartOrderSystem/SmartOrderSystem';
+import JSZip from 'jszip';
+import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 
 const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
@@ -471,7 +473,7 @@ const ChatWidget = ({ user }) => {
     return 'Новое сообщение';
   };
 
-  const appendAssistantMessage = (text) => {
+  const appendAssistantMessage = useCallback((text) => {
     const s = String(text || '').trim();
     if (!s) return;
     const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -480,7 +482,88 @@ const ChatWidget = ({ user }) => {
       { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt: new Date().toISOString() }
     ]);
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
-  };
+  }, [chatId]);
+
+  const uploadZipToChat = useCallback(async (zipBlob, fileName) => {
+    if (!chatId) return null;
+    const zipFile = new File([zipBlob], fileName, { type: 'application/zip' });
+    await filesAPI.upload(zipFile, chatId);
+    return true;
+  }, [chatId]);
+
+  const makeContractPdf = useCallback(async (text) => {
+    const doc = await PDFDocument.create();
+    let page = doc.addPage([595.28, 841.89]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 11;
+    const margin = 48;
+    const maxWidth = 595.28 - margin * 2;
+    const lines = String(text || '').split('\n');
+    let y = 841.89 - margin;
+    for (const line of lines) {
+      const words = String(line || '').split(' ');
+      let row = '';
+      for (const w of words) {
+        const next = row ? `${row} ${w}` : w;
+        const width = font.widthOfTextAtSize(next, fontSize);
+        if (width > maxWidth && row) {
+          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+          y -= 16;
+          row = w;
+        } else {
+          row = next;
+        }
+      }
+      if (row) {
+        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+        y -= 16;
+      }
+      if (y < margin + 16) {
+        page = doc.addPage([595.28, 841.89]);
+        y = 841.89 - margin;
+      }
+    }
+    const bytes = await doc.save();
+    return new Blob([bytes], { type: 'application/pdf' });
+  }, []);
+
+  const finalizeContractPackage = useCallback(async (session) => {
+    if (!chatId) return;
+    const brief = session?.brief || {};
+    const contractTemplate = String(session?.contractText || '');
+    const contractText = contractTemplate
+      .replaceAll('{{firstName}}', String(brief.firstName || ''))
+      .replaceAll('{{lastName}}', String(brief.lastName || ''))
+      .replaceAll('{{email}}', String(brief.email || ''))
+      .replaceAll('{{phone}}', String(brief.phone || ''));
+    const contractPdf = await makeContractPdf(contractText);
+    const zip = new JSZip();
+    const safeSession = {
+      startedAt: session?.startedAt || null,
+      language: session?.language || null,
+      meta: session?.meta || {},
+      selectedServices: session?.selectedServices || [],
+      answers: session?.answers || {},
+      files: (session?.files || []).map((f) => ({ name: f?.name, type: f?.type, size: f?.size })),
+      brief: {
+        firstName: String(brief.firstName || ''),
+        lastName: String(brief.lastName || ''),
+        email: String(brief.email || ''),
+        phone: String(brief.phone || '')
+      }
+    };
+    zip.file('brief.json', JSON.stringify(safeSession, null, 2));
+    zip.file('contract.txt', contractText || '');
+    zip.file('contract.pdf', contractPdf);
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+
+    await uploadZipToChat(zipBlob, 'contract_package.zip');
+    await filesAPI.upload(new File([contractPdf], 'contract.pdf', { type: 'application/pdf' }), chatId);
+
+    try {
+      await messagesAPI.send(chatId, `🤖 AI: Договор подготовлен.\nКлиент: ${String(brief.firstName || '')} ${String(brief.lastName || '')}\nПочта: ${String(brief.email || '')}\nТелефон: ${String(brief.phone || '')}\nСоздайте запрос подписи для contract.pdf и отправьте клиенту.`);
+    } catch { void 0; }
+  }, [chatId, makeContractPdf, uploadZipToChat]);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -1008,11 +1091,23 @@ const ChatWidget = ({ user }) => {
           
           <SmartOrderSystem
             mode={smartMode}
-            onModeChange={setSmartMode}
-            onRestart={() => {
-              appendAssistantMessage(t('smart_greeting'));
+            onModeChange={(next) => {
+              setSmartMode(next);
             }}
+            onRestart={() => { void 0; }}
             onAssistantMessage={appendAssistantMessage}
+            onTransferToManager={async ({ reasonKey }) => {
+              if (!chatId) return;
+              try {
+                await messagesAPI.send(chatId, `👤 Клиент запросил менеджера.\nПричина: ${t(reasonKey || 'smart_reason_contact_manager')}`);
+              } catch { void 0; }
+              appendAssistantMessage(t('smart_manager_soon'));
+            }}
+            onContractCompleted={async (session) => {
+              try {
+                await finalizeContractPackage(session);
+              } catch { void 0; }
+            }}
             onOrderPrepared={async (payload) => {
               try {
                 if (!user?._id) return;

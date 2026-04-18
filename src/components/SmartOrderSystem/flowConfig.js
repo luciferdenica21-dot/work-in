@@ -53,7 +53,7 @@ export const flowConfig = {
     consult_format: {
       messageKeys: ['smart_consult_format'],
       actions: [
-        { id: 'online', labelKey: 'smart_online', type: 'next', nextStepId: 'consult_ready', set: { consultFormat: 'online' } },
+        { id: 'online', labelKey: 'smart_online', type: 'transfer_manager', set: { consultFormat: 'online' }, reasonKey: 'smart_reason_consult_online' },
         { id: 'offline', labelKey: 'smart_offline', type: 'next', nextStepId: 'consult_ready', set: { consultFormat: 'offline' } }
       ],
       inputLocked: true
@@ -109,6 +109,7 @@ export const flowConfig = {
     project_prepare_reference: {
       messageKeys: ['smart_prepare_reference'],
       actions: [
+        { id: 'need_help', labelKey: 'smart_help_collect_reference', type: 'transfer_manager', reasonKey: 'smart_reason_no_reference' },
         { id: 'back', labelKey: 'smart_back', type: 'next', nextStepId: 'project_have_reference' }
       ],
       inputLocked: true
@@ -116,22 +117,18 @@ export const flowConfig = {
     design_offer: {
       messageKeys: ['smart_design_offer'],
       actions: [
-        { id: 'brief', labelKey: 'smart_fill_brief', type: 'next', nextStepId: 'design_contract' }
+        { id: 'brief', labelKey: 'smart_fill_brief', type: 'next', nextStepId: 'brief_form' }
       ],
+      inputLocked: true
+    },
+    brief_form: {
+      messageKeys: ['smart_brief_intro'],
+      type: 'brief_form',
       inputLocked: true
     },
     design_contract: {
       messageKeys: ['smart_design_contract'],
-      actions: [
-        { id: 'sign_contract', labelKey: 'smart_sign_contract', type: 'next', nextStepId: 'design_invoice' }
-      ],
-      inputLocked: true
-    },
-    design_invoice: {
-      messageKeys: ['smart_design_invoice'],
-      actions: [
-        { id: 'pay_invoice', labelKey: 'smart_pay_invoice', type: 'next', nextStepId: 'design_work' }
-      ],
+      type: 'contract_editor',
       inputLocked: true
     },
     design_work: {

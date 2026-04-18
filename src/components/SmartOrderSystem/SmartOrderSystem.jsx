@@ -15,11 +15,26 @@ export default function SmartOrderSystem({
   onModeChange,
   onAssistantMessage,
   onOrderPrepared,
-  onRestart
+  onRestart,
+  onTransferToManager,
+  onContractCompleted
 }) {
   const { t, i18n } = useTranslation();
   const lang2 = pickLang2(i18n?.language);
   const MotionDiv = motion.div;
+
+  const onAssistantMessageRef = useRef(onAssistantMessage);
+  const onModeChangeRef = useRef(onModeChange);
+  const onOrderPreparedRef = useRef(onOrderPrepared);
+  const onRestartRef = useRef(onRestart);
+  const onTransferToManagerRef = useRef(onTransferToManager);
+  const onContractCompletedRef = useRef(onContractCompleted);
+  useEffect(() => { onAssistantMessageRef.current = onAssistantMessage; }, [onAssistantMessage]);
+  useEffect(() => { onModeChangeRef.current = onModeChange; }, [onModeChange]);
+  useEffect(() => { onOrderPreparedRef.current = onOrderPrepared; }, [onOrderPrepared]);
+  useEffect(() => { onRestartRef.current = onRestart; }, [onRestart]);
+  useEffect(() => { onTransferToManagerRef.current = onTransferToManager; }, [onTransferToManager]);
+  useEffect(() => { onContractCompletedRef.current = onContractCompleted; }, [onContractCompleted]);
 
   const [stepId, setStepId] = useState(flowConfig.initialStepId);
   const [questionIndex, setQuestionIndex] = useState(0);
@@ -33,14 +48,32 @@ export default function SmartOrderSystem({
     },
     selectedServices: [],
     answers: {},
-    files: []
+    files: [],
+    brief: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: ''
+    },
+    contractText: ''
   });
 
   const fileInputRef = useRef(null);
   const prevStepRef = useRef(null);
+  const lastPromptRef = useRef('');
 
   const step = flowConfig.steps[stepId];
   const isAssistantActive = mode === 'assistant' || mode === 'locked' || mode === 'manager';
+  const resetFlow = () => {
+    prevStepRef.current = null;
+    lastPromptRef.current = '';
+    setStepId(flowConfig.initialStepId);
+    setQuestionIndex(0);
+    setOrderSession((p) => ({
+      ...p,
+      startedAt: p.startedAt || new Date().toISOString()
+    }));
+  };
 
   useEffect(() => {
     if (!isAssistantActive) return;
@@ -49,9 +82,9 @@ export default function SmartOrderSystem({
     prevStepRef.current = stepId;
     const messages = Array.isArray(step.messageKeys) ? step.messageKeys : [];
     for (const key of messages) {
-      onAssistantMessage?.(t(key));
+      try { onAssistantMessageRef.current?.(t(key)); } catch { void 0; }
     }
-  }, [isAssistantActive, onAssistantMessage, step, stepId, t]);
+  }, [isAssistantActive, step, stepId, t]);
 
   const quickActions = useMemo(() => {
     if (!isAssistantActive) return [];
@@ -63,13 +96,21 @@ export default function SmartOrderSystem({
     if (!action || !isAssistantActive) return;
 
     if (action.id === 'start_ai' && mode === 'locked') {
-      setOrderSession((prev) => (prev.startedAt ? prev : { ...prev, startedAt: new Date().toISOString() }));
-      onModeChange?.('assistant');
+      resetFlow();
+      onModeChangeRef.current?.('assistant');
     }
 
     if (action.type === 'contact_manager') {
-      onModeChange?.('manager');
-      onAssistantMessage?.(t('smart_manager_enabled'));
+      onModeChangeRef.current?.('manager');
+      try { onAssistantMessageRef.current?.(t('smart_manager_enabled')); } catch { void 0; }
+      try { onTransferToManagerRef.current?.({ reasonKey: action.reasonKey || 'smart_reason_contact_manager', stepId }); } catch { void 0; }
+      return;
+    }
+
+    if (action.type === 'transfer_manager') {
+      onModeChangeRef.current?.('manager');
+      try { onAssistantMessageRef.current?.(t('smart_manager_enabled')); } catch { void 0; }
+      try { onTransferToManagerRef.current?.({ reasonKey: action.reasonKey || 'smart_reason_contact_manager', stepId }); } catch { void 0; }
       return;
     }
 
@@ -81,9 +122,11 @@ export default function SmartOrderSystem({
         meta: { hasSpecificRequest: null, consultFormat: null, hasProject: null, needsCorrection: null },
         selectedServices: [],
         answers: {},
-        files: []
+        files: [],
+        brief: { firstName: '', lastName: '', email: '', phone: '' },
+        contractText: ''
       });
-      onModeChange?.('locked');
+      onModeChangeRef.current?.('locked');
       return;
     }
 
@@ -93,7 +136,7 @@ export default function SmartOrderSystem({
 
     if (action.type === 'services_continue') {
       if ((orderSession.selectedServices || []).length === 0) {
-        onAssistantMessage?.(t('smart_pick_at_least_one'));
+        try { onAssistantMessageRef.current?.(t('smart_pick_at_least_one')); } catch { void 0; }
         return;
       }
       setQuestionIndex(0);
@@ -118,14 +161,14 @@ export default function SmartOrderSystem({
       // SERVER_ACTION: Start e-signature flow for acceptance act
       console.log('SMART_ORDER_NEW_ORDER', payload);
 
-      onOrderPrepared?.(payload);
-      onAssistantMessage?.(t('smart_order_prepared'));
+      try { await onOrderPreparedRef.current?.(payload); } catch { void 0; }
+      try { onAssistantMessageRef.current?.(t('smart_order_prepared')); } catch { void 0; }
       return;
     }
 
     if (action.type === 'sign_act') {
       // SERVER_ACTION: Create acceptance act and launch e-signature
-      onAssistantMessage?.(t('smart_sign_act_info'));
+      try { onAssistantMessageRef.current?.(t('smart_sign_act_info')); } catch { void 0; }
       return;
     }
 
@@ -145,8 +188,11 @@ export default function SmartOrderSystem({
   useEffect(() => {
     if (!isAssistantActive) return;
     if (!currentQuestion) return;
-    onAssistantMessage?.(t(currentQuestion.messageKey));
-  }, [currentQuestion, isAssistantActive, onAssistantMessage, t]);
+    const key = `${stepId}:${questionIndex}:${currentQuestion.id}`;
+    if (lastPromptRef.current === key) return;
+    lastPromptRef.current = key;
+    try { onAssistantMessageRef.current?.(t(currentQuestion.messageKey)); } catch { void 0; }
+  }, [currentQuestion, isAssistantActive, questionIndex, stepId, t]);
 
   const chooseOption = (questionId, optionId) => {
     setOrderSession((prev) => ({ ...prev, answers: { ...(prev.answers || {}), [questionId]: optionId } }));
@@ -181,7 +227,7 @@ export default function SmartOrderSystem({
       ...prev,
       files: [...(prev.files || []), ...list.map((f) => ({ name: f.name, type: f.type, size: f.size, file: f }))]
     }));
-    onAssistantMessage?.(t('smart_files_added', { count: list.length }));
+    try { onAssistantMessageRef.current?.(t('smart_files_added', { count: list.length })); } catch { void 0; }
     try { e.target.value = ''; } catch { void 0; }
   };
 
@@ -203,8 +249,9 @@ export default function SmartOrderSystem({
               <button
                 type="button"
                 onClick={() => {
-                  onModeChange?.('assistant');
-                  onRestart?.();
+                  resetFlow();
+                  onModeChangeRef.current?.('assistant');
+                  onRestartRef.current?.();
                 }}
                 className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
               >
@@ -222,6 +269,13 @@ export default function SmartOrderSystem({
           </div>
         </div>
 
+        {mode === 'manager' && (
+          <div className="mt-2 text-[11px] text-white/60">
+            {t('smart_manager_enabled')}
+          </div>
+        )}
+
+        {mode === 'manager' ? null : (
         <div className="mt-3">
           <AnimatePresence mode="popLayout" initial={false}>
             <MotionDiv
@@ -260,6 +314,128 @@ export default function SmartOrderSystem({
                       </button>
                     );
                   })}
+                </div>
+              ) : null}
+
+              {step?.type === 'brief_form' ? (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      value={orderSession.brief?.firstName || ''}
+                      onChange={(e) => setOrderSession((p) => ({ ...p, brief: { ...(p.brief || {}), firstName: e.target.value } }))}
+                      placeholder={t('smart_brief_first_name')}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40"
+                    />
+                    <input
+                      value={orderSession.brief?.lastName || ''}
+                      onChange={(e) => setOrderSession((p) => ({ ...p, brief: { ...(p.brief || {}), lastName: e.target.value } }))}
+                      placeholder={t('smart_brief_last_name')}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40"
+                    />
+                    <input
+                      value={orderSession.brief?.email || ''}
+                      onChange={(e) => setOrderSession((p) => ({ ...p, brief: { ...(p.brief || {}), email: e.target.value } }))}
+                      placeholder={t('smart_brief_email')}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40"
+                    />
+                    <input
+                      value={orderSession.brief?.phone || ''}
+                      onChange={(e) => setOrderSession((p) => ({ ...p, brief: { ...(p.brief || {}), phone: e.target.value } }))}
+                      placeholder={t('smart_brief_phone')}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openFilePicker()}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_upload_files')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const b = orderSession.brief || {};
+                        const ok = String(b.firstName || '').trim() && String(b.lastName || '').trim() && String(b.email || '').trim() && String(b.phone || '').trim();
+                        if (!ok) {
+                          try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
+                          return;
+                        }
+                        setOrderSession((p) => ({ ...p, contractText: p.contractText || t('smart_contract_template') }));
+                        setStepId('design_contract');
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                    >
+                      {t('smart_continue')}
+                    </button>
+                  </div>
+                  {(orderSession.files || []).length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-white/60">{t('smart_files')}</div>
+                      <div className="flex flex-col gap-2">
+                        {(orderSession.files || []).slice(0, 5).map((f, idx) => (
+                          <div key={`${f.name}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                            <div className="min-w-0">
+                              <div className="text-[12px] text-white truncate">{f.name}</div>
+                              <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(idx)}
+                              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                              aria-label={t('smart_remove')}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {step?.type === 'contract_editor' ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={orderSession.contractText || ''}
+                    onChange={(e) => setOrderSession((p) => ({ ...p, contractText: e.target.value }))}
+                    rows={6}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_contract_template')}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const b = orderSession.brief || {};
+                        const ok = String(b.firstName || '').trim() && String(b.lastName || '').trim() && String(b.email || '').trim() && String(b.phone || '').trim();
+                        if (!ok) {
+                          try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
+                          setStepId('brief_form');
+                          return;
+                        }
+                        try {
+                          await onContractCompletedRef.current?.({ ...orderSession, language: lang2 });
+                        } catch { void 0; }
+                        onModeChangeRef.current?.('manager');
+                        try { onTransferToManagerRef.current?.({ reasonKey: 'smart_reason_contract_ready', stepId }); } catch { void 0; }
+                        try { onAssistantMessageRef.current?.(t('smart_docs_review_notice')); } catch { void 0; }
+                        try { onAssistantMessageRef.current?.(t('smart_manager_soon')); } catch { void 0; }
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                    >
+                      {t('smart_sign_contract')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStepId('design_work')}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_continue_to_services')}
+                    </button>
+                  </div>
                 </div>
               ) : null}
 
@@ -314,7 +490,7 @@ export default function SmartOrderSystem({
                 </div>
               ) : null}
 
-              {step?.type !== 'service_grid' && step?.type !== 'questionnaire_single' && step?.type !== 'questionnaire_multi' ? (
+              {step?.type !== 'service_grid' && step?.type !== 'questionnaire_single' && step?.type !== 'questionnaire_multi' && step?.type !== 'brief_form' && step?.type !== 'contract_editor' ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {quickActions.map((a) => (
                     <button
@@ -343,6 +519,7 @@ export default function SmartOrderSystem({
             </MotionDiv>
           </AnimatePresence>
         </div>
+        )}
       </div>
 
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onFilesPicked} />
