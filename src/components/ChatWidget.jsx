@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { chatsAPI, messagesAPI, filesAPI, ordersAPI } from '../config/api';
+import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
@@ -13,6 +13,7 @@ const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [smartMode, setSmartMode] = useState('locked');
+  const [smartResetNonce, setSmartResetNonce] = useState(0);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
@@ -43,6 +44,7 @@ const ChatWidget = ({ user }) => {
   const fileInputRef = useRef();
   const widgetRef = useRef(null);
   const isOpenRef = useRef(false);
+  const aiDocsRef = useRef(null);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -473,22 +475,55 @@ const ChatWidget = ({ user }) => {
     return 'Новое сообщение';
   };
 
+  const saveSmartTranscript = useCallback((entry) => {
+    if (!chatId) return;
+    try {
+      const key = `smart_transcript_${chatId}`;
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      const list = Array.isArray(parsed) ? parsed : [];
+      list.push(entry);
+      localStorage.setItem(key, JSON.stringify(list.slice(-250)));
+    } catch { void 0; }
+  }, [chatId]);
+
+  const loadSmartTranscript = useCallback(() => {
+    if (!chatId) return [];
+    try {
+      const key = `smart_transcript_${chatId}`;
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }, [chatId]);
+
+  const clearSmartTranscript = useCallback(() => {
+    if (!chatId) return;
+    try {
+      localStorage.removeItem(`smart_transcript_${chatId}`);
+      localStorage.removeItem(`smart_greeted_${chatId}`);
+    } catch { void 0; }
+  }, [chatId]);
+
   const appendAssistantMessage = useCallback((text) => {
     const s = String(text || '').trim();
     if (!s) return;
     const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const createdAt = new Date().toISOString();
     setMessages((prev) => [
       ...(prev || []),
-      { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt: new Date().toISOString() }
+      { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt }
     ]);
+    saveSmartTranscript({ _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt });
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
-  }, [chatId]);
+  }, [chatId, saveSmartTranscript]);
 
   const uploadZipToChat = useCallback(async (zipBlob, fileName) => {
     if (!chatId) return null;
     const zipFile = new File([zipBlob], fileName, { type: 'application/zip' });
-    await filesAPI.upload(zipFile, chatId);
-    return true;
+    return await filesAPI.upload(zipFile, chatId);
   }, [chatId]);
 
   const makeContractPdf = useCallback(async (text) => {
@@ -527,6 +562,60 @@ const ChatWidget = ({ user }) => {
     return new Blob([bytes], { type: 'application/pdf' });
   }, []);
 
+  const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files }) => {
+    const doc = await PDFDocument.create();
+    let page = doc.addPage([595.28, 841.89]);
+    const font = await doc.embedFont(StandardFonts.Helvetica);
+    const fontSize = 11;
+    const margin = 48;
+    const maxWidth = 595.28 - margin * 2;
+    let y = 841.89 - margin;
+
+    const pushLine = (line) => {
+      const words = String(line || '').split(' ');
+      let row = '';
+      for (const w of words) {
+        const next = row ? `${row} ${w}` : w;
+        const width = font.widthOfTextAtSize(next, fontSize);
+        if (width > maxWidth && row) {
+          page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+          y -= 16;
+          row = w;
+        } else {
+          row = next;
+        }
+      }
+      if (row) {
+        page.drawText(row, { x: margin, y, size: fontSize, font, color: rgb(0, 0, 0) });
+        y -= 16;
+      }
+      if (y < margin + 16) {
+        page = doc.addPage([595.28, 841.89]);
+        y = 841.89 - margin;
+      }
+    };
+
+    pushLine('BRIEF / БРИФ');
+    pushLine('');
+    pushLine(`First name / Имя: ${String(brief?.firstName || '')}`);
+    pushLine(`Last name / Фамилия: ${String(brief?.lastName || '')}`);
+    pushLine(`Email / Почта: ${String(brief?.email || '')}`);
+    pushLine(`Phone / Телефон: ${String(brief?.phone || '')}`);
+    pushLine('');
+    pushLine(`Meta: ${JSON.stringify(meta || {})}`);
+    pushLine('');
+    pushLine(`Services / Услуги: ${(selectedServices || []).join(', ')}`);
+    pushLine('');
+    pushLine('Answers / Ответы:');
+    Object.entries(answers || {}).forEach(([k, v]) => pushLine(`- ${k}: ${v}`));
+    pushLine('');
+    pushLine('Files / Файлы:');
+    (files || []).forEach((f) => pushLine(`- ${String(f?.name || '')} (${String(f?.type || '')})`));
+
+    const bytes = await doc.save();
+    return new Blob([bytes], { type: 'application/pdf' });
+  }, []);
+
   const finalizeContractPackage = useCallback(async (session) => {
     if (!chatId) return;
     const brief = session?.brief || {};
@@ -537,33 +626,71 @@ const ChatWidget = ({ user }) => {
       .replaceAll('{{email}}', String(brief.email || ''))
       .replaceAll('{{phone}}', String(brief.phone || ''));
     const contractPdf = await makeContractPdf(contractText);
-    const zip = new JSZip();
-    const safeSession = {
-      startedAt: session?.startedAt || null,
-      language: session?.language || null,
+    const briefPdf = await makeBriefPdf({
+      brief,
       meta: session?.meta || {},
       selectedServices: session?.selectedServices || [],
       answers: session?.answers || {},
-      files: (session?.files || []).map((f) => ({ name: f?.name, type: f?.type, size: f?.size })),
-      brief: {
-        firstName: String(brief.firstName || ''),
-        lastName: String(brief.lastName || ''),
-        email: String(brief.email || ''),
-        phone: String(brief.phone || '')
-      }
-    };
-    zip.file('brief.json', JSON.stringify(safeSession, null, 2));
-    zip.file('contract.txt', contractText || '');
+      files: session?.files || []
+    });
+    const zip = new JSZip();
+    zip.file('brief.pdf', briefPdf);
     zip.file('contract.pdf', contractPdf);
+    for (const f of (session?.files || [])) {
+      try {
+        const fileObj = f?.file;
+        if (!fileObj) continue;
+        const name = String(f?.name || fileObj.name || 'file');
+        const buf = await fileObj.arrayBuffer();
+        zip.file(`attachments/${name}`, buf);
+      } catch { void 0; }
+    }
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
-    await uploadZipToChat(zipBlob, 'contract_package.zip');
-    await filesAPI.upload(new File([contractPdf], 'contract.pdf', { type: 'application/pdf' }), chatId);
+    const zipResp = await uploadZipToChat(zipBlob, 'ai_documents.zip');
+    const briefResp = await filesAPI.upload(new File([briefPdf], 'brief.pdf', { type: 'application/pdf' }), chatId);
+    const contractUploadResp = await filesAPI.upload(new File([contractPdf], 'contract.pdf', { type: 'application/pdf' }), chatId);
+
+    const zipUrl = zipResp?.message?.fileUrl || zipResp?.fileUrl || zipResp?.attachment?.url || zipResp?.message?.attachments?.[0]?.url;
+    const briefUrl = briefResp?.message?.fileUrl || briefResp?.fileUrl || briefResp?.attachment?.url || briefResp?.message?.attachments?.[0]?.url;
+    const contractUrl = contractUploadResp?.message?.fileUrl || contractUploadResp?.fileUrl || contractUploadResp?.attachment?.url || contractUploadResp?.message?.attachments?.[0]?.url;
+    const contractName = contractUploadResp?.message?.fileName || contractUploadResp?.fileName || 'contract.pdf';
+    const contractType = contractUploadResp?.message?.fileType || contractUploadResp?.fileType || 'application/pdf';
+    const contractSize = contractUploadResp?.message?.fileSize || contractUploadResp?.fileSize || 0;
+
+    let signLink = null;
+    if (contractUrl) {
+      try {
+        const created = await signaturesAPI.clientCreate({
+          chatId,
+          file: { name: contractName, type: contractType, size: contractSize, url: contractUrl }
+        });
+        if (created?.link) signLink = created.link;
+      } catch { void 0; }
+    }
+
+    if (signLink) {
+      const full = signLink.startsWith('http') ? signLink : `${window.location.origin}${signLink}`;
+      setLegalCardMsg({
+        _id: `smart_sign_${Date.now()}`,
+        chatId,
+        text: `Документ на подпись: ${full}`,
+        attachments: contractUrl ? [{ url: contractUrl, originalName: contractName, mimetype: contractType, size: contractSize }] : [],
+        createdAt: new Date().toISOString()
+      });
+      setLegalCardOpen(true);
+    }
+
+    aiDocsRef.current = { zipUrl, briefUrl, contractUrl };
 
     try {
-      await messagesAPI.send(chatId, `🤖 AI: Договор подготовлен.\nКлиент: ${String(brief.firstName || '')} ${String(brief.lastName || '')}\nПочта: ${String(brief.email || '')}\nТелефон: ${String(brief.phone || '')}\nСоздайте запрос подписи для contract.pdf и отправьте клиенту.`);
+      const lines = ['🤖 AI: Документы сформированы'];
+      if (briefUrl) lines.push(`brief.pdf: ${briefUrl}`);
+      if (contractUrl) lines.push(`contract.pdf: ${contractUrl}`);
+      if (zipUrl) lines.push(`ai_documents.zip: ${zipUrl}`);
+      await messagesAPI.send(chatId, lines.join('\n'));
     } catch { void 0; }
-  }, [chatId, makeContractPdf, uploadZipToChat]);
+  }, [chatId, makeBriefPdf, makeContractPdf, uploadZipToChat]);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -573,13 +700,24 @@ const ChatWidget = ({ user }) => {
       const loadMessages = async () => {
         try {
           const msgs = await chatsAPI.getMessages(chatId);
-          setMessages((msgs || []).map(normalizeMessage).map((m) => {
+          setMessages(() => {
+            const serverMsgs = (msgs || []).map(normalizeMessage).map((m) => {
             const mine = isUserMessage(m);
             if (!mine) return m;
             const id0 = m?._id || m?.id;
             const isTemp = typeof id0 === 'string' && id0.startsWith('temp_');
             return { ...m, __status: isTemp ? 'sending' : (m.__status || 'delivered') };
-          }));
+            });
+            const transcript = loadSmartTranscript();
+            const existing = new Set(serverMsgs.map((m) => String(m?._id || m?.id || '')));
+            const merged = [...serverMsgs];
+            for (const tm of transcript) {
+              const id = String(tm?._id || tm?.id || '');
+              if (!id || existing.has(id)) continue;
+              merged.push(tm);
+            }
+            return merged;
+          });
           setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
         } catch (error) {
           console.error('Error loading messages:', error);
@@ -589,6 +727,18 @@ const ChatWidget = ({ user }) => {
       loadMessages();
     }
   }, [isOpen, chatId]);
+
+  useEffect(() => {
+    if (!isOpen || !chatId) return;
+    if (smartMode !== 'locked') return;
+    try {
+      const key = `smart_greeted_${chatId}`;
+      const greeted = localStorage.getItem(key);
+      if (greeted) return;
+      localStorage.setItem(key, '1');
+      appendAssistantMessage(t('smart_greeting'));
+    } catch { void 0; }
+  }, [appendAssistantMessage, chatId, isOpen, smartMode, t]);
 
   useEffect(() => {
     try {
@@ -947,7 +1097,7 @@ const ChatWidget = ({ user }) => {
   return (
     <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[150]">
       {hasNewMessage && !isOpen && (
-        <div className="pointer-events-none fixed bottom-[7.5rem] right-4 md:bottom-[5.5rem] md:right-8 z-[9999]">
+        <div className="pointer-events-none fixed bottom-[11rem] right-4 md:bottom-[7.5rem] md:right-8 z-[9999]">
           <div className="bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
             {getNewMessageToastText()}
           </div>
@@ -1093,6 +1243,16 @@ const ChatWidget = ({ user }) => {
             mode={smartMode}
             onModeChange={(next) => {
               setSmartMode(next);
+            }}
+            resetNonce={smartResetNonce}
+            onCloseAssistant={() => {
+              const ok = window.confirm(t('smart_close_confirm'));
+              if (!ok) return;
+              clearSmartTranscript();
+              setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+              setSmartMode('locked');
+              setSmartResetNonce((n) => n + 1);
+              appendAssistantMessage(t('smart_closed'));
             }}
             onRestart={() => { void 0; }}
             onAssistantMessage={appendAssistantMessage}
@@ -1371,6 +1531,17 @@ const ChatWidget = ({ user }) => {
                       await import('../config/api'); // ensure dynamic import chunk
                       const { signaturesAPI } = await import('../config/api');
                       await signaturesAPI.clientSign(signPosModal.requestId, signPosModal.signDataUrl, signPosModal.pos || null);
+                      try {
+                        setSmartMode('manager');
+                        const docs = aiDocsRef.current || {};
+                        const lines = ['✅ Клиент подписал договор.'];
+                        if (docs.contractUrl) lines.push(`contract.pdf: ${docs.contractUrl}`);
+                        if (docs.briefUrl) lines.push(`brief.pdf: ${docs.briefUrl}`);
+                        if (docs.zipUrl) lines.push(`ai_documents.zip: ${docs.zipUrl}`);
+                        await messagesAPI.send(chatId, lines.join('\n'));
+                      } catch { void 0; }
+                      try { appendAssistantMessage(t('smart_docs_review_notice')); } catch { void 0; }
+                      try { appendAssistantMessage(t('smart_manager_soon')); } catch { void 0; }
                       alert(t('sign_sent_success'));
                       setSignPosModal(s => ({ ...s, open: false, sending: false }));
                     } catch {

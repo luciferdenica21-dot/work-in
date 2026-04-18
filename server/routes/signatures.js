@@ -7,6 +7,7 @@ import { Buffer } from 'buffer';
 import { randomUUID } from 'node:crypto';
 import { supabase } from '../config/supabase.js';
 import { protect, admin } from '../middleware/auth.js';
+import { sendTelegram } from '../config/telegram.js';
 // lazy import in composeFinalPdf to avoid startup failure if dependency is missing
 
 const __filename = fileURLToPath(import.meta.url);
@@ -229,6 +230,108 @@ router.post('/', protect, admin, async (req, res) => {
       }
     }
     res.status(201).json({ id: docRow.id, link: `/sign/${docRow.id}`, status: docRow.status, saveOnly: !!saveOnly });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+router.post('/client-create', protect, async (req, res) => {
+  try {
+    if (req.user.role === 'admin') {
+      return res.status(400).json({ message: 'Client only' });
+    }
+
+    const { chatId, file } = req.body || {};
+    if (!chatId || !file || !file.url) return res.status(400).json({ message: 'chatId and file are required' });
+
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id,user_email')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
+    if (String(chat.user_id) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const nowIso = new Date().toISOString();
+    const row = {
+      id: randomUUID(),
+      owner_id: req.user._id,
+      chat_id: chatId,
+      file: {
+        name: file.name || 'Документ',
+        type: file.type || '',
+        size: file.size || 0,
+        url: file.url
+      },
+      manager_signature_url: '',
+      client_signature_url: '',
+      final_pdf_url: '',
+      manager_sign_pos: null,
+      client_sign_pos: null,
+      status: 'created',
+      created_at: nowIso,
+      updated_at: nowIso
+    };
+
+    const { data: docRow, error: docErr } = await supabase
+      .from('signature_requests')
+      .insert(row)
+      .select('id,status')
+      .single();
+    if (docErr) throw docErr;
+
+    const link = `${process.env.CLIENT_URL || ''}/sign/${docRow.id}`;
+    const text = `Документ на подпись: ${link}`;
+    const attachment = {
+      filename: path.basename(file.url),
+      originalName: file.name || 'Документ',
+      mimetype: file.type || '',
+      size: file.size || 0,
+      url: file.url
+    };
+
+    const messageRow = {
+      id: randomUUID(),
+      chat_id: chatId,
+      text,
+      sender_id: 'manager',
+      sender_email: '',
+      attachments: [attachment],
+      created_at: nowIso
+    };
+    const { data: insertedMsg, error: msgErr } = await supabase
+      .from('messages')
+      .insert(messageRow)
+      .select('id,chat_id,text,sender_id,sender_email,attachments,created_at')
+      .single();
+    if (msgErr) throw msgErr;
+
+    const { error: updChatErr } = await supabase
+      .from('chats')
+      .update({ unread: true, last_message: text, last_update: nowIso, updated_at: nowIso })
+      .eq('id', chatId);
+    if (updChatErr) throw updChatErr;
+
+    try {
+      sendTelegram([
+        '📝 Документ на подпись (AI)',
+        `Клиент: ${chat.user_email || req.user.email || req.user._id}`,
+        `Чат: ${chatId}`,
+        `Ссылка: ${link}`
+      ].join('\n'));
+    } catch { void 0; }
+
+    const io = req.app.get('io');
+    if (io) {
+      const message = toMessage(insertedMsg);
+      io.to(`chat-${chatId}`).emit('new-message', message);
+      io.emit('new-chat-message', { chatId: chatId.toString(), message });
+    }
+
+    res.status(201).json({ id: docRow.id, link: `/sign/${docRow.id}`, status: docRow.status });
   } catch (e) {
     res.status(500).json({ message: e.message });
   }

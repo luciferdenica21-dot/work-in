@@ -208,6 +208,10 @@ export const signaturesAPI = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+  clientCreate: (payload) => apiRequest('/signatures/client-create', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
   list: (params = {}) => {
     const q = new URLSearchParams();
     if (params.status) q.set('status', params.status);

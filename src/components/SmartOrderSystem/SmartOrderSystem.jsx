@@ -17,7 +17,9 @@ export default function SmartOrderSystem({
   onOrderPrepared,
   onRestart,
   onTransferToManager,
-  onContractCompleted
+  onContractCompleted,
+  onCloseAssistant,
+  resetNonce
 }) {
   const { t, i18n } = useTranslation();
   const lang2 = pickLang2(i18n?.language);
@@ -74,6 +76,24 @@ export default function SmartOrderSystem({
       startedAt: p.startedAt || new Date().toISOString()
     }));
   };
+
+  useEffect(() => {
+    if (resetNonce == null) return;
+    const id = setTimeout(() => {
+      resetFlow();
+      setOrderSession({
+        startedAt: null,
+        meta: { hasSpecificRequest: null, consultFormat: null, hasProject: null, needsCorrection: null },
+        selectedServices: [],
+        answers: {},
+        files: [],
+        brief: { firstName: '', lastName: '', email: '', phone: '' },
+        contractText: ''
+      });
+      onModeChangeRef.current?.('locked');
+    }, 0);
+    return () => clearTimeout(id);
+  }, [resetNonce]);
 
   useEffect(() => {
     if (!isAssistantActive) return;
@@ -245,6 +265,13 @@ export default function SmartOrderSystem({
             {t('smart_panel_title')}
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onCloseAssistant?.()}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
+            >
+              {t('smart_close')}
+            </button>
             {mode === 'manager' ? (
               <button
                 type="button"
@@ -416,13 +443,8 @@ export default function SmartOrderSystem({
                           setStepId('brief_form');
                           return;
                         }
-                        try {
-                          await onContractCompletedRef.current?.({ ...orderSession, language: lang2 });
-                        } catch { void 0; }
-                        onModeChangeRef.current?.('manager');
-                        try { onTransferToManagerRef.current?.({ reasonKey: 'smart_reason_contract_ready', stepId }); } catch { void 0; }
+                        try { await onContractCompletedRef.current?.({ ...orderSession, language: lang2 }); } catch { void 0; }
                         try { onAssistantMessageRef.current?.(t('smart_docs_review_notice')); } catch { void 0; }
-                        try { onAssistantMessageRef.current?.(t('smart_manager_soon')); } catch { void 0; }
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                     >
