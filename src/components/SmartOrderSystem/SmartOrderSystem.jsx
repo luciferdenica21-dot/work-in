@@ -19,7 +19,8 @@ export default function SmartOrderSystem({
   onTransferToManager,
   onContractCompleted,
   onCloseAssistant,
-  resetNonce
+  resetNonce,
+  getContractTemplateText
 }) {
   const { t, i18n } = useTranslation();
   const lang2 = pickLang2(i18n?.language);
@@ -389,7 +390,8 @@ export default function SmartOrderSystem({
                           try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
                           return;
                         }
-                        setOrderSession((p) => ({ ...p, contractText: p.contractText || t('smart_contract_template') }));
+                        const tpl = typeof getContractTemplateText === 'function' ? getContractTemplateText() : t('smart_contract_template');
+                        setOrderSession((p) => ({ ...p, contractText: p.contractText || String(tpl || '') }));
                         setStepId('design_contract');
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"

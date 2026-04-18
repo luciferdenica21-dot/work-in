@@ -233,6 +233,10 @@ export const signaturesAPI = {
   }),
 };
 
+export const aiAPI = {
+  getTemplates: () => apiRequest('/ai/templates'),
+};
+
 export const analyticsAPI = {
   sendEvent: (payload) => apiRequest('/analytics/events', {
     method: 'POST',

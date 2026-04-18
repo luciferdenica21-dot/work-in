@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI } from '../config/api';
+import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI, aiAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
@@ -14,6 +14,7 @@ const ChatWidget = ({ user }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [smartMode, setSmartMode] = useState('locked');
   const [smartResetNonce, setSmartResetNonce] = useState(0);
+  const [aiTemplates, setAiTemplates] = useState({ scripts: [] });
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
@@ -45,6 +46,30 @@ const ChatWidget = ({ user }) => {
   const widgetRef = useRef(null);
   const isOpenRef = useRef(false);
   const aiDocsRef = useRef(null);
+  const contractTemplateRef = useRef(null);
+  const actTemplateRef = useRef(null);
+
+  useEffect(() => {
+    const scripts = Array.isArray(aiTemplates?.scripts) ? aiTemplates.scripts : [];
+    const contract = scripts.find((s) => String(s?.id) === 'contract_template') || null;
+    contractTemplateRef.current = contract;
+    const SIGNATURE_MARKER = '__SIGNREQ__:';
+    const act = scripts.find((s) => String(s?.id) === 'act_signature_template' || String(s?.title || '').toLowerCase().includes('акт')) || null;
+    if (act && typeof act.text === 'string' && act.text.startsWith(SIGNATURE_MARKER)) {
+      try {
+        const raw = act.text.slice(SIGNATURE_MARKER.length);
+        const obj = JSON.parse(raw);
+        if (obj?.file?.url) {
+          actTemplateRef.current = {
+            name: obj.file.name || 'act.pdf',
+            type: obj.file.type || 'application/pdf',
+            size: obj.file.size || 0,
+            url: obj.file.url
+          };
+        }
+      } catch { void 0; }
+    }
+  }, [aiTemplates]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -318,6 +343,13 @@ const ChatWidget = ({ user }) => {
     };
 
     loadChat();
+
+    (async () => {
+      try {
+        const tpl = await aiAPI.getTemplates();
+        setAiTemplates({ scripts: Array.isArray(tpl?.scripts) ? tpl.scripts : [] });
+      } catch { void 0; }
+    })();
 
     if (socket) {
       const handleNewMessage = (newMsg) => {
@@ -595,26 +627,104 @@ const ChatWidget = ({ user }) => {
       }
     };
 
-    pushLine('BRIEF / БРИФ');
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
+
+    const fmtSize = (n) => {
+      const b = Number(n) || 0;
+      if (b <= 0) return '';
+      if (b >= 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(2)} MB`;
+      if (b >= 1024) return `${(b / 1024).toFixed(1)} KB`;
+      return `${b} B`;
+    };
+
+    const metaLabels = {
+      hasSpecificRequest: fixed('smart_q_specific'),
+      consultFormat: fixed('smart_consult_format'),
+      hasProject: fixed('smart_project_have'),
+      needsCorrection: fixed('smart_project_need_correction')
+    };
+
+    pushLine(fixed('smart_brief_pdf_title'));
     pushLine('');
-    pushLine(`First name / Имя: ${String(brief?.firstName || '')}`);
-    pushLine(`Last name / Фамилия: ${String(brief?.lastName || '')}`);
-    pushLine(`Email / Почта: ${String(brief?.email || '')}`);
-    pushLine(`Phone / Телефон: ${String(brief?.phone || '')}`);
+
+    pushLine(fixed('smart_brief_pdf_section_client'));
+    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
+    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
+    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
+    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
     pushLine('');
-    pushLine(`Meta: ${JSON.stringify(meta || {})}`);
+
+    pushLine(fixed('smart_brief_pdf_section_meta'));
+    Object.entries(meta || {}).forEach(([k, v]) => {
+      const label = metaLabels[k] || k;
+      const value = v === true ? fixed('smart_yes') : v === false ? fixed('smart_no') : String(v ?? '');
+      if (String(value).trim()) pushLine(`- ${label}: ${value}`);
+    });
     pushLine('');
-    pushLine(`Services / Услуги: ${(selectedServices || []).join(', ')}`);
+
+    pushLine(fixed('smart_brief_pdf_section_services'));
+    const svcMap = {
+      svc_bending: 'smart_svc_bending',
+      svc_laser_engraving: 'smart_svc_laser_engraving',
+      svc_laser_cut_metal: 'smart_svc_laser_cut_metal',
+      svc_laser_cut_nonmetal: 'smart_svc_laser_cut_nonmetal',
+      svc_powder_paint: 'smart_svc_powder_paint',
+      svc_welding: 'smart_svc_welding',
+      svc_mech: 'smart_svc_mech',
+      svc_cnc: 'smart_svc_cnc',
+      svc_liquid_paint: 'smart_svc_liquid_paint',
+      svc_materials: 'smart_svc_materials'
+    };
+    (selectedServices || []).forEach((sid) => {
+      const key = svcMap[String(sid)] || String(sid);
+      pushLine(`☑ ${fixed(key)}`);
+    });
+    if ((selectedServices || []).length === 0) pushLine(`☐ ${fixed('smart_pick_at_least_one')}`);
     pushLine('');
-    pushLine('Answers / Ответы:');
-    Object.entries(answers || {}).forEach(([k, v]) => pushLine(`- ${k}: ${v}`));
+
+    pushLine(fixed('smart_brief_pdf_section_answers'));
+    const answerLabels = {
+      deadline: fixed('smart_q_deadline'),
+      material: fixed('smart_q_material'),
+      quantity: fixed('smart_q_quantity'),
+      priority: fixed('smart_q_priority')
+    };
+    const optionLabels = {
+      asap: fixed('smart_deadline_asap'),
+      week: fixed('smart_deadline_week'),
+      month: fixed('smart_deadline_month'),
+      metal: fixed('smart_material_metal'),
+      plastic: fixed('smart_material_plastic'),
+      wood: fixed('smart_material_wood'),
+      '1': fixed('smart_qty_1'),
+      '2_10': fixed('smart_qty_2_10'),
+      '10_plus': fixed('smart_qty_10_plus'),
+      price: fixed('smart_priority_price'),
+      speed: fixed('smart_priority_speed'),
+      quality: fixed('smart_priority_quality')
+    };
+    Object.entries(answers || {}).forEach(([k, v]) => {
+      const label = answerLabels[k] || k;
+      const val = optionLabels[String(v)] || String(v ?? '');
+      if (String(val).trim()) pushLine(`- ${label}: ${val}`);
+    });
+    if (Object.keys(answers || {}).length === 0) pushLine(`- ${fixed('smart_no')}`);
     pushLine('');
-    pushLine('Files / Файлы:');
-    (files || []).forEach((f) => pushLine(`- ${String(f?.name || '')} (${String(f?.type || '')})`));
+
+    pushLine(fixed('smart_brief_pdf_section_files'));
+    (files || []).forEach((f) => {
+      const name = String(f?.name || '');
+      const type = String(f?.type || '');
+      const size = fmtSize(f?.size);
+      const tail = [type, size].filter(Boolean).join(', ');
+      pushLine(`- ${name}${tail ? ` (${tail})` : ''}`);
+    });
+    if ((files || []).length === 0) pushLine(`- ${fixed('smart_no')}`);
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
-  }, []);
+  }, [aiTemplates?.scripts, i18n]);
 
   const finalizeContractPackage = useCallback(async (session) => {
     if (!chatId) return;
@@ -691,6 +801,22 @@ const ChatWidget = ({ user }) => {
       await messagesAPI.send(chatId, lines.join('\n'));
     } catch { void 0; }
   }, [chatId, makeBriefPdf, makeContractPdf, uploadZipToChat]);
+
+  const getContractTemplateText = useCallback(() => {
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const s = contractTemplateRef.current;
+    const tb = s?.textByLang && typeof s.textByLang === 'object' ? s.textByLang : null;
+    if (tb) {
+      const ru = String(tb.ru || '').trim();
+      const en = String(tb.en || '').trim();
+      const ka = String(tb.ka || '').trim();
+      if (lang2 === 'en' && en) return en;
+      if (lang2 === 'ka' && ka) return ka;
+      if (ru) return ru;
+      return en || ka || '';
+    }
+    return t('smart_contract_template');
+  }, [i18n?.language, t]);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -1244,6 +1370,7 @@ const ChatWidget = ({ user }) => {
             onModeChange={(next) => {
               setSmartMode(next);
             }}
+            getContractTemplateText={getContractTemplateText}
             resetNonce={smartResetNonce}
             onCloseAssistant={() => {
               const ok = window.confirm(t('smart_close_confirm'));
@@ -1539,6 +1666,26 @@ const ChatWidget = ({ user }) => {
                         if (docs.briefUrl) lines.push(`brief.pdf: ${docs.briefUrl}`);
                         if (docs.zipUrl) lines.push(`ai_documents.zip: ${docs.zipUrl}`);
                         await messagesAPI.send(chatId, lines.join('\n'));
+                      } catch { void 0; }
+                      try {
+                        const actTpl = actTemplateRef.current;
+                        if (chatId && actTpl?.url) {
+                          const created = await signaturesAPI.clientCreate({
+                            chatId,
+                            file: { name: actTpl.name || 'act.pdf', type: actTpl.type || 'application/pdf', size: actTpl.size || 0, url: actTpl.url }
+                          });
+                          const link = created?.link ? (created.link.startsWith('http') ? created.link : `${window.location.origin}${created.link}`) : null;
+                          if (link) {
+                            setLegalCardMsg({
+                              _id: `smart_act_sign_${Date.now()}`,
+                              chatId,
+                              text: `Документ на подпись: ${link}`,
+                              attachments: [{ url: actTpl.url, originalName: actTpl.name || 'act.pdf', mimetype: actTpl.type || 'application/pdf', size: actTpl.size || 0 }],
+                              createdAt: new Date().toISOString()
+                            });
+                            setLegalCardOpen(true);
+                          }
+                        }
                       } catch { void 0; }
                       try { appendAssistantMessage(t('smart_docs_review_notice')); } catch { void 0; }
                       try { appendAssistantMessage(t('smart_manager_soon')); } catch { void 0; }

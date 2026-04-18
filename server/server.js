@@ -16,6 +16,7 @@ import analyticsRoutes from './routes/analytics.js';
 import fileRoutes from './routes/files.js';
 import backupRoutes from './routes/backups.js';
 import signatureRoutes from './routes/signatures.js';
+import aiRoutes from './routes/ai.js';
 import { sendTelegram } from './config/telegram.js';
 import { supabase } from './config/supabase.js';
 
@@ -91,6 +92,7 @@ app.use('/api/files', fileRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/backups', backupRoutes);
 app.use('/api/signatures', signatureRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
