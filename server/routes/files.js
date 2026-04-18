@@ -5,6 +5,7 @@ import { upload } from '../middleware/upload.js';
 import { randomUUID } from 'node:crypto';
 import { supabase } from '../config/supabase.js';
 import { protect } from '../middleware/auth.js';
+import { sendTelegram } from '../config/telegram.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -164,6 +165,17 @@ router.post('/upload', protect, upload.single('file'), async (req, res) => {
         })
         .eq('id', parsedChatId);
       if (updChatErr) throw updChatErr;
+
+      const isFinalAiZip = req.user.role !== 'admin' && String(req.file.originalname || '').toLowerCase() === 'ai_order.zip';
+      if (isFinalAiZip) {
+        const tgText = [
+          '📦 Готовый файл заказа (ИИ)',
+          `Клиент: ${req.user.email || req.user._id}`,
+          `Чат: ${parsedChatId.toString()}`,
+          'Файл: ai_order.zip'
+        ].join('\n');
+        sendTelegram(tgText);
+      }
 
       const io = req.app.get('io');
       if (io) {

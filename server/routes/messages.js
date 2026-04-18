@@ -16,6 +16,17 @@ const toMessage = (row) => ({
   createdAt: row.created_at
 });
 
+const isAiLogText = (text) => {
+  const s = String(text || '').trim();
+  if (!s) return true;
+  return (
+    s.startsWith('🤖') ||
+    s.startsWith('✅') ||
+    s.startsWith('➕') ||
+    s.startsWith('➖')
+  );
+};
+
 // Send message
 router.post('/', protect, async (req, res) => {
   try {
@@ -61,26 +72,30 @@ router.post('/', protect, async (req, res) => {
       .single();
     if (insErr) throw insErr;
 
+    const aiLog = isAiLogText(text);
+    const updatePayload = aiLog
+      ? { last_update: nowIso, updated_at: nowIso }
+      : { last_message: String(text), last_update: nowIso, unread: req.user.role !== 'admin', updated_at: nowIso };
+
     // Update chat
     const { error: updErr } = await supabase
       .from('chats')
-      .update({
-        last_message: String(text),
-        last_update: nowIso,
-        unread: req.user.role !== 'admin',
-        updated_at: nowIso
-      })
+      .update(updatePayload)
       .eq('id', chatId);
     if (updErr) throw updErr;
 
-    const senderType = req.user.role === 'admin' ? 'Менеджер' : 'Клиент';
-    const tgText = [
-      '💬 Новое сообщение',
-      `От: ${senderType} (${req.user.email || req.user._id})`,
-      `Чат: ${chatId}`,
-      `Текст: ${text}`
-    ].join('\n');
-    sendTelegram(tgText);
+    const isSystemToSkipTelegram =
+      aiLog || String(text || '').trim().startsWith('👤') || String(text || '').trim().startsWith('📎');
+    const shouldSendTelegram = req.user.role !== 'admin' && !isSystemToSkipTelegram;
+    if (shouldSendTelegram) {
+      const tgText = [
+        '💬 Новое сообщение',
+        `От: Клиент (${req.user.email || req.user._id})`,
+        `Чат: ${chatId}`,
+        `Текст: ${text}`
+      ].join('\n');
+      sendTelegram(tgText);
+    }
 
     const mapped = toMessage(inserted);
     const io = req.app.get('io');

@@ -2980,9 +2980,29 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       </div>
                     )}
 
+                    {messages.filter((m) => String(m?.text || '').startsWith('🤖')).length > 0 && (
+                      <div className="px-3 pt-3">
+                        <div className="rounded-xl border border-purple-500/30 bg-purple-600/10 p-3">
+                          <div className="text-[10px] uppercase tracking-widest text-purple-200/90 font-semibold">
+                            Действия ИИ
+                          </div>
+                          <div className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
+                            {messages
+                              .filter((m) => String(m?.text || '').startsWith('🤖'))
+                              .slice(-50)
+                              .map((m) => (
+                                <div key={`ai_${m._id || m.id}`} className="text-[12px] text-purple-100/90">
+                                  {String(m.text || '').replace(/^🤖\s*/, '')}
+                                </div>
+                              ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
                     {/* Сообщения */}
                     <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-2 bg-[#050a18]">
-                      {messages.map(msg => {
+                      {messages.filter((m) => !String(m?.text || '').startsWith('🤖')).map(msg => {
                         const isManager = msg.senderId === 'manager';
                         const isAssistant = String(msg.text || '').startsWith('🤖') || String(msg.text || '').startsWith('➕') || String(msg.text || '').startsWith('➖') || String(msg.text || '').startsWith('✅');
                         

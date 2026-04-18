@@ -510,7 +510,7 @@ const ChatWidget = ({ user }) => {
     } catch { void 0; }
   }, [chatId]);
 
-  const appendAssistantMessage = useCallback(async (text) => {
+  const appendAssistantMessage = useCallback((text) => {
     const s = String(text || '').trim();
     if (!s) return;
     const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
@@ -520,18 +520,19 @@ const ChatWidget = ({ user }) => {
       { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt }
     ]);
     saveSmartTranscript({ _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt });
-    
-    // Отправляем на сервер, чтобы менеджер видел действия
-    if (chatId) {
-      try {
-        await messagesAPI.send(chatId, `🤖 ${s}`);
-      } catch (e) {
-        console.error('Failed to send assistant log to server', e);
-      }
-    }
-
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, [chatId, saveSmartTranscript]);
+
+  const sendManagerLog = useCallback(async (text) => {
+    if (!chatId) return;
+    const s = String(text || '').trim();
+    if (!s) return;
+    try {
+      await messagesAPI.send(chatId, `🤖 ${s}`);
+    } catch (e) {
+      console.error('Failed to send manager log', e);
+    }
+  }, [chatId]);
 
   const uploadZipToChat = useCallback(async (zipBlob, fileName) => {
     if (!chatId) return null;
@@ -563,7 +564,7 @@ const ChatWidget = ({ user }) => {
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
-    const pushLine = (line, size = fontSize, isBold = false) => {
+    const pushLine = (line, size = fontSize) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
@@ -597,7 +598,7 @@ const ChatWidget = ({ user }) => {
         color: rgb(0.8, 0.8, 0.8)
       });
       y -= 15;
-      pushLine(title, sectionSize, true);
+      pushLine(title, sectionSize);
       y -= 5;
     };
 
@@ -613,7 +614,7 @@ const ChatWidget = ({ user }) => {
     };
 
     // Header
-    pushLine(fixed('smart_brief_pdf_title'), titleSize, true);
+    pushLine(fixed('smart_brief_pdf_title'), titleSize);
     y -= 10;
     pushLine(`${new Date().toLocaleString()}`, 8);
     y -= 10;
@@ -713,7 +714,7 @@ const ChatWidget = ({ user }) => {
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
-    const pushLine = (line, size = fontSize, isBold = false) => {
+    const pushLine = (line, size = fontSize) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
@@ -747,7 +748,7 @@ const ChatWidget = ({ user }) => {
         color: rgb(0.8, 0.8, 0.8)
       });
       y -= 15;
-      pushLine(title, sectionSize, true);
+      pushLine(title, sectionSize);
       y -= 5;
     };
 
@@ -755,7 +756,7 @@ const ChatWidget = ({ user }) => {
     const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
     // Header
-    pushLine(fixed('smart_order_pdf_title'), titleSize, true);
+    pushLine(fixed('smart_order_pdf_title'), titleSize);
     y -= 10;
     pushLine(`${new Date().toLocaleString()}`, 8);
     y -= 10;
@@ -858,7 +859,7 @@ const ChatWidget = ({ user }) => {
   }, [chatId]);
 
   const finalizeOrderPackage = useCallback(async (session) => {
-    if (!chatId) return;
+    if (!chatId) return null;
     const brief = session?.brief || {};
 
     const briefPdf = await makeBriefPdf({
@@ -905,6 +906,7 @@ const ChatWidget = ({ user }) => {
     aiDocsRef.current = docs;
     setAiDocs(docs);
     setAiOrderReady(true);
+    return docs;
   }, [chatId, makeBriefPdf, makeOrderPdf, trackAiServerMessageId, uploadZipToChat]);
 
   useEffect(() => {
@@ -1474,16 +1476,24 @@ const ChatWidget = ({ user }) => {
               setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
               setSmartMode('locked');
               setSmartResetNonce((n) => n + 1);
-              await appendAssistantMessage(t('smart_closed'));
+              appendAssistantMessage(t('smart_closed'));
             }}
-            onRestart={() => { void 0; }}
+            onRestart={() => {
+              clearSmartTranscript();
+              setAiDocs(null);
+              setAiOrderReady(false);
+              aiDocsRef.current = null;
+              clearAiServerMessageIds();
+              setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+            }}
             onAssistantMessage={appendAssistantMessage}
+            onManagerLog={sendManagerLog}
             onTransferToManager={async ({ reasonKey }) => {
               if (!chatId) return;
               try {
                 await messagesAPI.send(chatId, `👤 Клиент запросил менеджера.\nПричина: ${t(reasonKey || 'smart_reason_contact_manager')}`);
               } catch { void 0; }
-              await appendAssistantMessage(t('smart_manager_soon'));
+              appendAssistantMessage(t('smart_manager_soon'));
             }}
             onOrderPrepared={async (payload) => {
               try {
@@ -1491,8 +1501,8 @@ const ChatWidget = ({ user }) => {
                 const brief = session?.brief || {};
                 const services = (session?.selectedServices || []).map((id) => String(id));
                 
-                await appendAssistantMessage(t('smart_order_processing'));
-                await finalizeOrderPackage(session);
+                appendAssistantMessage(t('smart_order_processing'));
+                const docs = await finalizeOrderPackage(session);
 
                 const fixed = i18n.getFixedT('ru');
                 const serviceNames = services.map((sid) => {
@@ -1517,17 +1527,23 @@ const ChatWidget = ({ user }) => {
                   contact: String(brief?.email || ''),
                   services: serviceNames,
                   comment: '',
-                  files: (session?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+                  files: [
+                    ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : []),
+                    ...(docs?.orderUrl ? [{ name: 'order.pdf', type: 'application/pdf', size: null, url: docs.orderUrl }] : []),
+                    ...(docs?.briefUrl ? [{ name: 'brief.pdf', type: 'application/pdf', size: null, url: docs.briefUrl }] : []),
+                    ...(session?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+                  ]
                 };
 
                 console.log('Sending order data to API:', orderData);
                 const resp = await ordersAPI.create(orderData);
                 console.log('Order created response:', resp);
 
-                await appendAssistantMessage(t('smart_order_sent'));
+                sendManagerLog('✅ Заказ сформирован и отправлен');
+                appendAssistantMessage(t('smart_order_sent'));
               } catch (err) {
                 console.error('Order preparation/sending failed:', err);
-                await appendAssistantMessage(t('smart_order_send_failed'));
+                appendAssistantMessage(t('smart_order_send_failed'));
               }
             }}
           />

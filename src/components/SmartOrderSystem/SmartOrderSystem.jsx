@@ -14,6 +14,7 @@ export default function SmartOrderSystem({
   mode,
   onModeChange,
   onAssistantMessage,
+  onManagerLog,
   onOrderPrepared,
   onRestart,
   onTransferToManager,
@@ -26,12 +27,14 @@ export default function SmartOrderSystem({
   const MotionDiv = motion.div;
 
   const onAssistantMessageRef = useRef(onAssistantMessage);
+  const onManagerLogRef = useRef(onManagerLog);
   const onModeChangeRef = useRef(onModeChange);
   const onOrderPreparedRef = useRef(onOrderPrepared);
   const onRestartRef = useRef(onRestart);
   const onTransferToManagerRef = useRef(onTransferToManager);
   const onContractCompletedRef = useRef(onContractCompleted);
   useEffect(() => { onAssistantMessageRef.current = onAssistantMessage; }, [onAssistantMessage]);
+  useEffect(() => { onManagerLogRef.current = onManagerLog; }, [onManagerLog]);
   useEffect(() => { onModeChangeRef.current = onModeChange; }, [onModeChange]);
   useEffect(() => { onOrderPreparedRef.current = onOrderPrepared; }, [onOrderPrepared]);
   useEffect(() => { onRestartRef.current = onRestart; }, [onRestart]);
@@ -116,6 +119,7 @@ export default function SmartOrderSystem({
     if (!action || !isAssistantActive) return;
 
     if (action.id === 'start_ai' && mode === 'locked') {
+      try { onRestartRef.current?.(); } catch { void 0; }
       resetFlow();
       onModeChangeRef.current?.('assistant');
     }
@@ -224,7 +228,7 @@ export default function SmartOrderSystem({
     const option = (question?.options || []).find(o => o.id === optionId);
     if (question && option) {
       try {
-        onAssistantMessageRef.current?.(`✅ ${t('smart_log_answer')}: ${t(question.messageKey)} — ${t(option.labelKey)}`);
+        onManagerLogRef.current?.(`Клиент выбрал ответ: ${t(question.messageKey)} — ${t(option.labelKey)}`);
       } catch { void 0; }
     }
 
@@ -249,10 +253,10 @@ export default function SmartOrderSystem({
       const active = set0.has(serviceId);
       if (active) {
         set0.delete(serviceId);
-        if (svc) try { onAssistantMessageRef.current?.(`➖ ${t('smart_log_service_removed')}: ${t(svc.labelKey)}`); } catch { void 0; }
+        if (svc) try { onManagerLogRef.current?.(`Клиент убрал услугу: ${t(svc.labelKey)}`); } catch { void 0; }
       } else {
         set0.add(serviceId);
-        if (svc) try { onAssistantMessageRef.current?.(`➕ ${t('smart_log_service_added')}: ${t(svc.labelKey)}`); } catch { void 0; }
+        if (svc) try { onManagerLogRef.current?.(`Клиент добавил услугу: ${t(svc.labelKey)}`); } catch { void 0; }
       }
       return { ...prev, selectedServices: Array.from(set0) };
     });
