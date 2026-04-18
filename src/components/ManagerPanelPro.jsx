@@ -699,27 +699,37 @@ const getAbsoluteFileUrl = (fileUrl) => {
     const saved = localStorage.getItem('manager_scripts');
     if (!saved) {
       return [
-        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
-        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
+        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },
+        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } }
       ];
     }
 
     try {
       const parsed = JSON.parse(saved);
       const base = Array.isArray(parsed) ? parsed : [
-        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
-        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
+        { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },
+        { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } }
       ];
-      return base.map((s) => ({ ...s, files: Array.isArray(s.files) ? s.files : [] }));
+      return base.map((s) => ({
+        ...s,
+        files: Array.isArray(s.files) ? s.files : [],
+        titleByLang: s.titleByLang && typeof s.titleByLang === 'object'
+          ? { ru: String(s.titleByLang.ru || ''), en: String(s.titleByLang.en || ''), ka: String(s.titleByLang.ka || '') }
+          : { ru: String(s.title || ''), en: '', ka: '' },
+        textByLang: s.textByLang && typeof s.textByLang === 'object'
+          ? { ru: String(s.textByLang.ru || ''), en: String(s.textByLang.en || ''), ka: String(s.textByLang.ka || '') }
+          : { ru: String(s.text || ''), en: '', ka: '' }
+      }));
     } catch {
       return [
-      { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [] },
-      { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [] }
+      { id: 1, title: 'Приветствие', text: 'Здравствуйте! Чем я могу вам помочь?', files: [], titleByLang: { ru: 'Приветствие', en: '', ka: '' }, textByLang: { ru: 'Здравствуйте! Чем я могу вам помочь?', en: '', ka: '' } },
+      { id: 2, title: 'Оплата', text: 'Реквизиты для оплаты отправлены вам на почту.', files: [], titleByLang: { ru: 'Оплата', en: '', ka: '' }, textByLang: { ru: 'Реквизиты для оплаты отправлены вам на почту.', en: '', ka: '' } }
       ];
     }
   });
 
-  const [newScript, setNewScript] = useState({ title: '', text: '', files: [] });
+  const [scriptLang, setScriptLang] = useState('ru');
+  const [newScript, setNewScript] = useState({ title: '', text: '', files: [], titleByLang: { ru: '', en: '', ka: '' }, textByLang: { ru: '', en: '', ka: '' } });
   const [editingScriptId, setEditingScriptId] = useState(null);
   const [showScriptMenu, setShowScriptMenu] = useState(false);
   const [scriptSearch, setScriptSearch] = useState('');
@@ -746,9 +756,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
         const local = Array.isArray(scripts) ? scripts : [];
         const same =
           srv.length === local.length &&
-          srv.every((s, i) => s.title === local[i]?.title && s.text === local[i]?.text && JSON.stringify(s.files || []) === JSON.stringify(local[i]?.files || []));
+          srv.every((s, i) => s.title === local[i]?.title && s.text === local[i]?.text && JSON.stringify(s.files || []) === JSON.stringify(local[i]?.files || []) && JSON.stringify(s.titleByLang || {}) === JSON.stringify(local[i]?.titleByLang || {}) && JSON.stringify(s.textByLang || {}) === JSON.stringify(local[i]?.textByLang || {}));
         if (!same) {
-          setScripts(srv.map(s => ({ id: String(s.id || Date.now()), title: s.title, text: s.text, files: Array.isArray(s.files) ? s.files : [] })));
+          setScripts(srv.map(s => ({
+            id: String(s.id || Date.now()),
+            title: s.title,
+            text: s.text,
+            files: Array.isArray(s.files) ? s.files : [],
+            titleByLang: s.titleByLang && typeof s.titleByLang === 'object' ? s.titleByLang : { ru: String(s.title || ''), en: '', ka: '' },
+            textByLang: s.textByLang && typeof s.textByLang === 'object' ? s.textByLang : { ru: String(s.text || ''), en: '', ka: '' }
+          })));
         }
       }
     } catch { /* ignore */ }
@@ -763,7 +780,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
             id: String(s.id || Date.now()),
             title: String(s.title || ''),
             text: String(s.text || ''),
-            files: Array.isArray(s.files) ? s.files : []
+            files: Array.isArray(s.files) ? s.files : [],
+            titleByLang: s.titleByLang && typeof s.titleByLang === 'object' ? s.titleByLang : { ru: String(s.title || ''), en: '', ka: '' },
+            textByLang: s.textByLang && typeof s.textByLang === 'object' ? s.textByLang : { ru: String(s.text || ''), en: '', ka: '' }
           }));
           await authAPI.updateProfile({ quickScripts: payload });
         }
@@ -1419,7 +1438,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
     } else {
       try {
         const files = Array.isArray(script?.files) ? script.files : [];
-        const text = String(script?.text || '').trim();
+        const byText = script?.textByLang && typeof script.textByLang === 'object'
+          ? script.textByLang
+          : { ru: String(script?.text || ''), en: '', ka: '' };
+        const build = (obj) => {
+          const ru = String(obj?.ru || '').trim();
+          const en = String(obj?.en || '').trim();
+          const ka = String(obj?.ka || '').trim();
+          if (!en && !ka) return ru;
+          const parts = [];
+          if (ru) parts.push(`[[i18n:ru]]${ru}[[/i18n]]`);
+          if (en) parts.push(`[[i18n:en]]${en}[[/i18n]]`);
+          if (ka) parts.push(`[[i18n:ka]]${ka}[[/i18n]]`);
+          return parts.join('\n');
+        };
+        const text = build(byText);
 
         if (files.length === 0) {
           if (!text) return;
@@ -1665,11 +1698,21 @@ const getAbsoluteFileUrl = (fileUrl) => {
   };
 
   const handleSaveScript = () => {
-    const hasText = !!String(newScript.text || '').trim();
+    const byTitle = newScript.titleByLang && typeof newScript.titleByLang === 'object' ? newScript.titleByLang : { ru: newScript.title, en: '', ka: '' };
+    const byText = newScript.textByLang && typeof newScript.textByLang === 'object' ? newScript.textByLang : { ru: newScript.text, en: '', ka: '' };
+    const titleAny = String(byTitle.ru || '').trim() || String(byTitle.en || '').trim() || String(byTitle.ka || '').trim();
+    const textAny = String(byText.ru || '').trim() || String(byText.en || '').trim() || String(byText.ka || '').trim();
+    const hasText = !!textAny;
     const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
-    if (!newScript.title || (!hasText && !hasFiles)) return;
+    if (!titleAny || (!hasText && !hasFiles)) return;
 
-    const payload = { ...newScript, title: String(newScript.title).trim(), text: String(newScript.text).trim() };
+    const payload = {
+      ...newScript,
+      titleByLang: { ru: String(byTitle.ru || ''), en: String(byTitle.en || ''), ka: String(byTitle.ka || '') },
+      textByLang: { ru: String(byText.ru || ''), en: String(byText.en || ''), ka: String(byText.ka || '') },
+      title: String(titleAny).trim(),
+      text: String(textAny).trim()
+    };
 
     setScripts((prev) => {
       const list = Array.isArray(prev) ? prev : [];
@@ -1680,17 +1723,23 @@ const getAbsoluteFileUrl = (fileUrl) => {
     });
 
     if (editingScriptId) setEditingScriptId(null);
-    setNewScript({ title: '', text: '', files: [] });
+    setNewScript({ title: '', text: '', files: [], titleByLang: { ru: '', en: '', ka: '' }, textByLang: { ru: '', en: '', ka: '' } });
   };
 
   const handleEditScript = (s) => {
-    setNewScript({ title: s.title, text: s.text, files: Array.isArray(s.files) ? s.files : [] });
+    setNewScript({
+      title: s.title,
+      text: s.text,
+      files: Array.isArray(s.files) ? s.files : [],
+      titleByLang: s.titleByLang && typeof s.titleByLang === 'object' ? s.titleByLang : { ru: String(s.title || ''), en: '', ka: '' },
+      textByLang: s.textByLang && typeof s.textByLang === 'object' ? s.textByLang : { ru: String(s.text || ''), en: '', ka: '' }
+    });
     setEditingScriptId(s.id);
   };
 
   const openNewScript = () => {
     setEditingScriptId(null);
-    setNewScript({ title: '', text: '', files: [] });
+    setNewScript({ title: '', text: '', files: [], titleByLang: { ru: '', en: '', ka: '' }, textByLang: { ru: '', en: '', ka: '' } });
     setScriptEditorOpen(true);
   };
 
@@ -1702,7 +1751,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const closeScriptEditor = () => {
     setScriptEditorOpen(false);
     setEditingScriptId(null);
-    setNewScript({ title: '', text: '', files: [] });
+    setNewScript({ title: '', text: '', files: [], titleByLang: { ru: '', en: '', ka: '' }, textByLang: { ru: '', en: '', ka: '' } });
   };
 
   const handleScriptFilesSelect = async (e) => {
@@ -3645,16 +3694,35 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       </div>
 
                       <div className="mt-4 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <button type="button" onClick={() => setScriptLang('ru')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'ru' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>RU</button>
+                          <button type="button" onClick={() => setScriptLang('en')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'en' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>EN</button>
+                          <button type="button" onClick={() => setScriptLang('ka')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'ka' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>GE</button>
+                        </div>
                         <input
                           type="text"
-                          value={newScript.title}
-                          onChange={(e) => setNewScript({ ...newScript, title: e.target.value })}
+                          value={newScript.titleByLang?.[scriptLang] || ''}
+                          onChange={(e) => {
+                            setNewScript((prev) => {
+                              const next = { ...(prev.titleByLang || {}) };
+                              next[scriptLang] = e.target.value;
+                              const titleAny = String(next.ru || '').trim() || String(next.en || '').trim() || String(next.ka || '').trim();
+                              return { ...prev, titleByLang: { ru: String(next.ru || ''), en: String(next.en || ''), ka: String(next.ka || '') }, title: titleAny };
+                            });
+                          }}
                           placeholder="Название"
                           className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500"
                         />
                         <textarea
-                          value={newScript.text}
-                          onChange={(e) => setNewScript({ ...newScript, text: e.target.value })}
+                          value={newScript.textByLang?.[scriptLang] || ''}
+                          onChange={(e) => {
+                            setNewScript((prev) => {
+                              const next = { ...(prev.textByLang || {}) };
+                              next[scriptLang] = e.target.value;
+                              const textAny = String(next.ru || '').trim() || String(next.en || '').trim() || String(next.ka || '').trim();
+                              return { ...prev, textByLang: { ru: String(next.ru || ''), en: String(next.en || ''), ka: String(next.ka || '') }, text: textAny };
+                            });
+                          }}
                           placeholder="Текст ответа..."
                           rows={4}
                           className="w-full px-4 py-3 bg-white/10 border border-white/15 rounded-xl text-white placeholder-white/40 focus:outline-none focus:border-blue-500 resize-none"
@@ -3678,8 +3746,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             <div className="flex flex-col gap-2">
                               {(newScript.files || []).map((f, idx) => (
                                 <div key={`${f.url}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                                  <div className="min-w-0">
-                                    <div className="text-xs text-white truncate">{f.name}</div>
+                                  <div className="min-w-0 flex-1">
+                                    <input
+                                      value={f.name || ''}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        setNewScript((prev) => ({
+                                          ...prev,
+                                          files: (prev.files || []).map((x, i) => (i === idx ? { ...x, name: v } : x))
+                                        }));
+                                      }}
+                                      className="w-full bg-transparent text-xs text-white placeholder-white/40 outline-none"
+                                      placeholder="Имя файла"
+                                    />
                                     <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
                                   </div>
                                   <button
@@ -3704,13 +3783,23 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           </button>
                           <button
                             onClick={() => {
-                              const hasText = !!String(newScript.text || '').trim();
+                              const tb = newScript.titleByLang || {};
+                              const tx = newScript.textByLang || {};
+                              const titleAny = String(tb.ru || '').trim() || String(tb.en || '').trim() || String(tb.ka || '').trim();
+                              const textAny = String(tx.ru || '').trim() || String(tx.en || '').trim() || String(tx.ka || '').trim();
                               const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
-                              if (!newScript.title || (!hasText && !hasFiles)) return;
+                              if (!titleAny || (!textAny && !hasFiles)) return;
                               handleSaveScript();
                               closeScriptEditor();
                             }}
-                            disabled={!newScript.title || (!(String(newScript.text || '').trim()) && !((newScript.files || []).length))}
+                            disabled={(() => {
+                              const tb = newScript.titleByLang || {};
+                              const tx = newScript.textByLang || {};
+                              const titleAny = String(tb.ru || '').trim() || String(tb.en || '').trim() || String(tb.ka || '').trim();
+                              const textAny = String(tx.ru || '').trim() || String(tx.en || '').trim() || String(tx.ka || '').trim();
+                              const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
+                              return !titleAny || (!textAny && !hasFiles);
+                            })()}
                             className={`px-4 py-3 rounded-xl ${brandGradient} text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
                             {editingScriptId ? 'Обновить' : 'Сохранить'}
@@ -3729,11 +3818,25 @@ const getAbsoluteFileUrl = (fileUrl) => {
                 </h3>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">Заголовок</label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="block text-sm font-medium text-gray-300">Заголовок</label>
+                      <div className="flex items-center gap-2">
+                        <button type="button" onClick={() => setScriptLang('ru')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'ru' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>RU</button>
+                        <button type="button" onClick={() => setScriptLang('en')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'en' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>EN</button>
+                        <button type="button" onClick={() => setScriptLang('ka')} className={`px-3 py-1.5 rounded-lg text-xs border ${scriptLang === 'ka' ? 'bg-white/10 border-white/20 text-white' : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'}`}>GE</button>
+                      </div>
+                    </div>
                     <input
                       type="text"
-                      value={newScript.title}
-                      onChange={(e) => setNewScript({...newScript, title: e.target.value})}
+                      value={newScript.titleByLang?.[scriptLang] || ''}
+                      onChange={(e) => {
+                        setNewScript((prev) => {
+                          const next = { ...(prev.titleByLang || {}) };
+                          next[scriptLang] = e.target.value;
+                          const titleAny = String(next.ru || '').trim() || String(next.en || '').trim() || String(next.ka || '').trim();
+                          return { ...prev, titleByLang: { ru: String(next.ru || ''), en: String(next.en || ''), ka: String(next.ka || '') }, title: titleAny };
+                        });
+                      }}
                       placeholder="Название скрипта"
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500"
                     />
@@ -3741,8 +3844,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-2">Текст ответа</label>
                     <textarea
-                      value={newScript.text}
-                      onChange={(e) => setNewScript({...newScript, text: e.target.value})}
+                      value={newScript.textByLang?.[scriptLang] || ''}
+                      onChange={(e) => {
+                        setNewScript((prev) => {
+                          const next = { ...(prev.textByLang || {}) };
+                          next[scriptLang] = e.target.value;
+                          const textAny = String(next.ru || '').trim() || String(next.en || '').trim() || String(next.ka || '').trim();
+                          return { ...prev, textByLang: { ru: String(next.ru || ''), en: String(next.en || ''), ka: String(next.ka || '') }, text: textAny };
+                        });
+                      }}
                       placeholder="Текст быстрого ответа..."
                       rows={3}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 resize-none"
@@ -3767,8 +3877,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <div className="space-y-2">
                         {(newScript.files || []).map((f, idx) => (
                           <div key={`${f.url}-${idx}`} className="flex items-center justify-between gap-3 bg-white/5 border border-white/10 rounded-lg px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="text-sm text-white truncate">{f.name}</div>
+                            <div className="min-w-0 flex-1">
+                              <input
+                                value={f.name || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setNewScript((prev) => ({
+                                    ...prev,
+                                    files: (prev.files || []).map((x, i) => (i === idx ? { ...x, name: v } : x))
+                                  }));
+                                }}
+                                className="w-full bg-transparent text-sm text-white placeholder-white/40 outline-none"
+                                placeholder="Имя файла"
+                              />
                               <div className="text-xs text-white/50 truncate">{f.type || 'file'}</div>
                             </div>
                             <button
@@ -3787,7 +3908,14 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <div className="flex flex-col sm:flex-row gap-3">
                     <button
                       onClick={handleSaveScript}
-                      disabled={!newScript.title || (!(String(newScript.text || '').trim()) && !((newScript.files || []).length))}
+                      disabled={(() => {
+                        const tb = newScript.titleByLang || {};
+                        const tx = newScript.textByLang || {};
+                        const titleAny = String(tb.ru || '').trim() || String(tb.en || '').trim() || String(tb.ka || '').trim();
+                        const textAny = String(tx.ru || '').trim() || String(tx.en || '').trim() || String(tx.ka || '').trim();
+                        const hasFiles = Array.isArray(newScript.files) && newScript.files.length > 0;
+                        return !titleAny || (!textAny && !hasFiles);
+                      })()}
                       className={`px-4 py-2 ${brandGradient} rounded-lg text-white font-medium disabled:opacity-50 disabled:cursor-not-allowed w-full sm:w-auto`}
                     >
                       {editingScriptId ? 'Обновить' : 'Сохранить'}
@@ -3796,7 +3924,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <button
                         onClick={() => {
                           setEditingScriptId(null);
-                          setNewScript({ title: '', text: '', files: [] });
+                          setNewScript({ title: '', text: '', files: [], titleByLang: { ru: '', en: '', ka: '' }, textByLang: { ru: '', en: '', ka: '' } });
                         }}
                         className="px-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white hover:bg-white/20 w-full sm:w-auto"
                       >

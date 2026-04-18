@@ -418,7 +418,7 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         if (!mounted) return;
-        setHasNewMessage(!!chat?.unread);
+        if (chat?.unread) setHasNewMessage(true);
       } catch { void 0; }
     };
 
@@ -429,6 +429,19 @@ const ChatWidget = ({ user }) => {
       clearInterval(id);
     };
   }, [user?._id, isOpen]);
+
+  const selectI18nText = (text) => {
+    if (typeof text !== 'string') return text;
+    if (!text.includes('[[i18n:')) return text;
+    const lang = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const blocks = {};
+    const re = /\\[\\[i18n:(ru|en|ka)\\]\\]([\\s\\S]*?)\\[\\[\\/i18n\\]\\]/g;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      blocks[m[1]] = m[2];
+    }
+    return blocks[lang] || blocks.ru || blocks.en || blocks.ka || text;
+  };
 
   const getNewMessageToastText = () => {
     const lang = String(i18n?.language || '').toLowerCase();
@@ -818,16 +831,18 @@ const ChatWidget = ({ user }) => {
 
   return (
     <div className="fixed bottom-24 right-4 md:bottom-8 md:right-8 z-[150]">
+      {hasNewMessage && !isOpen && (
+        <div className="pointer-events-none fixed bottom-[7.5rem] right-4 md:bottom-[5.5rem] md:right-8 z-[160]">
+          <div className="bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
+            {getNewMessageToastText()}
+          </div>
+        </div>
+      )}
       <button 
         onClick={() => setIsOpen(!isOpen)} 
         className={`w-16 h-16 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
         ${isMobile && scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
-        {hasNewMessage && !isOpen && (
-          <div className="absolute -top-14 left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 md:-top-12 md:right-0 bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
-            {getNewMessageToastText()}
-          </div>
-        )}
         <svg className="w-6 h-6 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
         </svg>
@@ -1026,7 +1041,7 @@ const ChatWidget = ({ user }) => {
 
                       {showText && (
                         <p className="whitespace-pre-wrap" style={{ overflowWrap: 'anywhere', wordBreak: 'normal' }}>
-                          {renderTextWithLinks(normalizeForDisplay(replyMeta?.bodyText ?? msg.text))}
+                          {renderTextWithLinks(selectI18nText(normalizeForDisplay(replyMeta?.bodyText ?? msg.text)))}
                         </p>
                       )}
                       {hasAttachments && !extractSignLink(msg?.text || '') && (

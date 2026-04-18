@@ -231,6 +231,12 @@ router.put('/me', protect, async (req, res) => {
           id: String(s.id || Date.now().toString(36)),
           title: String(s.title),
           text: String(s.text),
+          titleByLang: s.titleByLang && typeof s.titleByLang === 'object'
+            ? { ru: String(s.titleByLang.ru || ''), en: String(s.titleByLang.en || ''), ka: String(s.titleByLang.ka || '') }
+            : { ru: String(s.title || ''), en: '', ka: '' },
+          textByLang: s.textByLang && typeof s.textByLang === 'object'
+            ? { ru: String(s.textByLang.ru || ''), en: String(s.textByLang.en || ''), ka: String(s.textByLang.ka || '') }
+            : { ru: String(s.text || ''), en: '', ka: '' },
           files: Array.isArray(s.files)
             ? s.files
                 .filter(f => f && typeof f.url === 'string')
