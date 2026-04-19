@@ -572,12 +572,14 @@ const ChatWidget = ({ user }) => {
     return await filesAPI.upload(zipFile, chatId);
   }, [chatId]);
 
-  const loadCyrillicFont = async (doc) => {
+  const loadCyrillicFont = async (doc, lang2) => {
     try {
-      const cacheKey = 'smart_pdf_font_roboto_ttf_v2';
-      const validateCyrillic = (embedded) => {
+      const lang = String(lang2 || 'ru');
+      const cacheKey = `smart_pdf_font_ttf_v3_${lang}`;
+      const sample = lang === 'ka' ? 'აბ' : 'БЯ';
+      const validateGlyphs = (embedded) => {
         try {
-          embedded.encodeText('БЯ');
+          embedded.encodeText(sample);
           return true;
         } catch {
           return false;
@@ -588,18 +590,24 @@ const ChatWidget = ({ user }) => {
       if (cached) {
         doc.registerFontkit(fontkit);
         const embedded = await doc.embedFont(b64ToBytes(cached));
-        if (validateCyrillic(embedded)) return embedded;
+        if (validateGlyphs(embedded)) return embedded;
         try { localStorage.removeItem(cacheKey); } catch { void 0; }
       }
 
       const baseUrl = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
-      const urls = [
-        `${baseUrl}fonts/Roboto-Regular.ttf`,
-        `${baseUrl}fonts/roboto-regular.ttf`,
-        'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
-        'https://fonts.gstatic.com/s/roboto/v19/KFOmCnqEu92Fr1Mu4mxPKTU1Kg.ttf',
-        'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf'
-      ];
+      const urls =
+        lang === 'ka'
+          ? [
+              `${baseUrl}fonts/NotoSansGeorgian-Regular.ttf`,
+              `${baseUrl}fonts/noto-sans-georgian.ttf`
+            ]
+          : [
+              `${baseUrl}fonts/Roboto-Regular.ttf`,
+              `${baseUrl}fonts/roboto-regular.ttf`,
+              'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
+              'https://fonts.gstatic.com/s/roboto/v19/KFOmCnqEu92Fr1Mu4mxPKTU1Kg.ttf',
+              'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf'
+            ];
 
       let fontBytes = null;
       for (const url of urls) {
@@ -609,7 +617,7 @@ const ChatWidget = ({ user }) => {
           fontBytes = await res.arrayBuffer();
           doc.registerFontkit(fontkit);
           const embedded = await doc.embedFont(fontBytes);
-          if (!validateCyrillic(embedded)) {
+          if (!validateGlyphs(embedded)) {
             fontBytes = null;
             continue;
           }
@@ -624,9 +632,10 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-  const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files }) => {
+  const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files, stepData }) => {
     const doc = await PDFDocument.create();
-    const font = await loadCyrillicFont(doc);
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const font = await loadCyrillicFont(doc, lang2);
     let page = doc.addPage([595.28, 841.89]);
     const fontSize = 10;
     const titleSize = 18;
@@ -699,7 +708,6 @@ const ChatWidget = ({ user }) => {
       y -= 5;
     };
 
-    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
     const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
     const fmtSize = (n) => {
@@ -781,20 +789,43 @@ const ChatWidget = ({ user }) => {
     };
     Object.entries(answers || {}).forEach(([k, v]) => {
       const label = answerLabels[k] || k;
-      const val = optionLabels[String(v)] || String(v ?? '');
+      const val =
+        v && typeof v === 'object' && v.type === 'custom'
+          ? String(v.text || '')
+          : (optionLabels[String(v)] || String(v ?? ''));
       if (String(val).trim()) pushLine(`• ${label}: ${val}`);
     });
 
     // Files
     drawSection(fixed('smart_brief_pdf_section_files'));
-    (files || []).forEach((f) => {
-      const name = String(f?.name || '');
-      const type = String(f?.type || '');
-      const size = fmtSize(f?.size);
-      const tail = [type, size].filter(Boolean).join(', ');
-      pushLine(`• ${name}${tail ? ` (${tail})` : ''}`);
+    const sd = stepData && typeof stepData === 'object' ? stepData : {};
+    const stepTitle = (key) => {
+      const k = String(key || '');
+      if (k === 'services_select') return fixed('smart_select_services');
+      if (k === 'brief_form') return fixed('smart_fill_brief');
+      if (k === 'q_deadline') return fixed('smart_q_deadline');
+      if (k === 'q_quantity') return fixed('smart_q_quantity');
+      return k;
+    };
+    const fileLines = [];
+    Object.entries(sd).forEach(([k, v]) => {
+      const ff = Array.isArray(v?.files) ? v.files : [];
+      if (!ff.length) return;
+      const names = ff.map((f) => String(f?.name || '')).filter(Boolean);
+      if (!names.length) return;
+      fileLines.push(`• ${stepTitle(k)}: ${names.join(', ')}`);
     });
-    if ((files || []).length === 0) pushLine(fixed('smart_no'));
+    if (fileLines.length) fileLines.forEach((l) => pushLine(l));
+    else {
+      (files || []).forEach((f) => {
+        const name = String(f?.name || '');
+        const type = String(f?.type || '');
+        const size = fmtSize(f?.size);
+        const tail = [type, size].filter(Boolean).join(', ');
+        pushLine(`• ${name}${tail ? ` (${tail})` : ''}`);
+      });
+      if ((files || []).length === 0) pushLine(fixed('smart_no'));
+    }
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
@@ -802,7 +833,8 @@ const ChatWidget = ({ user }) => {
 
   const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes, stepData }) => {
     const doc = await PDFDocument.create();
-    const font = await loadCyrillicFont(doc);
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const font = await loadCyrillicFont(doc, lang2);
     let page = doc.addPage([595.28, 841.89]);
     const fontSize = 10;
     const titleSize = 18;
@@ -875,7 +907,6 @@ const ChatWidget = ({ user }) => {
       y -= 5;
     };
 
-    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
     const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
     // Header
@@ -943,6 +974,8 @@ const ChatWidget = ({ user }) => {
       const k = String(key || '');
       if (k === 'services_select') return fixed('smart_select_services');
       if (k === 'brief_form') return fixed('smart_fill_brief');
+      if (k === 'q_deadline') return fixed('smart_q_deadline');
+      if (k === 'q_quantity') return fixed('smart_q_quantity');
       return k;
     };
 
@@ -1039,14 +1072,33 @@ const ChatWidget = ({ user }) => {
       files.forEach((f) => allFiles.push({ stepKey: k, file: f }));
     });
 
+    const slug = (s) => {
+      const txt = String(s || '').trim();
+      const ascii = txt.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+      return ascii.slice(0, 60);
+    };
+
+    const getStepLabel = (key) => {
+      const k = String(key || '');
+      if (k === 'services_select') return t('smart_select_services');
+      if (k === 'brief_form') return t('smart_brief_intro');
+      if (k === 'q_deadline') return t('smart_q_deadline');
+      if (k === 'q_quantity') return t('smart_q_quantity');
+      return k;
+    };
+
     for (const item of allFiles) {
       try {
         const fileObj = item?.file?.file;
         if (!fileObj) continue;
-        const name = String(item?.file?.name || fileObj.name || 'file');
+        const originalName = String(item?.file?.name || fileObj.name || 'file');
         const safeStep = String(item?.stepKey || 'step').replace(/[^a-zA-Z0-9_-]+/g, '_');
+        const label = getStepLabel(item?.stepKey);
+        const folderSlug = slug(label);
+        const folderName = folderSlug ? `${safeStep}_${folderSlug}` : safeStep;
+        const fileName = `${safeStep}__${originalName}`;
         const buf = await fileObj.arrayBuffer();
-        zip.file(`attachments/${safeStep}/${name}`, buf);
+        zip.file(`attachments/${folderName}/${fileName}`, buf);
       } catch { void 0; }
     }
 

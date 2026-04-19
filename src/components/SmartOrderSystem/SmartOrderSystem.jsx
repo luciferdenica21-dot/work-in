@@ -44,6 +44,7 @@ export default function SmartOrderSystem({
 
   const [stepId, setStepId] = useState(flowConfig.initialStepId);
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [customAnswerText, setCustomAnswerText] = useState({});
   const [orderSession, setOrderSession] = useState({
     startedAt: null,
     meta: {
@@ -87,6 +88,7 @@ export default function SmartOrderSystem({
       brief: { firstName: String(b.firstName || ''), lastName: String(b.lastName || ''), email: String(b.email || ''), phone: String(b.phone || '') },
       specialWishes: ''
     });
+    setCustomAnswerText({});
   };
 
   useEffect(() => {
@@ -272,7 +274,22 @@ export default function SmartOrderSystem({
       } catch { void 0; }
     }
 
-    setOrderSession((prev) => ({ ...prev, answers: { ...(prev.answers || {}), [questionId]: optionId } }));
+    if (optionId === 'custom' && (questionId === 'deadline' || questionId === 'quantity')) {
+      const txt = String(customAnswerText?.[questionId] || '');
+      setOrderSession((prev) => ({
+        ...prev,
+        answers: { ...(prev.answers || {}), [questionId]: { type: 'custom', text: txt } },
+        stepData: { ...(prev.stepData || {}), [`q_${questionId}`]: { ...((prev.stepData || {})[`q_${questionId}`] || {}), wishes: txt } }
+      }));
+      return;
+    }
+
+    setOrderSession((prev) => {
+      const sd = prev.stepData && typeof prev.stepData === 'object' ? prev.stepData : {};
+      const key = `q_${questionId}`;
+      const nextSd = (questionId === 'deadline' || questionId === 'quantity') ? { ...sd, [key]: { ...(sd[key] || {}), wishes: '' } } : sd;
+      return { ...prev, answers: { ...(prev.answers || {}), [questionId]: optionId }, stepData: nextSd };
+    });
     const total =
       step.type === 'questionnaire_single'
         ? flowConfig.questionnaires.single.length
@@ -450,16 +467,6 @@ export default function SmartOrderSystem({
                       );
                     })}
                   </div>
-                  <textarea
-                    value={orderSession.stepData?.[stepId]?.wishes || ''}
-                    onChange={(e) => setOrderSession((p) => ({
-                      ...p,
-                      stepData: { ...(p.stepData || {}), [stepId]: { ...((p.stepData || {})[stepId] || {}), wishes: e.target.value } }
-                    }))}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
-                    placeholder={t('smart_special_wishes')}
-                  />
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
@@ -526,13 +533,6 @@ export default function SmartOrderSystem({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => openFilePicker(stepId)}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
-                    >
-                      {t('smart_upload_files')}
-                    </button>
-                    <button
-                      type="button"
                       onClick={() => {
                         const b = orderSession.brief || {};
                         const ok = String(b.firstName || '').trim() && String(b.lastName || '').trim() && String(b.email || '').trim() && String(b.phone || '').trim();
@@ -550,39 +550,6 @@ export default function SmartOrderSystem({
                       {t('smart_continue')}
                     </button>
                   </div>
-                  <textarea
-                    value={orderSession.stepData?.[stepId]?.wishes || ''}
-                    onChange={(e) => setOrderSession((p) => ({
-                      ...p,
-                      stepData: { ...(p.stepData || {}), [stepId]: { ...((p.stepData || {})[stepId] || {}), wishes: e.target.value } }
-                    }))}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
-                    placeholder={t('smart_special_wishes')}
-                  />
-                  {(orderSession.stepData?.[stepId]?.files || []).length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] text-white/60">{t('smart_files')}</div>
-                      <div className="flex flex-col gap-2">
-                        {(orderSession.stepData?.[stepId]?.files || []).slice(0, 5).map((f, idx) => (
-                          <div key={`${f.name}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="text-[12px] text-white truncate">{f.name}</div>
-                              <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(stepId, idx)}
-                              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
-                              aria-label={t('smart_remove')}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : null}
 
@@ -600,6 +567,51 @@ export default function SmartOrderSystem({
                       </button>
                     ))}
                   </div>
+                  {currentQuestion && (currentQuestion.id === 'deadline' || currentQuestion.id === 'quantity') && (
+                    <>
+                      {orderSession.answers?.[currentQuestion.id]?.type === 'custom' && (
+                        <textarea
+                          value={customAnswerText?.[currentQuestion.id] || ''}
+                          onChange={(e) => {
+                            const txt = e.target.value;
+                            setCustomAnswerText((p) => ({ ...(p || {}), [currentQuestion.id]: txt }));
+                            setOrderSession((prev) => ({
+                              ...prev,
+                              answers: { ...(prev.answers || {}), [currentQuestion.id]: { type: 'custom', text: String(txt || '') } },
+                              stepData: { ...(prev.stepData || {}), [`q_${currentQuestion.id}`]: { ...((prev.stepData || {})[`q_${currentQuestion.id}`] || {}), wishes: String(txt || '') } }
+                            }));
+                          }}
+                          rows={3}
+                          className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                          placeholder={t('smart_custom_placeholder')}
+                        />
+                      )}
+
+                      {orderSession.answers?.[currentQuestion.id]?.type === 'custom' && (
+                        <div className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const total =
+                                step.type === 'questionnaire_single'
+                                  ? flowConfig.questionnaires.single.length
+                                  : flowConfig.questionnaires.multi.length;
+
+                              if (questionIndex + 1 >= total) {
+                                setStepId('brief_form');
+                                setQuestionIndex(0);
+                                return;
+                              }
+                              setQuestionIndex((i) => i + 1);
+                            }}
+                            className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                          >
+                            {t('smart_continue')}
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               ) : null}
 
