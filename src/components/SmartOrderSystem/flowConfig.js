@@ -168,8 +168,7 @@ export const flowConfig = {
     multi: [
       { id: 'deadline', messageKey: 'smart_q_deadline', options: [{ id: 'asap', labelKey: 'smart_deadline_asap' }, { id: 'week', labelKey: 'smart_deadline_week' }, { id: 'month', labelKey: 'smart_deadline_month' }, { id: 'custom', labelKey: 'smart_option_custom' }] },
       { id: 'material', messageKey: 'smart_q_material', options: [{ id: 'metal', labelKey: 'smart_material_metal' }, { id: 'plastic', labelKey: 'smart_material_plastic' }, { id: 'wood', labelKey: 'smart_material_wood' }] },
-      { id: 'quantity', messageKey: 'smart_q_quantity', options: [{ id: '1', labelKey: 'smart_qty_1' }, { id: '2_10', labelKey: 'smart_qty_2_10' }, { id: '10_plus', labelKey: 'smart_qty_10_plus' }, { id: 'custom', labelKey: 'smart_option_custom' }] },
-      { id: 'priority', messageKey: 'smart_q_priority', options: [{ id: 'price', labelKey: 'smart_priority_price' }, { id: 'speed', labelKey: 'smart_priority_speed' }, { id: 'quality', labelKey: 'smart_priority_quality' }] }
+      { id: 'quantity', messageKey: 'smart_q_quantity', options: [{ id: '1', labelKey: 'smart_qty_1' }, { id: '2_10', labelKey: 'smart_qty_2_10' }, { id: '10_plus', labelKey: 'smart_qty_10_plus' }, { id: 'custom', labelKey: 'smart_option_custom' }] }
     ]
   }
 };

@@ -20,7 +20,10 @@ const bytesToB64 = (bytes) => {
 
 const loadFont = async (doc, lang) => {
   try {
-    const cacheKey = `smart_pdf_font_ttf_v3_${lang}`;
+    // Always load both fonts: Roboto for latin/cyrillic, NotoSansGeorgian for georgian
+    // Use NotoSansGeorgian as primary for 'ka', Roboto for others
+    const primary = lang === 'ka' ? 'NotoSansGeorgian' : 'Roboto';
+    const cacheKey = `smart_pdf_font_ttf_v3_${primary}`;
     const sample = lang === 'ka' ? 'აბ' : 'БЯ';
     const validate = (f) => { try { f.encodeText(sample); return true; } catch { return false; } };
 
@@ -34,9 +37,20 @@ const loadFont = async (doc, lang) => {
 
     const base = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
     const urls = lang === 'ka'
-      ? [`${base}fonts/NotoSansGeorgian-Regular.ttf`, `${base}fonts/noto-sans-georgian.ttf`]
-      : [`${base}fonts/Roboto-Regular.ttf`, `${base}fonts/roboto-regular.ttf`,
-         'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'];
+      ? [
+          `${base}fonts/NotoSansGeorgian-Regular.ttf`,
+          `${base}fonts/noto-sans-georgian.ttf`,
+          `${base}fonts/Roboto-Regular.ttf`,
+          `${base}fonts/roboto-regular.ttf`,
+          'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'
+        ]
+      : [
+          `${base}fonts/Roboto-Regular.ttf`,
+          `${base}fonts/roboto-regular.ttf`,
+          'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
+          `${base}fonts/NotoSansGeorgian-Regular.ttf`,
+          `${base}fonts/noto-sans-georgian.ttf`
+        ];
 
     for (const url of urls) {
       try {

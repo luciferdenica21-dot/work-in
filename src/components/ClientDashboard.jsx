@@ -438,7 +438,7 @@ const ClientDashboard = ({ user: initialUser }) => {
                     {order.comment && (
                       <div style={{ background: 'rgba(255,255,255,0.02)', padding: '20px', borderRadius: '1.5rem', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div style={{ fontSize: '10px', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '10px', fontWeight: 800 }}>{t("Комментарий к заказу")}:</div>
-                        <div style={{ fontSize: '13px', color: theme.textMain, fontStyle: 'italic', lineHeight: '1.6', fontWeight: 300 }}>"{order.comment}"</div>
+                        <div style={{ fontSize: '13px', color: theme.textMain, fontStyle: 'italic', lineHeight: '1.6', fontWeight: 300 }}>"{String(order.comment || '').split(' | ').map(s => s.replace(/^(services_select|q_deadline|q_quantity|brief_form):\s*/i, '').trim()).filter(Boolean).join(' | ')}"</div>
                       </div>
                     )}
 
