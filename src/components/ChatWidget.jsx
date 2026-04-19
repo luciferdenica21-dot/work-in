@@ -27,6 +27,7 @@ const ChatWidget = ({ user }) => {
   const [replyTo, setReplyTo] = useState(null);
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
+  const closeResetTimerRef = useRef(null);
 
   function getMsgId(msg) {
     return msg?._id || msg?.id;
@@ -61,9 +62,54 @@ const ChatWidget = ({ user }) => {
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, [chatId]);
 
+  const getClientClearTs = useCallback((cid) => {
+    const id = cid || chatId;
+    if (!id) return 0;
+    try {
+      const raw = localStorage.getItem(`chatwidget_clear_ts_${id}`);
+      const ts = raw ? Number(raw) : 0;
+      return Number.isFinite(ts) ? ts : 0;
+    } catch {
+      return 0;
+    }
+  }, [chatId]);
+
+  const applyClientClearFilter = useCallback((cid, list) => {
+    const ts = getClientClearTs(cid);
+    if (!ts) return list;
+    return (list || []).filter((m) => {
+      const created = m?.createdAt ? new Date(m.createdAt).getTime() : 0;
+      if (!created) return true;
+      return created > ts;
+    });
+  }, [getClientClearTs]);
+
   useEffect(() => {
     isOpenRef.current = isOpen;
   }, [isOpen]);
+
+  useEffect(() => {
+    if (closeResetTimerRef.current) {
+      clearTimeout(closeResetTimerRef.current);
+      closeResetTimerRef.current = null;
+    }
+    if (isOpen) return;
+    closeResetTimerRef.current = setTimeout(() => {
+      if (isOpenRef.current) return;
+      setAiHelpFlow(null);
+      aiDocsRef.current = null;
+      aiActionLogRef.current = [];
+      clearSmartTranscript();
+      setSmartMode('locked');
+      setSmartResetNonce((n) => n + 1);
+    }, 2 * 60 * 1000);
+    return () => {
+      if (closeResetTimerRef.current) {
+        clearTimeout(closeResetTimerRef.current);
+        closeResetTimerRef.current = null;
+      }
+    };
+  }, [clearSmartTranscript, isOpen]);
   const [scrolled, setScrolled] = useState(false);
   const avatarUrl = useAvatarUrl(user?.email);
   const [supportOnline, setSupportOnline] = useState(false);
@@ -320,7 +366,8 @@ const ChatWidget = ({ user }) => {
         }
 
         const msgs = await messagesAPI.getByChatId(chat.chatId);
-        setMessages((msgs || []).map(normalizeMessage).map((m) => {
+        const filteredMsgs = applyClientClearFilter(chat.chatId, (msgs || []).map(normalizeMessage));
+        setMessages((filteredMsgs || []).map((m) => {
           const mine = isUserMessage(m);
           if (!mine) return m;
           const id0 = m?._id || m?.id;
@@ -338,6 +385,11 @@ const ChatWidget = ({ user }) => {
       const handleNewMessage = (newMsg) => {
         console.log('📨 CLIENT new-message ←', (newMsg?._id || newMsg?.message?._id || 'no-id')?.slice(0,8));
         const incoming = normalizeMessage(newMsg?.message || newMsg);
+        try {
+          const ts = getClientClearTs(chatId);
+          const created = incoming?.createdAt ? new Date(incoming.createdAt).getTime() : 0;
+          if (ts && created && created <= ts) return;
+        } catch { void 0; }
         console.log('📨 CLIENT MESSAGE PROCESSED →', incoming?._id?.slice(0,8), incoming?.text?.slice(0,50));
         setMessages((prev) => {
           const id = incoming?._id || incoming?.id;
@@ -1094,7 +1146,8 @@ const ChatWidget = ({ user }) => {
         try {
           const msgs = await chatsAPI.getMessages(chatId);
           setMessages(() => {
-            const serverMsgs = (msgs || []).map(normalizeMessage).map((m) => {
+            const serverMsgs0 = (msgs || []).map(normalizeMessage);
+            const serverMsgs = applyClientClearFilter(chatId, serverMsgs0).map((m) => {
             const mine = isUserMessage(m);
             if (!mine) return m;
             const id0 = m?._id || m?.id;
@@ -1590,7 +1643,47 @@ const ChatWidget = ({ user }) => {
                   </button>
                 )
               )}
-              <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white text-sm md:text-base leading-none">✕</button>
+              <button
+                onClick={async () => {
+                  const ok = window.confirm(t('chat_close_confirm_clear'));
+                  setIsOpen(false);
+                  if (!ok || !chatId) return;
+
+                  const now = Date.now();
+                  try { localStorage.setItem(`chatwidget_clear_ts_${chatId}`, String(now)); } catch { void 0; }
+
+                  try {
+                    const lines = (messages || []).map((m) => {
+                      const ts = m?.createdAt ? new Date(m.createdAt).toISOString() : '';
+                      const sender = m?.senderId === 'manager' ? 'MANAGER' : (isUserMessage(m) ? 'CLIENT' : (m?.senderId || 'SYSTEM'));
+                      const text = String(m?.text || '').replace(/\r?\n/g, ' ');
+                      return `${ts} [${sender}] ${text}`;
+                    });
+                    const payload = lines.join('\n');
+                    const file = new File([payload], `chat_session_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
+                    const up = await filesAPI.upload(file, null);
+                    const url = up?.fileUrl || up?.message?.attachments?.[0]?.url;
+                    if (url) {
+                      try { await messagesAPI.send(chatId, `🤖 Текстовый файл истории сессии: ${url}`); } catch { void 0; }
+                    }
+                  } catch { void 0; }
+
+                  setAiHelpFlow(null);
+                  aiDocsRef.current = null;
+                  aiActionLogRef.current = [];
+                  clearSmartTranscript();
+                  setSmartMode('locked');
+                  setSmartResetNonce((n) => n + 1);
+                  setSelectedMessages(new Set());
+                  setPinnedMessage(null);
+                  setReplyTo(null);
+                  setMessage('');
+                  setMessages([]);
+                }}
+                className="text-white/40 hover:text-white text-sm md:text-base leading-none"
+              >
+                ✕
+              </button>
             </div>
           </div>
 
@@ -1770,32 +1863,34 @@ const ChatWidget = ({ user }) => {
           {aiHelpFlow && (
             <div className="px-4 py-3 border-b border-white/10 bg-white/5 space-y-2">
               {aiHelpFlow.stage === 'ask' && (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      appendAssistantMessage(t('smart_help_comment_prompt'));
-                      setAiHelpFlow({ stage: 'comment', text: '' });
-                    }}
-                    className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
-                  >
-                    {t('smart_yes')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      appendAssistantMessage(t('smart_help_close_confirm'));
-                      setAiHelpFlow({ stage: 'confirm_close' });
-                    }}
-                    className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
-                  >
-                    {t('smart_no')}
-                  </button>
-                </div>
+                <>
+                  <div className="text-white/80 text-[12px]">{t('smart_help_question')}</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiHelpFlow({ stage: 'comment', text: '' });
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                    >
+                      {t('smart_yes')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiHelpFlow({ stage: 'confirm_close' });
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_no')}
+                    </button>
+                  </div>
+                </>
               )}
 
               {aiHelpFlow.stage === 'comment' && (
                 <div className="space-y-2">
+                  <div className="text-white/80 text-[12px]">{t('smart_help_comment_prompt')}</div>
                   <textarea
                     value={aiHelpFlow.text || ''}
                     onChange={(e) => setAiHelpFlow((p) => ({ ...(p || {}), text: e.target.value }))}
@@ -1834,40 +1929,42 @@ const ChatWidget = ({ user }) => {
               )}
 
               {aiHelpFlow.stage === 'confirm_close' && (
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      appendAssistantMessage(t('smart_help_session_closed'));
-                      setAiHelpFlow(null);
-                      clearSmartTranscript();
-                      aiActionLogRef.current = [];
-                      aiDocsRef.current = null;
-                      setMessages((prev) => (prev || []).filter((m) => {
-                        const id0 = String(m?._id || m?.id || '');
-                        if (id0.startsWith('smart_')) return false;
-                        if (id0.startsWith('smart_prompt_')) return false;
-                        if (String(m?.senderId || '') === 'assistant') return false;
-                        return true;
-                      }));
-                      setSmartMode('locked');
-                      setSmartResetNonce((n) => n + 1);
-                    }}
-                    className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
-                  >
-                    {t('smart_yes')}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      appendAssistantMessage(t('smart_help_question'));
-                      setAiHelpFlow({ stage: 'ask' });
-                    }}
-                    className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
-                  >
-                    {t('smart_no')}
-                  </button>
-                </div>
+                <>
+                  <div className="text-white/80 text-[12px]">{t('smart_help_close_confirm')}</div>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        appendAiFinalNotice(t('smart_help_session_closed'));
+                        setAiHelpFlow(null);
+                        clearSmartTranscript();
+                        aiActionLogRef.current = [];
+                        aiDocsRef.current = null;
+                        setMessages((prev) => (prev || []).filter((m) => {
+                          const id0 = String(m?._id || m?.id || '');
+                          if (id0.startsWith('smart_')) return false;
+                          if (id0.startsWith('smart_prompt_')) return false;
+                          if (String(m?.senderId || '') === 'assistant') return false;
+                          return true;
+                        }));
+                        setSmartMode('locked');
+                        setSmartResetNonce((n) => n + 1);
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                    >
+                      {t('smart_yes')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAiHelpFlow({ stage: 'ask' });
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_no')}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           )}
