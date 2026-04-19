@@ -29,6 +29,14 @@ const ChatWidget = ({ user }) => {
   const longPressTriggeredRef = useRef(false);
   const closeResetTimerRef = useRef(null);
 
+  const clearSmartTranscript = useCallback(() => {
+    if (!chatId) return;
+    try {
+      localStorage.removeItem(`smart_transcript_${chatId}`);
+      localStorage.removeItem(`smart_greeted_${chatId}`);
+    } catch { void 0; }
+  }, [chatId]);
+
   function getMsgId(msg) {
     return msg?._id || msg?.id;
   }
@@ -566,14 +574,6 @@ const ChatWidget = ({ user }) => {
     } catch {
       return [];
     }
-  }, [chatId]);
-
-  const clearSmartTranscript = useCallback(() => {
-    if (!chatId) return;
-    try {
-      localStorage.removeItem(`smart_transcript_${chatId}`);
-      localStorage.removeItem(`smart_greeted_${chatId}`);
-    } catch { void 0; }
   }, [chatId]);
 
   const appendAssistantMessage = useCallback((text) => {
