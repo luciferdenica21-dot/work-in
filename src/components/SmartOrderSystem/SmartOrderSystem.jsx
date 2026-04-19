@@ -45,6 +45,8 @@ export default function SmartOrderSystem({
   const [stepId, setStepId] = useState(flowConfig.initialStepId);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [customAnswerText, setCustomAnswerText] = useState({});
+  const [historyLen, setHistoryLen] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderSession, setOrderSession] = useState({
     startedAt: null,
     meta: {
@@ -67,6 +69,7 @@ export default function SmartOrderSystem({
 
   const fileInputRef = useRef(null);
   const fileTargetStepRef = useRef(null);
+  const historyRef = useRef([]);
   const prevStepRef = useRef(null);
   const lastPromptRef = useRef('');
 
@@ -76,6 +79,7 @@ export default function SmartOrderSystem({
   const startNewSession = () => {
     prevStepRef.current = null;
     lastPromptRef.current = '';
+    historyRef.current = [];
     setStepId(flowConfig.initialStepId);
     setQuestionIndex(0);
     const b = initialBrief && typeof initialBrief === 'object' ? initialBrief : {};
@@ -89,6 +93,8 @@ export default function SmartOrderSystem({
       specialWishes: ''
     });
     setCustomAnswerText({});
+    setIsSubmitting(false);
+    setHistoryLen(0);
   };
 
   useEffect(() => {
@@ -96,6 +102,7 @@ export default function SmartOrderSystem({
     const id = setTimeout(() => {
       prevStepRef.current = null;
       lastPromptRef.current = '';
+      historyRef.current = [];
       setStepId(flowConfig.initialStepId);
       setQuestionIndex(0);
       const b = initialBrief && typeof initialBrief === 'object' ? initialBrief : {};
@@ -109,9 +116,61 @@ export default function SmartOrderSystem({
         specialWishes: ''
       });
       onModeChangeRef.current?.('locked');
+      setIsSubmitting(false);
+      setCustomAnswerText({});
+      setHistoryLen(0);
     }, 0);
     return () => clearTimeout(id);
   }, [resetNonce]);
+
+  const cloneOrderSession = (s) => {
+    const src = s && typeof s === 'object' ? s : {};
+    const stepData = src.stepData && typeof src.stepData === 'object' ? src.stepData : {};
+    const stepDataCopy = {};
+    Object.entries(stepData).forEach(([k, v]) => {
+      const vv = v && typeof v === 'object' ? v : {};
+      stepDataCopy[k] = {
+        wishes: vv.wishes || '',
+        files: Array.isArray(vv.files) ? vv.files.map((f) => ({ ...f })) : []
+      };
+    });
+    return {
+      startedAt: src.startedAt || null,
+      meta: { ...(src.meta || {}) },
+      selectedServices: Array.isArray(src.selectedServices) ? [...src.selectedServices] : [],
+      answers: { ...(src.answers || {}) },
+      stepData: stepDataCopy,
+      brief: { ...(src.brief || {}) },
+      specialWishes: src.specialWishes || ''
+    };
+  };
+
+  const pushHistory = () => {
+    historyRef.current = [
+      ...(historyRef.current || []),
+      {
+        stepId,
+        questionIndex,
+        orderSession: cloneOrderSession(orderSession),
+        customAnswerText: { ...(customAnswerText || {}) }
+      }
+    ].slice(-100);
+    setHistoryLen((historyRef.current || []).length);
+  };
+
+  const canGoBack = mode === 'assistant' && !isSubmitting && historyLen > 0;
+
+  const goBack = () => {
+    const list = historyRef.current || [];
+    if (!list.length) return;
+    const last = list[list.length - 1];
+    historyRef.current = list.slice(0, -1);
+    setStepId(last.stepId);
+    setQuestionIndex(last.questionIndex);
+    setOrderSession(last.orderSession);
+    setCustomAnswerText(last.customAnswerText || {});
+    setHistoryLen((historyRef.current || []).length);
+  };
 
   useEffect(() => {
     if (!isScripted) return;
@@ -178,12 +237,14 @@ export default function SmartOrderSystem({
         try { onAssistantMessageRef.current?.(t('smart_pick_at_least_one')); } catch { void 0; }
         return;
       }
+      pushHistory();
       setQuestionIndex(0);
       setStepId((orderSession.selectedServices || []).length === 1 ? 'form_single' : 'form_multi');
       return;
     }
 
     if (action.type === 'generate_order') {
+      setIsSubmitting(true);
       try {
         const sd = orderSession.stepData && typeof orderSession.stepData === 'object' ? orderSession.stepData : {};
         Object.entries(sd).forEach(([k, v]) => {
@@ -244,6 +305,7 @@ export default function SmartOrderSystem({
     }
 
     if (action.type === 'next' && action.nextStepId) {
+      pushHistory();
       setQuestionIndex(0);
       setStepId(action.nextStepId);
     }
@@ -275,6 +337,7 @@ export default function SmartOrderSystem({
     }
 
     if (optionId === 'custom' && (questionId === 'deadline' || questionId === 'quantity')) {
+      pushHistory();
       const txt = String(customAnswerText?.[questionId] || '');
       setOrderSession((prev) => ({
         ...prev,
@@ -284,6 +347,7 @@ export default function SmartOrderSystem({
       return;
     }
 
+    pushHistory();
     setOrderSession((prev) => {
       const sd = prev.stepData && typeof prev.stepData === 'object' ? prev.stepData : {};
       const key = `q_${questionId}`;
@@ -305,6 +369,7 @@ export default function SmartOrderSystem({
 
   const toggleService = (serviceId) => {
     const svc = flowConfig.services.find(s => s.id === serviceId);
+    pushHistory();
     setOrderSession((prev) => {
       const set0 = new Set(prev.selectedServices || []);
       const active = set0.has(serviceId);
@@ -362,6 +427,15 @@ export default function SmartOrderSystem({
             {t('smart_panel_title')}
           </div>
           <div className="flex items-center gap-2">
+            {canGoBack && (
+              <button
+                type="button"
+                onClick={goBack}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_back')}
+              </button>
+            )}
             {mode === 'assistant' && (
               <button
                 type="button"

@@ -84,12 +84,14 @@ router.post('/', protect, async (req, res) => {
       .eq('id', chatId);
     if (updErr) throw updErr;
 
+    const isManagerRequest = String(text || '').includes('🤖🔔MANAGER_REQUEST');
     const isSystemToSkipTelegram =
-      aiLog || String(text || '').trim().startsWith('👤') || String(text || '').trim().startsWith('📎');
+      (!isManagerRequest && aiLog) || String(text || '').trim().startsWith('👤') || String(text || '').trim().startsWith('📎');
     const shouldSendTelegram = req.user.role !== 'admin' && !isSystemToSkipTelegram;
     if (shouldSendTelegram) {
+      const header = isManagerRequest ? '🆘 Запрос менеджера' : '💬 Новое сообщение';
       const tgText = [
-        '💬 Новое сообщение',
+        header,
         `От: Клиент (${req.user.email || req.user._id})`,
         `Чат: ${chatId}`,
         `Текст: ${text}`

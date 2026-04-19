@@ -1764,7 +1764,7 @@ const ChatWidget = ({ user }) => {
             onTransferToManager={async ({ reasonKey }) => {
               if (!chatId) return;
               try {
-                await messagesAPI.send(chatId, `👤 Клиент запросил менеджера.\nПричина: ${t(reasonKey || 'smart_reason_contact_manager')}`);
+                await messagesAPI.send(chatId, `🤖🔔MANAGER_REQUEST reason=${String(reasonKey || 'smart_reason_contact_manager')}`);
               } catch { void 0; }
               appendAssistantMessage(t('smart_manager_soon'));
             }}

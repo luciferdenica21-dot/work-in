@@ -1307,7 +1307,7 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
       "smart_svc_laser_engraving": "ლაზერული გრავირება",
       "smart_svc_laser_cut_metal": "ლითონის ლაზერული ჭრა",
       "smart_svc_laser_cut_nonmetal": "არალითონური მასალების ლაზერული ჭრა და გრავირება",
-      "smart_svc_powder_paint": "პუდრისებრი დაფარვა",
+      "smart_svc_powder_paint": "ფხვნილოვანი შეღებვა",
       "smart_svc_welding": "შედუღება",
       "smart_svc_mech": "ტრადიციული მექანიკური დამუშავება",
       "smart_svc_cnc": "CNC ფრეზირება",
