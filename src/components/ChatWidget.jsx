@@ -686,13 +686,13 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-  const makeBriefPdf = useCallback(async ({ brief, meta, selectedServices, answers, files, stepData }) => {
+  const makeOrderSummaryPdf = useCallback(async ({ brief, selectedServices, answers, stepData }) => {
     const doc = await PDFDocument.create();
     const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
     const font = await loadCyrillicFont(doc, lang2);
     let page = doc.addPage([595.28, 841.89]);
     const fontSize = 10;
-    const titleSize = 18;
+    const titleSize = 16;
     const sectionSize = 12;
     const margin = 50;
     const maxWidth = 595.28 - margin * 2;
@@ -709,19 +709,13 @@ const ChatWidget = ({ user }) => {
     };
 
     const safeWidth = (text, size) => {
-      try {
-        return font.widthOfTextAtSize(text, size);
-      } catch {
-        return font.widthOfTextAtSize(sanitizeWinAnsi(text), size);
-      }
+      try { return font.widthOfTextAtSize(text, size); }
+      catch { return font.widthOfTextAtSize(sanitizeWinAnsi(text), size); }
     };
 
     const safeDraw = (text, opts) => {
-      try {
-        page.drawText(text, opts);
-      } catch {
-        page.drawText(sanitizeWinAnsi(text), opts);
-      }
+      try { page.drawText(text, opts); }
+      catch { page.drawText(sanitizeWinAnsi(text), opts); }
     };
 
     const pushLine = (line, size = fontSize) => {
@@ -729,34 +723,22 @@ const ChatWidget = ({ user }) => {
       let row = '';
       for (const w of words) {
         const next = row ? `${row} ${w}` : w;
-        const width = safeWidth(next, size);
-        if (width > maxWidth && row) {
+        if (safeWidth(next, size) > maxWidth && row) {
           safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
           y -= size * 1.4;
           row = w;
-        } else {
-          row = next;
-        }
+        } else { row = next; }
       }
       if (row) {
         safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
         y -= size * 1.4;
       }
-      if (y < margin + 40) {
-        page = doc.addPage([595.28, 841.89]);
-        y = 841.89 - margin;
-      }
+      if (y < margin + 40) { page = doc.addPage([595.28, 841.89]); y = 841.89 - margin; }
     };
 
     const drawSection = (title) => {
       y -= 10;
-      page.drawRectangle({
-        x: margin,
-        y: y - 2,
-        width: maxWidth,
-        height: 1,
-        color: rgb(0.8, 0.8, 0.8)
-      });
+      page.drawRectangle({ x: margin, y: y - 2, width: maxWidth, height: 1, color: rgb(0.8, 0.8, 0.8) });
       y -= 15;
       pushLine(title, sectionSize);
       y -= 5;
@@ -764,43 +746,6 @@ const ChatWidget = ({ user }) => {
 
     const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
-    const fmtSize = (n) => {
-      const b = Number(n) || 0;
-      if (b <= 0) return '';
-      if (b >= 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(2)} MB`;
-      if (b >= 1024) return `${(b / 1024).toFixed(1)} KB`;
-      return `${b} B`;
-    };
-
-    // Header
-    pushLine(fixed('smart_brief_pdf_title'), titleSize);
-    y -= 10;
-    pushLine(`${new Date().toLocaleString()}`, 8);
-    y -= 10;
-
-    // Client Info
-    drawSection(fixed('smart_brief_pdf_section_client'));
-    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
-    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
-    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
-    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
-
-    // Project Info
-    drawSection(fixed('smart_brief_pdf_section_meta'));
-    const metaLabels = {
-      hasSpecificRequest: fixed('smart_q_specific'),
-      consultFormat: fixed('smart_consult_format'),
-      hasProject: fixed('smart_project_have'),
-      needsCorrection: fixed('smart_project_need_correction')
-    };
-    Object.entries(meta || {}).forEach(([k, v]) => {
-      const label = metaLabels[k] || k;
-      const value = v === true ? fixed('smart_yes') : v === false ? fixed('smart_no') : String(v ?? '');
-      if (String(value).trim()) pushLine(`• ${label}: ${value}`);
-    });
-
-    // Services
-    drawSection(fixed('smart_brief_pdf_section_services'));
     const svcMap = {
       svc_bending: 'smart_svc_bending',
       svc_laser_engraving: 'smart_svc_laser_engraving',
@@ -813,46 +758,7 @@ const ChatWidget = ({ user }) => {
       svc_liquid_paint: 'smart_svc_liquid_paint',
       svc_materials: 'smart_svc_materials'
     };
-    (selectedServices || []).forEach((sid) => {
-      const key = svcMap[String(sid)] || String(sid);
-      pushLine(`[x] ${fixed(key)}`);
-    });
-    if ((selectedServices || []).length === 0) pushLine(`[ ] ${fixed('smart_no')}`);
 
-    // Answers
-    drawSection(fixed('smart_brief_pdf_section_answers'));
-    const answerLabels = {
-      deadline: fixed('smart_q_deadline'),
-      material: fixed('smart_q_material'),
-      quantity: fixed('smart_q_quantity'),
-      priority: fixed('smart_q_priority')
-    };
-    const optionLabels = {
-      asap: fixed('smart_deadline_asap'),
-      week: fixed('smart_deadline_week'),
-      month: fixed('smart_deadline_month'),
-      metal: fixed('smart_material_metal'),
-      plastic: fixed('smart_material_plastic'),
-      wood: fixed('smart_material_wood'),
-      '1': fixed('smart_qty_1'),
-      '2_10': fixed('smart_qty_2_10'),
-      '10_plus': fixed('smart_qty_10_plus'),
-      price: fixed('smart_priority_price'),
-      speed: fixed('smart_priority_speed'),
-      quality: fixed('smart_priority_quality')
-    };
-    Object.entries(answers || {}).forEach(([k, v]) => {
-      const label = answerLabels[k] || k;
-      const val =
-        v && typeof v === 'object' && v.type === 'custom'
-          ? String(v.text || '')
-          : (optionLabels[String(v)] || String(v ?? ''));
-      if (String(val).trim()) pushLine(`• ${label}: ${val}`);
-    });
-
-    // Files
-    drawSection(fixed('smart_brief_pdf_section_files'));
-    const sd = stepData && typeof stepData === 'object' ? stepData : {};
     const stepTitle = (key) => {
       const k = String(key || '');
       if (k === 'services_select') return fixed('smart_select_services');
@@ -861,148 +767,34 @@ const ChatWidget = ({ user }) => {
       if (k === 'q_quantity') return fixed('smart_q_quantity');
       return k;
     };
-    const fileLines = [];
-    Object.entries(sd).forEach(([k, v]) => {
-      const ff = Array.isArray(v?.files) ? v.files : [];
-      if (!ff.length) return;
-      const names = ff.map((f) => String(f?.name || '')).filter(Boolean);
-      if (!names.length) return;
-      fileLines.push(`• ${stepTitle(k)}: ${names.join(', ')}`);
-    });
-    if (fileLines.length) fileLines.forEach((l) => pushLine(l));
-    else {
-      (files || []).forEach((f) => {
-        const name = String(f?.name || '');
-        const type = String(f?.type || '');
-        const size = fmtSize(f?.size);
-        const tail = [type, size].filter(Boolean).join(', ');
-        pushLine(`• ${name}${tail ? ` (${tail})` : ''}`);
-      });
-      if ((files || []).length === 0) pushLine(fixed('smart_no'));
-    }
-
-    const bytes = await doc.save();
-    return new Blob([bytes], { type: 'application/pdf' });
-  }, [i18n]);
-
-  const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes, stepData }) => {
-    const doc = await PDFDocument.create();
-    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
-    const font = await loadCyrillicFont(doc, lang2);
-    let page = doc.addPage([595.28, 841.89]);
-    const fontSize = 10;
-    const titleSize = 18;
-    const sectionSize = 12;
-    const margin = 50;
-    const maxWidth = 595.28 - margin * 2;
-    let y = 841.89 - margin;
-
-    const sanitizeWinAnsi = (s) => {
-      const str = String(s || '');
-      let out = '';
-      for (let i = 0; i < str.length; i += 1) {
-        const code = str.charCodeAt(i);
-        out += code <= 0x7f ? str[i] : '?';
-      }
-      return out;
-    };
-
-    const safeWidth = (text, size) => {
-      try {
-        return font.widthOfTextAtSize(text, size);
-      } catch {
-        return font.widthOfTextAtSize(sanitizeWinAnsi(text), size);
-      }
-    };
-
-    const safeDraw = (text, opts) => {
-      try {
-        page.drawText(text, opts);
-      } catch {
-        page.drawText(sanitizeWinAnsi(text), opts);
-      }
-    };
-
-    const pushLine = (line, size = fontSize) => {
-      const words = String(line || '').split(' ');
-      let row = '';
-      for (const w of words) {
-        const next = row ? `${row} ${w}` : w;
-        const width = safeWidth(next, size);
-        if (width > maxWidth && row) {
-          safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
-          y -= size * 1.4;
-          row = w;
-        } else {
-          row = next;
-        }
-      }
-      if (row) {
-        safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
-        y -= size * 1.4;
-      }
-      if (y < margin + 40) {
-        page = doc.addPage([595.28, 841.89]);
-        y = 841.89 - margin;
-      }
-    };
-
-    const drawSection = (title) => {
-      y -= 10;
-      page.drawRectangle({
-        x: margin,
-        y: y - 2,
-        width: maxWidth,
-        height: 1,
-        color: rgb(0.8, 0.8, 0.8)
-      });
-      y -= 15;
-      pushLine(title, sectionSize);
-      y -= 5;
-    };
-
-    const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
 
     // Header
-    pushLine(fixed('smart_order_pdf_title'), titleSize);
+    pushLine(fixed('smart_summary_pdf_title'), titleSize);
     y -= 10;
-    pushLine(`${new Date().toLocaleString()}`, 8);
+    pushLine(new Date().toLocaleString(), 8);
     y -= 10;
 
-    // Client
-    drawSection(fixed('smart_order_pdf_section_client'));
+    // 1) Client
+    drawSection(fixed('smart_summary_section_client'));
     pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
     pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
     pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
     pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
 
-    // Services
-    drawSection(fixed('smart_order_pdf_section_services'));
-    const svcMap = {
-      svc_bending: 'smart_svc_bending',
-      svc_laser_engraving: 'smart_svc_laser_engraving',
-      svc_laser_cut_metal: 'smart_svc_laser_cut_metal',
-      svc_laser_cut_nonmetal: 'smart_svc_laser_cut_nonmetal',
-      svc_powder_paint: 'smart_svc_powder_paint',
-      svc_welding: 'smart_svc_welding',
-      svc_mech: 'smart_svc_mech',
-      svc_cnc: 'smart_svc_cnc',
-      svc_liquid_paint: 'smart_svc_liquid_paint',
-      svc_materials: 'smart_svc_materials'
-    };
+    // 2) Services
+    drawSection(fixed('smart_summary_section_services'));
     (selectedServices || []).forEach((sid) => {
-      const key = svcMap[String(sid)] || String(sid);
-      pushLine(`• ${fixed(key)}`);
+      pushLine(`• ${fixed(svcMap[String(sid)] || String(sid))}`);
     });
-    if ((selectedServices || []).length === 0) pushLine(fixed('smart_no'));
+    if (!(selectedServices || []).length) pushLine(fixed('smart_no'));
 
-    // Answers
-    drawSection(fixed('smart_order_pdf_section_answers'));
+    // 3) Comments (deadline / quantity / material only — from answers + stepData wishes)
+    drawSection(fixed('smart_summary_section_comments'));
+    const commentKeys = ['deadline', 'quantity', 'material'];
     const answerLabels = {
       deadline: fixed('smart_q_deadline'),
       material: fixed('smart_q_material'),
-      quantity: fixed('smart_q_quantity'),
-      priority: fixed('smart_q_priority')
+      quantity: fixed('smart_q_quantity')
     };
     const optionLabels = {
       asap: fixed('smart_deadline_asap'),
@@ -1013,54 +805,45 @@ const ChatWidget = ({ user }) => {
       wood: fixed('smart_material_wood'),
       '1': fixed('smart_qty_1'),
       '2_10': fixed('smart_qty_2_10'),
-      '10_plus': fixed('smart_qty_10_plus'),
-      price: fixed('smart_priority_price'),
-      speed: fixed('smart_priority_speed'),
-      quality: fixed('smart_priority_quality')
+      '10_plus': fixed('smart_qty_10_plus')
     };
-    Object.entries(answers || {}).forEach(([k, v]) => {
-      const label = answerLabels[k] || k;
-      const val = optionLabels[String(v)] || String(v ?? '');
-      if (String(val).trim()) pushLine(`• ${label}: ${val}`);
+    let hasComment = false;
+    commentKeys.forEach((k) => {
+      const v = (answers || {})[k];
+      if (v == null) return;
+      const val = v && typeof v === 'object' && v.type === 'custom'
+        ? String(v.text || '')
+        : (optionLabels[String(v)] || String(v ?? ''));
+      if (!String(val).trim()) return;
+      pushLine(`• ${answerLabels[k]}: ${val}`);
+      hasComment = true;
     });
-
-    const stepTitle = (key) => {
-      const k = String(key || '');
-      if (k === 'services_select') return fixed('smart_select_services');
-      if (k === 'brief_form') return fixed('smart_fill_brief');
-      if (k === 'q_deadline') return fixed('smart_q_deadline');
-      if (k === 'q_quantity') return fixed('smart_q_quantity');
-      return k;
-    };
-
-    // Wishes
-    drawSection(fixed('smart_order_pdf_section_wishes'));
     const sd = stepData && typeof stepData === 'object' ? stepData : {};
-    const wishLines = [];
     Object.entries(sd).forEach(([k, v]) => {
       const w = String(v?.wishes || '').trim();
       if (!w) return;
-      wishLines.push(`• ${stepTitle(k)}: ${w}`);
+      pushLine(`• ${stepTitle(k)}: ${w}`);
+      hasComment = true;
     });
-    const fallbackWishes = String(specialWishes || '').trim();
-    if (wishLines.length) wishLines.forEach((l) => pushLine(l));
-    else pushLine(fallbackWishes || fixed('smart_no'));
+    if (!hasComment) pushLine(fixed('smart_no'));
 
-    // Files
-    drawSection(fixed('smart_order_pdf_section_files'));
-    const fileLines = [];
+    // 4) Files — text reference with folder path
+    drawSection(fixed('smart_summary_section_files'));
+    let hasFiles = false;
     Object.entries(sd).forEach(([k, v]) => {
       const ff = Array.isArray(v?.files) ? v.files : [];
       if (!ff.length) return;
-      const names = ff.map((f) => String(f?.name || '')).filter(Boolean);
-      if (!names.length) return;
-      fileLines.push(`• ${stepTitle(k)}: ${names.join(', ')}`);
+      const safeStep = String(k).replace(/[^a-zA-Z0-9_-]+/g, '_');
+      const folderSlug = String(stepTitle(k)).replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 60);
+      const folderName = folderSlug ? `${safeStep}_${folderSlug}` : safeStep;
+      ff.forEach((f) => {
+        const fname = String(f?.name || '');
+        if (!fname) return;
+        pushLine(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)}) — attachments/${folderName}/`);
+        hasFiles = true;
+      });
     });
-    if (fileLines.length) fileLines.forEach((l) => pushLine(l));
-    else {
-      (files || []).forEach((f) => pushLine(`• ${String(f?.name || '')}`));
-      if ((files || []).length === 0) pushLine(fixed('smart_no'));
-    }
+    if (!hasFiles) pushLine(fixed('smart_no'));
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
@@ -1071,26 +854,15 @@ const ChatWidget = ({ user }) => {
   const finalizeOrderPackage = useCallback(async (session) => {
     const brief = session?.brief || {};
 
-    const briefPdf = await makeBriefPdf({
-      brief,
-      meta: session?.meta || {},
-      selectedServices: session?.selectedServices || [],
-      answers: session?.answers || {},
-      files: session?.files || [],
-      stepData: session?.stepData || {}
-    });
-    const orderPdf = await makeOrderPdf({
+    const summaryPdf = await makeOrderSummaryPdf({
       brief,
       selectedServices: session?.selectedServices || [],
       answers: session?.answers || {},
-      files: session?.files || [],
-      specialWishes: session?.specialWishes || '',
       stepData: session?.stepData || {}
     });
 
     const zip = new JSZip();
-    zip.file('order.pdf', orderPdf);
-    zip.file('customer.pdf', briefPdf);
+    zip.file('order_summary.pdf', summaryPdf);
 
     const stepData = session?.stepData && typeof session.stepData === 'object' ? session.stepData : {};
     const allFiles = [];
@@ -1138,7 +910,7 @@ const ChatWidget = ({ user }) => {
     };
     aiDocsRef.current = docs;
     return docs;
-  }, [makeBriefPdf, makeOrderPdf, uploadZipToChat]);
+  }, [makeOrderSummaryPdf, uploadZipToChat]);
 
   useEffect(() => {
     if (isOpen && chatId) {
