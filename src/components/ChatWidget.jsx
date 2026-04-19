@@ -1558,7 +1558,7 @@ const ChatWidget = ({ user }) => {
                 ? 'fixed inset-4 md:left-8 md:right-8 md:bottom-8 md:top-24 rounded-4xl' 
                 : 'fixed top-24 right-24 md:right-28 rounded-4xl'
             } 
-            bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-fadeIn
+            bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col min-h-0 overflow-hidden backdrop-blur-xl animate-fadeIn
           `}
           style={
             !isMobile && !isMaximized ? {
@@ -1969,7 +1969,11 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
+          <div
+            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar"
+            onWheelCapture={(e) => e.stopPropagation()}
+            onTouchMoveCapture={(e) => e.stopPropagation()}
+          >
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
