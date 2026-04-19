@@ -319,9 +319,12 @@ server.listen(PORT, '0.0.0.0', () => {
       }
 
       // Добавляем колонку avatar_url в users если нет
-      await supabase.rpc('exec_sql', {
-        sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';`
-      }).catch(() => {});
+      try {
+        const { error: alterErr } = await supabase.rpc('exec_sql', {
+          sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';`
+        });
+        if (alterErr) { void 0; }
+      } catch { void 0; }
 
     } catch (e) {
       console.warn('DB init check failed:', e.message);
