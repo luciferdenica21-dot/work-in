@@ -26,6 +26,7 @@ const toChatResponse = (chatRow, userRow) => {
     lastMessage: chatRow.last_message || '',
     lastUpdate: chatRow.last_update,
     unread: !!chatRow.unread,
+    unreadByClient: !!chatRow.unread_by_client,
     orders: chatRow.orders || []
   };
 };
@@ -45,7 +46,7 @@ router.get('/', protect, admin, async (req, res) => {
   try {
     const { data: chats, error } = await supabase
       .from('chats')
-      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .select('id,user_id,user_email,last_message,last_update,unread,unread_by_client,orders')
       .order('last_update', { ascending: false });
     if (error) throw error;
 
@@ -87,7 +88,7 @@ router.post('/start', protect, admin, async (req, res) => {
 
     let { data: chat, error: chatErr } = await supabase
       .from('chats')
-      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .select('id,user_id,user_email,last_message,last_update,unread,unread_by_client,orders')
       .eq('user_id', userId)
       .maybeSingle();
     if (chatErr) throw chatErr;
@@ -101,6 +102,7 @@ router.post('/start', protect, admin, async (req, res) => {
         last_message: '',
         last_update: nowIso,
         unread: false,
+        unread_by_client: false,
         orders: [],
         created_at: nowIso,
         updated_at: nowIso
@@ -108,7 +110,7 @@ router.post('/start', protect, admin, async (req, res) => {
       const { data: created, error: createErr } = await supabase
         .from('chats')
         .insert(chatRow)
-        .select('id,user_id,user_email,last_message,last_update,unread,orders')
+        .select('id,user_id,user_email,last_message,last_update,unread,unread_by_client,orders')
         .single();
       if (createErr) throw createErr;
       chat = created;
@@ -126,7 +128,7 @@ router.get('/my-chat', protect, async (req, res) => {
   try {
     let { data: chat, error: chatErr } = await supabase
       .from('chats')
-      .select('id,user_id,user_email,last_message,last_update,unread,orders')
+      .select('id,user_id,user_email,last_message,last_update,unread,unread_by_client,orders')
       .eq('user_id', req.user._id)
       .maybeSingle();
     if (chatErr) throw chatErr;
@@ -140,6 +142,7 @@ router.get('/my-chat', protect, async (req, res) => {
         last_message: '',
         last_update: nowIso,
         unread: false,
+        unread_by_client: false,
         orders: [],
         created_at: nowIso,
         updated_at: nowIso
@@ -147,7 +150,7 @@ router.get('/my-chat', protect, async (req, res) => {
       const { data: created, error: createErr } = await supabase
         .from('chats')
         .insert(chatRow)
-        .select('id,user_id,user_email,last_message,last_update,unread,orders')
+        .select('id,user_id,user_email,last_message,last_update,unread,unread_by_client,orders')
         .single();
       if (createErr) throw createErr;
       chat = created;
@@ -221,7 +224,7 @@ router.patch('/:chatId/read', protect, async (req, res) => {
 
     const { error: updErr } = await supabase
       .from('chats')
-      .update({ unread: false, updated_at: new Date().toISOString() })
+      .update({ unread: false, unread_by_client: false, updated_at: new Date().toISOString() })
       .eq('id', chatId);
     if (updErr) throw updErr;
 

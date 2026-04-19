@@ -73,9 +73,16 @@ router.post('/', protect, async (req, res) => {
     if (insErr) throw insErr;
 
     const aiLog = isAiLogText(text);
+    const isManager = req.user.role === 'admin';
     const updatePayload = aiLog
       ? { last_update: nowIso, updated_at: nowIso }
-      : { last_message: String(text), last_update: nowIso, unread: req.user.role !== 'admin', updated_at: nowIso };
+      : {
+          last_message: String(text),
+          last_update: nowIso,
+          unread: !isManager,
+          unread_by_client: isManager ? true : false,
+          updated_at: nowIso
+        };
 
     // Update chat
     const { error: updErr } = await supabase

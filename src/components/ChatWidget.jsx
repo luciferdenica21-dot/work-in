@@ -363,7 +363,7 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         setChatId(chat.chatId);
-        if (chat?.unread && !isOpenRef.current) {
+        if (chat?.unreadByClient && !isOpenRef.current) {
           setHasNewMessage(true);
         }
         try {
@@ -521,7 +521,7 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         if (!mounted) return;
-        setHasNewMessage(!!chat?.unread);
+        setHasNewMessage(!!chat?.unreadByClient);
       } catch { void 0; }
     };
 
