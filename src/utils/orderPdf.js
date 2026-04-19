@@ -148,8 +148,7 @@ export const buildOrderPdfForLang = async (lang, { brief, selectedServices, answ
         /\.(png|jpe?g)$/i.test(fname);
       if (isImg && f?.file) {
         try {
-          // Draw filename label
-          line(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)})`);
+          line(`• ${fname}`);
           // Embed image
           const imgBuf = await f.file.arrayBuffer();
           const isPng = mime === 'image/png' || /\.png$/i.test(fname);
@@ -171,7 +170,7 @@ export const buildOrderPdfForLang = async (lang, { brief, selectedServices, answ
         } catch { void 0; }
       }
       // Non-image or failed embed: show text only
-      line(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)})`);
+      line(`• ${fname}`);
       hasF = true;
     }
   }
