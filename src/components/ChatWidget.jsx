@@ -1476,7 +1476,6 @@ const ChatWidget = ({ user }) => {
               setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
               setSmartMode('locked');
               setSmartResetNonce((n) => n + 1);
-              appendAssistantMessage(t('smart_closed'));
             }}
             onRestart={() => {
               clearSmartTranscript();
@@ -1598,6 +1597,8 @@ const ChatWidget = ({ user }) => {
               const isSelected = !!msgId && selectedMessages.has(msgId);
               const replyMeta = parseReplyMetaFromText(normalizeForDisplay(msg.text));
               const hasAttachments = msg.attachments && msg.attachments.length > 0;
+              const isAiLog = typeof msg.text === 'string' && msg.text.trim().startsWith('🤖');
+              if (isAiLog) return null;
               const isAutoFileText =
                 typeof msg.text === 'string' &&
                 (msg.text.startsWith('📎') || msg.text.includes('Отправлен файл'));

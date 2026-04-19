@@ -68,7 +68,8 @@ export default function SmartOrderSystem({
   const lastPromptRef = useRef('');
 
   const step = flowConfig.steps[stepId];
-  const isAssistantActive = mode === 'assistant' || mode === 'locked' || mode === 'manager';
+  const isPanelActive = mode === 'assistant' || mode === 'locked' || mode === 'manager';
+  const isScripted = mode === 'assistant';
   const resetFlow = () => {
     prevStepRef.current = null;
     lastPromptRef.current = '';
@@ -99,7 +100,7 @@ export default function SmartOrderSystem({
   }, [resetNonce]);
 
   useEffect(() => {
-    if (!isAssistantActive) return;
+    if (!isScripted) return;
     if (!step) return;
     if (prevStepRef.current === stepId) return;
     prevStepRef.current = stepId;
@@ -107,16 +108,16 @@ export default function SmartOrderSystem({
     for (const key of messages) {
       try { onAssistantMessageRef.current?.(t(key)); } catch { void 0; }
     }
-  }, [isAssistantActive, step, stepId, t]);
+  }, [isScripted, step, stepId, t]);
 
   const quickActions = useMemo(() => {
-    if (!isAssistantActive) return [];
+    if (!isPanelActive) return [];
     if (!step) return [];
     return Array.isArray(step.actions) ? step.actions : [];
-  }, [isAssistantActive, step]);
+  }, [isPanelActive, step]);
 
   const chooseAction = async (action) => {
-    if (!action || !isAssistantActive) return;
+    if (!action || !isPanelActive) return;
 
     if (action.id === 'start_ai' && mode === 'locked') {
       try { onRestartRef.current?.(); } catch { void 0; }
@@ -215,13 +216,13 @@ export default function SmartOrderSystem({
   }, [questionIndex, step]);
 
   useEffect(() => {
-    if (!isAssistantActive) return;
+    if (!isScripted) return;
     if (!currentQuestion) return;
     const key = `${stepId}:${questionIndex}:${currentQuestion.id}`;
     if (lastPromptRef.current === key) return;
     lastPromptRef.current = key;
     try { onAssistantMessageRef.current?.(t(currentQuestion.messageKey)); } catch { void 0; }
-  }, [currentQuestion, isAssistantActive, questionIndex, stepId, t]);
+  }, [currentQuestion, isScripted, questionIndex, stepId, t]);
 
   const chooseOption = (questionId, optionId) => {
     const question = currentQuestion;
@@ -279,7 +280,7 @@ export default function SmartOrderSystem({
     setOrderSession((prev) => ({ ...prev, files: (prev.files || []).filter((_, i) => i !== idx) }));
   };
 
-  if (!isAssistantActive) return null;
+  if (!isPanelActive) return null;
 
   return (
     <div className="border-b border-white/10 bg-[#050a18]/95">

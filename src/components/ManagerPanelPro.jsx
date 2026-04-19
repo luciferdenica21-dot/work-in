@@ -2983,8 +2983,26 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     {messages.filter((m) => String(m?.text || '').startsWith('🤖')).length > 0 && (
                       <div className="px-3 pt-3">
                         <div className="rounded-xl border border-purple-500/30 bg-purple-600/10 p-3">
-                          <div className="text-[10px] uppercase tracking-widest text-purple-200/90 font-semibold">
-                            Действия ИИ
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-[10px] uppercase tracking-widest text-purple-200/90 font-semibold">
+                              Действия ИИ
+                            </div>
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 rounded-lg bg-purple-500/15 border border-purple-400/30 text-purple-100 text-[10px] hover:bg-purple-500/20"
+                              onClick={async () => {
+                                if (!window.confirm('Удалить все действия ИИ в этом чате?')) return;
+                                const ids = messages
+                                  .filter((m) => String(m?.text || '').startsWith('🤖'))
+                                  .map((m) => m?._id || m?.id)
+                                  .filter(Boolean);
+                                if (ids.length === 0) return;
+                                setMessages((prev) => (prev || []).filter((m) => !ids.includes(m?._id || m?.id)));
+                                await Promise.all(ids.map((id) => messagesAPI.delete(id).catch(() => null)));
+                              }}
+                            >
+                              Очистить
+                            </button>
                           </div>
                           <div className="mt-2 space-y-1 max-h-[120px] overflow-y-auto">
                             {messages
