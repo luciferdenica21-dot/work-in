@@ -10,6 +10,7 @@ import JSZip from 'jszip';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
 
+
 const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
