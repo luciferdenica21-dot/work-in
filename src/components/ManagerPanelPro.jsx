@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { buildOrderPdfForLang } from '../utils/orderPdf';
 import { useTranslation } from 'react-i18next';
 import { removeToken } from '../config/api';
 import { chatsAPI, messagesAPI, ordersAPI, filesAPI, authAPI, analyticsAPI, backupsAPI, signaturesAPI } from '../config/api';
@@ -3588,10 +3589,44 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                       downloadOrdersPdf([order]);
                                     }}
                                     className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-white border border-white/20 hover:bg-white/10 transition-colors text-[11px] sm:text-xs"
-                                    title="Скачать PDF"
+                                    title="Скачать PDF (печать)"
                                     type="button"
                                   >
                                     PDF
+                                  </button>
+                                  <button
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      try {
+                                        const aiSession = order.aiSession || {};
+                                        const brief = { firstName: order.firstName || '', lastName: order.lastName || '', email: order.contact || '', phone: order.phone || '' };
+                                        const svcMap = { svc_bending:'smart_svc_bending', svc_laser_engraving:'smart_svc_laser_engraving', svc_laser_cut_metal:'smart_svc_laser_cut_metal', svc_laser_cut_nonmetal:'smart_svc_laser_cut_nonmetal', svc_powder_paint:'smart_svc_powder_paint', svc_welding:'smart_svc_welding', svc_mech:'smart_svc_mech', svc_cnc:'smart_svc_cnc', svc_liquid_paint:'smart_svc_liquid_paint', svc_materials:'smart_svc_materials' };
+                                        const svcKeys = Object.keys(svcMap);
+                                        const selectedServices = (order.services || []).map(name => svcKeys.find(k => i18n.getFixedT('ru')(svcMap[k]) === name || i18n.getFixedT('en')(svcMap[k]) === name || i18n.getFixedT('ka')(svcMap[k]) === name) || name);
+                                        const params = { brief, selectedServices, answers: aiSession.answers || {}, stepData: aiSession.stepData || {} };
+                                        const JSZip = (await import('jszip')).default;
+                                        const [ru, en, ka] = await Promise.all([
+                                          buildOrderPdfForLang('ru', params, i18n),
+                                          buildOrderPdfForLang('en', params, i18n),
+                                          buildOrderPdfForLang('ka', params, i18n),
+                                        ]);
+                                        const zip = new JSZip();
+                                        zip.file('order_summary_ru.pdf', ru);
+                                        zip.file('order_summary_en.pdf', en);
+                                        zip.file('order_summary_ka.pdf', ka);
+                                        const blob = await zip.generateAsync({ type: 'blob' });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement('a');
+                                        a.href = url; a.download = `order_${order.chatId}_${order.orderIndex}_summary.zip`;
+                                        document.body.appendChild(a); a.click(); a.remove();
+                                        URL.revokeObjectURL(url);
+                                      } catch(err) { alert('Ошибка генерации PDF: ' + err.message); }
+                                    }}
+                                    className="px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg text-cyan-300 border border-cyan-500/30 hover:bg-cyan-500/10 transition-colors text-[11px] sm:text-xs"
+                                    title="Скачать структурированный PDF (3 языка)"
+                                    type="button"
+                                  >
+                                    PDF×3
                                   </button>
                                   <button
                                     onClick={(e) => {

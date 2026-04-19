@@ -7,8 +7,7 @@ import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, Check
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import SmartOrderSystem from './SmartOrderSystem/SmartOrderSystem';
 import JSZip from 'jszip';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import fontkit from '@pdf-lib/fontkit';
+import { buildOrderPdfForLang } from '../utils/orderPdf';
 
 
 const ChatWidget = ({ user }) => {
@@ -592,23 +591,6 @@ const ChatWidget = ({ user }) => {
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, [chatId, saveSmartTranscript]);
 
-  const b64ToBytes = (b64) => {
-    const bin = atob(String(b64 || ''));
-    const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i += 1) arr[i] = bin.charCodeAt(i);
-    return arr;
-  };
-
-  const bytesToB64 = (bytes) => {
-    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
-    let bin = '';
-    const chunkSize = 0x8000;
-    for (let i = 0; i < u8.length; i += chunkSize) {
-      bin += String.fromCharCode.apply(null, Array.from(u8.slice(i, i + chunkSize)));
-    }
-    return btoa(bin);
-  };
-
   const sendManagerLog = useCallback(async (text) => {
     if (!chatId) return;
     const s = String(text || '').trim();
@@ -626,243 +608,32 @@ const ChatWidget = ({ user }) => {
     return await filesAPI.upload(zipFile, null);
   }, []);
 
-  const loadCyrillicFont = async (doc, lang2) => {
-    try {
-      const lang = String(lang2 || 'ru');
-      const cacheKey = `smart_pdf_font_ttf_v3_${lang}`;
-      const sample = lang === 'ka' ? 'აბ' : 'БЯ';
-      const validateGlyphs = (embedded) => {
-        try {
-          embedded.encodeText(sample);
-          return true;
-        } catch {
-          return false;
-        }
-      };
-
-      const cached = localStorage.getItem(cacheKey);
-      if (cached) {
-        doc.registerFontkit(fontkit);
-        const embedded = await doc.embedFont(b64ToBytes(cached));
-        if (validateGlyphs(embedded)) return embedded;
-        try { localStorage.removeItem(cacheKey); } catch { void 0; }
-      }
-
-      const baseUrl = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
-      const urls =
-        lang === 'ka'
-          ? [
-              `${baseUrl}fonts/NotoSansGeorgian-Regular.ttf`,
-              `${baseUrl}fonts/noto-sans-georgian.ttf`
-            ]
-          : [
-              `${baseUrl}fonts/Roboto-Regular.ttf`,
-              `${baseUrl}fonts/roboto-regular.ttf`,
-              'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
-              'https://fonts.gstatic.com/s/roboto/v19/KFOmCnqEu92Fr1Mu4mxPKTU1Kg.ttf',
-              'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf'
-            ];
-
-      let fontBytes = null;
-      for (const url of urls) {
-        try {
-          const res = await fetch(url);
-          if (!res.ok) continue;
-          fontBytes = await res.arrayBuffer();
-          doc.registerFontkit(fontkit);
-          const embedded = await doc.embedFont(fontBytes);
-          if (!validateGlyphs(embedded)) {
-            fontBytes = null;
-            continue;
-          }
-          try { localStorage.setItem(cacheKey, bytesToB64(fontBytes)); } catch { void 0; }
-          return embedded;
-        } catch { void 0; }
-      }
-      if (!fontBytes) throw new Error('Font download failed');
-    } catch (e) {
-      console.error('Failed to load Cyrillic font, falling back to Helvetica', e);
-      return await doc.embedFont(StandardFonts.Helvetica);
-    }
-  };
-
-  const makeOrderSummaryPdf = useCallback(async ({ brief, selectedServices, answers, stepData }) => {
-    const doc = await PDFDocument.create();
+  const makeOrderSummaryPdf = useCallback(async (params) => {
     const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
-    const font = await loadCyrillicFont(doc, lang2);
-    let page = doc.addPage([595.28, 841.89]);
-    const fontSize = 10;
-    const titleSize = 16;
-    const sectionSize = 12;
-    const margin = 50;
-    const maxWidth = 595.28 - margin * 2;
-    let y = 841.89 - margin;
-
-    const sanitizeWinAnsi = (s) => {
-      const str = String(s || '');
-      let out = '';
-      for (let i = 0; i < str.length; i += 1) {
-        const code = str.charCodeAt(i);
-        out += code <= 0x7f ? str[i] : '?';
-      }
-      return out;
-    };
-
-    const safeWidth = (text, size) => {
-      try { return font.widthOfTextAtSize(text, size); }
-      catch { return font.widthOfTextAtSize(sanitizeWinAnsi(text), size); }
-    };
-
-    const safeDraw = (text, opts) => {
-      try { page.drawText(text, opts); }
-      catch { page.drawText(sanitizeWinAnsi(text), opts); }
-    };
-
-    const pushLine = (line, size = fontSize) => {
-      const words = String(line || '').split(' ');
-      let row = '';
-      for (const w of words) {
-        const next = row ? `${row} ${w}` : w;
-        if (safeWidth(next, size) > maxWidth && row) {
-          safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
-          y -= size * 1.4;
-          row = w;
-        } else { row = next; }
-      }
-      if (row) {
-        safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
-        y -= size * 1.4;
-      }
-      if (y < margin + 40) { page = doc.addPage([595.28, 841.89]); y = 841.89 - margin; }
-    };
-
-    const drawSection = (title) => {
-      y -= 10;
-      page.drawRectangle({ x: margin, y: y - 2, width: maxWidth, height: 1, color: rgb(0.8, 0.8, 0.8) });
-      y -= 15;
-      pushLine(title, sectionSize);
-      y -= 5;
-    };
-
-    const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
-
-    const svcMap = {
-      svc_bending: 'smart_svc_bending',
-      svc_laser_engraving: 'smart_svc_laser_engraving',
-      svc_laser_cut_metal: 'smart_svc_laser_cut_metal',
-      svc_laser_cut_nonmetal: 'smart_svc_laser_cut_nonmetal',
-      svc_powder_paint: 'smart_svc_powder_paint',
-      svc_welding: 'smart_svc_welding',
-      svc_mech: 'smart_svc_mech',
-      svc_cnc: 'smart_svc_cnc',
-      svc_liquid_paint: 'smart_svc_liquid_paint',
-      svc_materials: 'smart_svc_materials'
-    };
-
-    const stepTitle = (key) => {
-      const k = String(key || '');
-      if (k === 'services_select') return fixed('smart_select_services');
-      if (k === 'brief_form') return fixed('smart_fill_brief');
-      if (k === 'q_deadline') return fixed('smart_q_deadline');
-      if (k === 'q_quantity') return fixed('smart_q_quantity');
-      return k;
-    };
-
-    // Header
-    pushLine(fixed('smart_summary_pdf_title'), titleSize);
-    y -= 10;
-    pushLine(new Date().toLocaleString(), 8);
-    y -= 10;
-
-    // 1) Client
-    drawSection(fixed('smart_summary_section_client'));
-    pushLine(`${fixed('smart_brief_first_name')}: ${String(brief?.firstName || '')}`);
-    pushLine(`${fixed('smart_brief_last_name')}: ${String(brief?.lastName || '')}`);
-    pushLine(`${fixed('smart_brief_email')}: ${String(brief?.email || '')}`);
-    pushLine(`${fixed('smart_brief_phone')}: ${String(brief?.phone || '')}`);
-
-    // 2) Services
-    drawSection(fixed('smart_summary_section_services'));
-    (selectedServices || []).forEach((sid) => {
-      pushLine(`• ${fixed(svcMap[String(sid)] || String(sid))}`);
-    });
-    if (!(selectedServices || []).length) pushLine(fixed('smart_no'));
-
-    // 3) Comments (deadline / quantity / material only — from answers + stepData wishes)
-    drawSection(fixed('smart_summary_section_comments'));
-    const commentKeys = ['deadline', 'quantity', 'material'];
-    const answerLabels = {
-      deadline: fixed('smart_q_deadline'),
-      material: fixed('smart_q_material'),
-      quantity: fixed('smart_q_quantity')
-    };
-    const optionLabels = {
-      asap: fixed('smart_deadline_asap'),
-      week: fixed('smart_deadline_week'),
-      month: fixed('smart_deadline_month'),
-      metal: fixed('smart_material_metal'),
-      plastic: fixed('smart_material_plastic'),
-      wood: fixed('smart_material_wood'),
-      '1': fixed('smart_qty_1'),
-      '2_10': fixed('smart_qty_2_10'),
-      '10_plus': fixed('smart_qty_10_plus')
-    };
-    let hasComment = false;
-    commentKeys.forEach((k) => {
-      const v = (answers || {})[k];
-      if (v == null) return;
-      const val = v && typeof v === 'object' && v.type === 'custom'
-        ? String(v.text || '')
-        : (optionLabels[String(v)] || String(v ?? ''));
-      if (!String(val).trim()) return;
-      pushLine(`• ${answerLabels[k]}: ${val}`);
-      hasComment = true;
-    });
-    const sd = stepData && typeof stepData === 'object' ? stepData : {};
-    Object.entries(sd).forEach(([k, v]) => {
-      const w = String(v?.wishes || '').trim();
-      if (!w) return;
-      pushLine(`• ${stepTitle(k)}: ${w}`);
-      hasComment = true;
-    });
-    if (!hasComment) pushLine(fixed('smart_no'));
-
-    // 4) Files — text reference with folder path
-    drawSection(fixed('smart_summary_section_files'));
-    let hasFiles = false;
-    Object.entries(sd).forEach(([k, v]) => {
-      const ff = Array.isArray(v?.files) ? v.files : [];
-      if (!ff.length) return;
-      const safeStep = String(k).replace(/[^a-zA-Z0-9_-]+/g, '_');
-      const folderSlug = String(stepTitle(k)).replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 60);
-      const folderName = folderSlug ? `${safeStep}_${folderSlug}` : safeStep;
-      ff.forEach((f) => {
-        const fname = String(f?.name || '');
-        if (!fname) return;
-        pushLine(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)}) — attachments/${folderName}/`);
-        hasFiles = true;
-      });
-    });
-    if (!hasFiles) pushLine(fixed('smart_no'));
-
-    const bytes = await doc.save();
-    return new Blob([bytes], { type: 'application/pdf' });
+    return buildOrderPdfForLang(lang2, params, i18n);
   }, [i18n]);
 
 
 
   const finalizeOrderPackage = useCallback(async (session) => {
     const brief = session?.brief || {};
-
-    const summaryPdf = await makeOrderSummaryPdf({
+    const params = {
       brief,
       selectedServices: session?.selectedServices || [],
       answers: session?.answers || {},
       stepData: session?.stepData || {}
-    });
+    };
+
+    const [pdfRu, pdfEn, pdfKa] = await Promise.all([
+      buildOrderPdfForLang('ru', params, i18n),
+      buildOrderPdfForLang('en', params, i18n),
+      buildOrderPdfForLang('ka', params, i18n),
+    ]);
 
     const zip = new JSZip();
-    zip.file('order_summary.pdf', summaryPdf);
+    zip.file('order_summary_ru.pdf', pdfRu);
+    zip.file('order_summary_en.pdf', pdfEn);
+    zip.file('order_summary_ka.pdf', pdfKa);
 
     const stepData = session?.stepData && typeof session.stepData === 'object' ? session.stepData : {};
     const allFiles = [];
@@ -910,7 +681,7 @@ const ChatWidget = ({ user }) => {
     };
     aiDocsRef.current = docs;
     return docs;
-  }, [makeOrderSummaryPdf, uploadZipToChat]);
+  }, [makeOrderSummaryPdf, uploadZipToChat, i18n]);
 
   useEffect(() => {
     if (isOpen && chatId) {
