@@ -306,13 +306,30 @@ export default function SmartOrderSystem({
             {t('smart_panel_title')}
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onCloseAssistant?.()}
-              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
-            >
-              {t('smart_close')}
-            </button>
+            {mode === 'assistant' && (
+              <button
+                type="button"
+                onClick={() => {
+                  try { onRestartRef.current?.(); } catch { void 0; }
+                  resetFlow();
+                  onModeChangeRef.current?.('assistant');
+                }}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_refresh_ai')}
+              </button>
+            )}
+
+            {mode === 'assistant' && (
+              <button
+                type="button"
+                onClick={() => onCloseAssistant?.()}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_close')}
+              </button>
+            )}
+
             {mode === 'manager' ? (
               <button
                 type="button"
@@ -325,7 +342,17 @@ export default function SmartOrderSystem({
               >
                 {t('smart_start_ai')}
               </button>
-            ) : (
+            ) : mode === 'locked' ? (
+              <button
+                type="button"
+                onClick={() => chooseAction({ id: 'start_ai' })}
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+              >
+                {t('smart_start_ai')}
+              </button>
+            ) : null}
+
+            {mode !== 'manager' && (
               <button
                 type="button"
                 onClick={() => chooseAction({ type: 'contact_manager' })}

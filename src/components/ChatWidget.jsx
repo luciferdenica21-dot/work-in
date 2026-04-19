@@ -524,15 +524,32 @@ const ChatWidget = ({ user }) => {
   const appendAssistantMessage = useCallback((text) => {
     const s = String(text || '').trim();
     if (!s) return;
-    const id = `smart_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    const id = `smart_prompt_${chatId || 'nochat'}`;
     const createdAt = new Date().toISOString();
-    setMessages((prev) => [
-      ...(prev || []),
-      { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt }
-    ]);
+    setMessages((prev) => {
+      const filtered = (prev || []).filter((m) => String(m?._id || m?.id || '') !== id);
+      return [...filtered, { _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt }];
+    });
     saveSmartTranscript({ _id: id, chatId, text: s, senderId: 'assistant', senderEmail: 'assistant', attachments: [], createdAt });
     setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
   }, [chatId, saveSmartTranscript]);
+
+  const b64ToBytes = (b64) => {
+    const bin = atob(String(b64 || ''));
+    const arr = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i += 1) arr[i] = bin.charCodeAt(i);
+    return arr;
+  };
+
+  const bytesToB64 = (bytes) => {
+    const u8 = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+    let bin = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < u8.length; i += chunkSize) {
+      bin += String.fromCharCode.apply(null, Array.from(u8.slice(i, i + chunkSize)));
+    }
+    return btoa(bin);
+  };
 
   const sendManagerLog = useCallback(async (text) => {
     if (!chatId) return;
@@ -553,11 +570,35 @@ const ChatWidget = ({ user }) => {
 
   const loadCyrillicFont = async (doc) => {
     try {
-      // Use a reliable CDN for Roboto font that supports Cyrillic
-      const fontUrl = 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf';
-      const fontBytes = await fetch(fontUrl).then(res => res.arrayBuffer());
+      const cacheKey = 'smart_pdf_font_roboto_ttf_v1';
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        doc.registerFontkit(fontkit);
+        return await doc.embedFont(b64ToBytes(cached));
+      }
+
+      const baseUrl = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
+      const urls = [
+        `${baseUrl}fonts/Roboto-Regular.ttf`,
+        'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
+        'https://fonts.gstatic.com/s/roboto/v19/KFOmCnqEu92Fr1Mu4mxPKTU1Kg.ttf',
+        'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf'
+      ];
+
+      let fontBytes = null;
+      for (const url of urls) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) continue;
+          fontBytes = await res.arrayBuffer();
+          break;
+        } catch { void 0; }
+      }
+      if (!fontBytes) throw new Error('Font download failed');
       doc.registerFontkit(fontkit);
-      return await doc.embedFont(fontBytes);
+      const embedded = await doc.embedFont(fontBytes);
+      try { localStorage.setItem(cacheKey, bytesToB64(fontBytes)); } catch { void 0; }
+      return embedded;
     } catch (e) {
       console.error('Failed to load Cyrillic font, falling back to Helvetica', e);
       return await doc.embedFont(StandardFonts.Helvetica);
@@ -575,14 +616,40 @@ const ChatWidget = ({ user }) => {
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
+    const sanitizeWinAnsi = (s) => {
+      const str = String(s || '');
+      let out = '';
+      for (let i = 0; i < str.length; i += 1) {
+        const code = str.charCodeAt(i);
+        out += code <= 0x7f ? str[i] : '?';
+      }
+      return out;
+    };
+
+    const safeWidth = (text, size) => {
+      try {
+        return font.widthOfTextAtSize(text, size);
+      } catch {
+        return font.widthOfTextAtSize(sanitizeWinAnsi(text), size);
+      }
+    };
+
+    const safeDraw = (text, opts) => {
+      try {
+        page.drawText(text, opts);
+      } catch {
+        page.drawText(sanitizeWinAnsi(text), opts);
+      }
+    };
+
     const pushLine = (line, size = fontSize) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
         const next = row ? `${row} ${w}` : w;
-        const width = font.widthOfTextAtSize(next, size);
+        const width = safeWidth(next, size);
         if (width > maxWidth && row) {
-          page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+          safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
           y -= size * 1.4;
           row = w;
         } else {
@@ -590,7 +657,7 @@ const ChatWidget = ({ user }) => {
         }
       }
       if (row) {
-        page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+        safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
         y -= size * 1.4;
       }
       if (y < margin + 40) {
@@ -725,14 +792,40 @@ const ChatWidget = ({ user }) => {
     const maxWidth = 595.28 - margin * 2;
     let y = 841.89 - margin;
 
+    const sanitizeWinAnsi = (s) => {
+      const str = String(s || '');
+      let out = '';
+      for (let i = 0; i < str.length; i += 1) {
+        const code = str.charCodeAt(i);
+        out += code <= 0x7f ? str[i] : '?';
+      }
+      return out;
+    };
+
+    const safeWidth = (text, size) => {
+      try {
+        return font.widthOfTextAtSize(text, size);
+      } catch {
+        return font.widthOfTextAtSize(sanitizeWinAnsi(text), size);
+      }
+    };
+
+    const safeDraw = (text, opts) => {
+      try {
+        page.drawText(text, opts);
+      } catch {
+        page.drawText(sanitizeWinAnsi(text), opts);
+      }
+    };
+
     const pushLine = (line, size = fontSize) => {
       const words = String(line || '').split(' ');
       let row = '';
       for (const w of words) {
         const next = row ? `${row} ${w}` : w;
-        const width = font.widthOfTextAtSize(next, size);
+        const width = safeWidth(next, size);
         if (width > maxWidth && row) {
-          page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+          safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
           y -= size * 1.4;
           row = w;
         } else {
@@ -740,7 +833,7 @@ const ChatWidget = ({ user }) => {
         }
       }
       if (row) {
-        page.drawText(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
+        safeDraw(row, { x: margin, y, size, font, color: rgb(0, 0, 0) });
         y -= size * 1.4;
       }
       if (y < margin + 40) {
