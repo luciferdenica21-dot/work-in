@@ -20,6 +20,7 @@ const ChatWidget = ({ user }) => {
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
   const [aiHelpFlow, setAiHelpFlow] = useState(null);
+  const [aiSessionStartMs, setAiSessionStartMs] = useState(0);
   
 
   const [selectedMessages, setSelectedMessages] = useState(new Set());
@@ -1674,6 +1675,7 @@ const ChatWidget = ({ user }) => {
                   clearSmartTranscript();
                   setSmartMode('locked');
                   setSmartResetNonce((n) => n + 1);
+                  setAiSessionStartMs(0);
                   setSelectedMessages(new Set());
                   setPinnedMessage(null);
                   setReplyTo(null);
@@ -1687,6 +1689,7 @@ const ChatWidget = ({ user }) => {
             </div>
           </div>
 
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-y] custom-scrollbar">
           {pinnedMessage && (
             <div className="px-3 py-2 md:px-4 md:py-3 border-b border-white/5 bg-blue-500/10 flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -1717,6 +1720,8 @@ const ChatWidget = ({ user }) => {
             mode={smartMode}
             onModeChange={(next) => {
               setSmartMode(next);
+              if (next === 'assistant') setAiSessionStartMs(Date.now());
+              if (next === 'locked') setAiSessionStartMs(0);
             }}
             initialBrief={{
               firstName: user?.firstName || '',
@@ -1969,8 +1974,13 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-y] px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
+          <div className="px-4 py-3 md:px-5 md:py-4 space-y-3">
             {messages.map((msg) => {
+              if (smartMode === 'assistant') {
+                const created = msg?.createdAt ? new Date(msg.createdAt).getTime() : 0;
+                if (aiSessionStartMs && created && created < aiSessionStartMs) return null;
+                if (String(msg?.senderId || '') === 'manager') return null;
+              }
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
               const isSelected = !!msgId && selectedMessages.has(msgId);
@@ -2084,6 +2094,7 @@ const ChatWidget = ({ user }) => {
               );
             })}
             <div ref={scrollRef} />
+          </div>
           </div>
 
           <form
