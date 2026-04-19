@@ -134,29 +134,6 @@ const ChatWidget = ({ user }) => {
   useEffect(() => {
     window.dispatchEvent(new Event(isOpen ? 'chatwidget:open' : 'chatwidget:close'));
   }, [isOpen]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const scrollY = window.scrollY || 0;
-    const body = document.body;
-    const prev = {
-      overflow: body.style.overflow,
-      position: body.style.position,
-      top: body.style.top,
-      width: body.style.width
-    };
-    body.style.overflow = 'hidden';
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.width = '100%';
-    return () => {
-      body.style.overflow = prev.overflow;
-      body.style.position = prev.position;
-      body.style.top = prev.top;
-      body.style.width = prev.width;
-      window.scrollTo(0, scrollY);
-    };
-  }, [isOpen]);
   useEffect(() => {
     try {
       if (isOpen) {
@@ -1581,7 +1558,7 @@ const ChatWidget = ({ user }) => {
                 ? 'fixed inset-4 md:left-8 md:right-8 md:bottom-8 md:top-24 rounded-4xl' 
                 : 'fixed top-24 right-24 md:right-28 rounded-4xl'
             } 
-            bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col min-h-0 overflow-hidden backdrop-blur-xl animate-fadeIn
+            bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-fadeIn
           `}
           style={
             !isMobile && !isMaximized ? {
@@ -1992,7 +1969,7 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-y] px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
+          <div className="flex-grow overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
