@@ -467,6 +467,16 @@ export default function SmartOrderSystem({
                       );
                     })}
                   </div>
+                  <textarea
+                    value={orderSession.stepData?.[stepId]?.wishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({
+                      ...p,
+                      stepData: { ...(p.stepData || {}), [stepId]: { ...((p.stepData || {})[stepId] || {}), wishes: e.target.value } }
+                    }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_special_wishes')}
+                  />
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"

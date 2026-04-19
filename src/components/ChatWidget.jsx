@@ -19,8 +19,7 @@ const ChatWidget = ({ user }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [chatId, setChatId] = useState(null);
-  const [aiOrderReady, setAiOrderReady] = useState(false);
-  const [aiDocs, setAiDocs] = useState(null);
+  const [aiHelpFlow, setAiHelpFlow] = useState(null);
   
 
   const [selectedMessages, setSelectedMessages] = useState(new Set());
@@ -568,10 +567,9 @@ const ChatWidget = ({ user }) => {
   }, [chatId]);
 
   const uploadZipToChat = useCallback(async (zipBlob, fileName) => {
-    if (!chatId) return null;
     const zipFile = new File([zipBlob], fileName, { type: 'application/zip' });
-    return await filesAPI.upload(zipFile, chatId);
-  }, [chatId]);
+    return await filesAPI.upload(zipFile, null);
+  }, []);
 
   const loadCyrillicFont = async (doc, lang2) => {
     try {
@@ -1013,36 +1011,9 @@ const ChatWidget = ({ user }) => {
     return new Blob([bytes], { type: 'application/pdf' });
   }, [i18n]);
 
-  const trackAiServerMessageId = useCallback((id) => {
-    if (!chatId || !id) return;
-    try {
-      const key = `smart_server_ids_${chatId}`;
-      const raw = localStorage.getItem(key);
-      const parsed = raw ? JSON.parse(raw) : [];
-      const list = Array.isArray(parsed) ? parsed : [];
-      list.push(String(id));
-      localStorage.setItem(key, JSON.stringify(Array.from(new Set(list)).slice(-200)));
-    } catch { void 0; }
-  }, [chatId]);
 
-  const loadAiServerMessageIds = useCallback(() => {
-    if (!chatId) return [];
-    try {
-      const raw = localStorage.getItem(`smart_server_ids_${chatId}`);
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.map(String) : [];
-    } catch {
-      return [];
-    }
-  }, [chatId]);
-
-  const clearAiServerMessageIds = useCallback(() => {
-    if (!chatId) return;
-    try { localStorage.removeItem(`smart_server_ids_${chatId}`); } catch { void 0; }
-  }, [chatId]);
 
   const finalizeOrderPackage = useCallback(async (session) => {
-    if (!chatId) return null;
     const brief = session?.brief || {};
 
     const briefPdf = await makeBriefPdf({
@@ -1075,14 +1046,14 @@ const ChatWidget = ({ user }) => {
 
     const slug = (s) => {
       const txt = String(s || '').trim();
-      const ascii = txt.replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-      return ascii.slice(0, 60);
+      const cleaned = txt.replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim();
+      return cleaned.slice(0, 60);
     };
 
     const getStepLabel = (key) => {
       const k = String(key || '');
       if (k === 'services_select') return t('smart_select_services');
-      if (k === 'brief_form') return t('smart_brief_intro');
+      if (k === 'brief_form') return t('smart_fill_brief');
       if (k === 'q_deadline') return t('smart_q_deadline');
       if (k === 'q_quantity') return t('smart_q_quantity');
       return k;
@@ -1106,16 +1077,13 @@ const ChatWidget = ({ user }) => {
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
     const zipResp = await uploadZipToChat(zipBlob, 'ai_order.zip');
-    if (zipResp?.messageId) trackAiServerMessageId(zipResp.messageId);
 
     const docs = {
       zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url
     };
     aiDocsRef.current = docs;
-    setAiDocs(docs);
-    setAiOrderReady(true);
     return docs;
-  }, [chatId, makeBriefPdf, makeOrderPdf, trackAiServerMessageId, uploadZipToChat]);
+  }, [makeBriefPdf, makeOrderPdf, uploadZipToChat]);
 
   useEffect(() => {
     if (isOpen && chatId) {
@@ -1668,13 +1636,6 @@ const ChatWidget = ({ user }) => {
               const ok = window.confirm(t('smart_close_confirm'));
               if (!ok) return;
               clearSmartTranscript();
-              const ids = loadAiServerMessageIds();
-              (async () => {
-                for (const id of ids) {
-                  try { await messagesAPI.delete(id); } catch { void 0; }
-                }
-                clearAiServerMessageIds();
-              })();
               setMessages((prev) => (prev || []).filter((m) => {
                 const id0 = String(m?._id || m?.id || '');
                 if (id0.startsWith('smart_')) return false;
@@ -1688,11 +1649,9 @@ const ChatWidget = ({ user }) => {
             }}
             onRestart={() => {
               clearSmartTranscript();
-              setAiDocs(null);
-              setAiOrderReady(false);
               aiDocsRef.current = null;
               aiActionLogRef.current = [];
-              clearAiServerMessageIds();
+              setAiHelpFlow(null);
               setMessages((prev) => (prev || []).filter((m) => {
                 const id = String(m?._id || m?.id || '');
                 if (id.startsWith('smart_')) return false;
@@ -1720,7 +1679,8 @@ const ChatWidget = ({ user }) => {
                 appendAssistantMessage(t('smart_order_processing'));
                 const docs = await finalizeOrderPackage(session);
 
-                const fixed = i18n.getFixedT('ru');
+                const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+                const fixed = i18n.getFixedT(lang2 === 'en' ? 'en' : (lang2 === 'ka' ? 'ka' : 'ru'));
                 const serviceNames = services.map((sid) => {
                   const map = {
                     svc_bending: 'smart_svc_bending',
@@ -1772,19 +1732,23 @@ const ChatWidget = ({ user }) => {
 
                 sendManagerLog('✅ Заказ сформирован и отправлен');
                 clearSmartTranscript();
-                setAiDocs(null);
-                setAiOrderReady(false);
                 aiDocsRef.current = null;
-                setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+                setMessages((prev) => (prev || []).filter((m) => {
+                  const id = String(m?._id || m?.id || '');
+                  if (id.startsWith('smart_')) return false;
+                  if (id.startsWith('smart_prompt_')) return false;
+                  if (String(m?.senderId || '') === 'assistant') return false;
+                  return true;
+                }));
                 appendAiFinalNotice(t('smart_order_sent'));
                 setSmartMode('locked');
                 setSmartResetNonce((n) => n + 1);
+                appendAssistantMessage(t('smart_help_question'));
+                setAiHelpFlow({ stage: 'ask' });
               } catch (err) {
                 console.error('Order preparation/sending failed:', err);
                 try { sendManagerLog(`❌ Ошибка сохранения заказа: ${err?.message || 'unknown'}`); } catch { void 0; }
                 clearSmartTranscript();
-                setAiDocs(null);
-                setAiOrderReady(false);
                 aiDocsRef.current = null;
               setMessages((prev) => (prev || []).filter((m) => {
                 const id = String(m?._id || m?.id || '');
@@ -1797,28 +1761,114 @@ const ChatWidget = ({ user }) => {
                 appendAiFinalNotice(t('smart_order_sent'));
                 setSmartMode('locked');
                 setSmartResetNonce((n) => n + 1);
+                appendAssistantMessage(t('smart_help_question'));
+                setAiHelpFlow({ stage: 'ask' });
               }
             }}
           />
 
-          {aiOrderReady && aiDocs && (
-            <div className="px-4 py-3 border-b border-white/10 bg-blue-600/10 space-y-2">
-              <div className="text-[10px] uppercase tracking-widest text-blue-300 font-medium">
-                {t('smart_docs_ready')}
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {aiDocs.zipUrl && (
-                  <a
-                    href={aiDocs.zipUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-xs hover:bg-blue-600/30 transition"
+          {aiHelpFlow && (
+            <div className="px-4 py-3 border-b border-white/10 bg-white/5 space-y-2">
+              {aiHelpFlow.stage === 'ask' && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appendAssistantMessage(t('smart_help_comment_prompt'));
+                      setAiHelpFlow({ stage: 'comment', text: '' });
+                    }}
+                    className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    {t('smart_download_zip')}
-                  </a>
-                )}
-              </div>
+                    {t('smart_yes')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appendAssistantMessage(t('smart_help_close_confirm'));
+                      setAiHelpFlow({ stage: 'confirm_close' });
+                    }}
+                    className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
+                  >
+                    {t('smart_no')}
+                  </button>
+                </div>
+              )}
+
+              {aiHelpFlow.stage === 'comment' && (
+                <div className="space-y-2">
+                  <textarea
+                    value={aiHelpFlow.text || ''}
+                    onChange={(e) => setAiHelpFlow((p) => ({ ...(p || {}), text: e.target.value }))}
+                    rows={3}
+                    className="w-full px-3 py-2 rounded-xl bg-[#0a0a0a] border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
+                    placeholder={t('smart_help_comment_placeholder')}
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const txt = String(aiHelpFlow.text || '').trim();
+                        if (!txt || !chatId) return;
+                        try {
+                          await messagesAPI.send(chatId, `👤 Комментарий клиента после оформления заказа: ${txt}`);
+                        } catch { void 0; }
+                        appendAssistantMessage(t('smart_help_question'));
+                        setAiHelpFlow({ stage: 'ask' });
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                    >
+                      {t('smart_help_send_comment')}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        appendAssistantMessage(t('smart_help_question'));
+                        setAiHelpFlow({ stage: 'ask' });
+                      }}
+                      className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_back')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {aiHelpFlow.stage === 'confirm_close' && (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appendAssistantMessage(t('smart_help_session_closed'));
+                      setAiHelpFlow(null);
+                      clearSmartTranscript();
+                      aiActionLogRef.current = [];
+                      aiDocsRef.current = null;
+                      setMessages((prev) => (prev || []).filter((m) => {
+                        const id0 = String(m?._id || m?.id || '');
+                        if (id0.startsWith('smart_')) return false;
+                        if (id0.startsWith('smart_prompt_')) return false;
+                        if (String(m?.senderId || '') === 'assistant') return false;
+                        return true;
+                      }));
+                      setSmartMode('locked');
+                      setSmartResetNonce((n) => n + 1);
+                    }}
+                    className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
+                  >
+                    {t('smart_yes')}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appendAssistantMessage(t('smart_help_question'));
+                      setAiHelpFlow({ stage: 'ask' });
+                    }}
+                    className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
+                  >
+                    {t('smart_no')}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
