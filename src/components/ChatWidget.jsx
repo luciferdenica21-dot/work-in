@@ -134,6 +134,29 @@ const ChatWidget = ({ user }) => {
   useEffect(() => {
     window.dispatchEvent(new Event(isOpen ? 'chatwidget:open' : 'chatwidget:close'));
   }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const scrollY = window.scrollY || 0;
+    const body = document.body;
+    const prev = {
+      overflow: body.style.overflow,
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width
+    };
+    body.style.overflow = 'hidden';
+    body.style.position = 'fixed';
+    body.style.top = `-${scrollY}px`;
+    body.style.width = '100%';
+    return () => {
+      body.style.overflow = prev.overflow;
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      window.scrollTo(0, scrollY);
+    };
+  }, [isOpen]);
   useEffect(() => {
     try {
       if (isOpen) {
@@ -1969,11 +1992,7 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          <div
-            className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar"
-            onWheelCapture={(e) => e.stopPropagation()}
-            onTouchMoveCapture={(e) => e.stopPropagation()}
-          >
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain [-webkit-overflow-scrolling:touch] [touch-action:pan-y] px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
