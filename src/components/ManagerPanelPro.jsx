@@ -2993,7 +2993,15 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               onClick={async () => {
                                 if (!window.confirm('Удалить все действия ИИ в этом чате?')) return;
                                 const ids = messages
-                                  .filter((m) => String(m?.text || '').startsWith('🤖'))
+                                  .filter((m) => {
+                                    const text = String(m?.text || '').trim();
+                                    if (text.startsWith('🤖')) return true;
+                                    const atts = Array.isArray(m?.attachments) ? m.attachments : [];
+                                    const first = atts[0] || null;
+                                    const name = String(first?.originalName || first?.filename || '').toLowerCase();
+                                    if (!name) return false;
+                                    return name === 'ai_order.zip' || name === 'order.pdf' || name === 'brief.pdf' || name === 'customer.pdf';
+                                  })
                                   .map((m) => m?._id || m?.id)
                                   .filter(Boolean);
                                 if (ids.length === 0) return;
@@ -3635,6 +3643,24 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                   <div>
                                     <p className="text-xs text-gray-400">Комментарий</p>
                                     <p className="text-xs text-gray-300 italic">"{order.comment}"</p>
+                                  </div>
+                                )}
+
+                                {order.aiSession && (
+                                  <div>
+                                    <p className="text-xs text-gray-400">Данные ИИ</p>
+                                    <div className="mt-1 space-y-1 text-xs text-gray-300">
+                                      {Object.keys(order.aiSession.meta || {}).length > 0 && (
+                                        <div className="whitespace-pre-wrap break-words">
+                                          {`Контекст: ${JSON.stringify(order.aiSession.meta)}`}
+                                        </div>
+                                      )}
+                                      {Object.keys(order.aiSession.answers || {}).length > 0 && (
+                                        <div className="whitespace-pre-wrap break-words">
+                                          {`Ответы: ${JSON.stringify(order.aiSession.answers)}`}
+                                        </div>
+                                      )}
+                                    </div>
                                   </div>
                                 )}
 

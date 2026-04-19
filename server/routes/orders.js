@@ -68,7 +68,7 @@ router.post('/', protect, async (req, res) => {
     console.log('User:', req.user._id, req.user.email);
     console.log('Request body:', req.body);
     
-    const { firstName, lastName, contact, services, comment, files } = req.body;
+    const { firstName, lastName, contact, phone, city, services, comment, files, aiSession } = req.body;
     
     // Валидация обязательных полей
     if (!services || !Array.isArray(services) || services.length === 0) {
@@ -85,15 +85,28 @@ router.post('/', protect, async (req, res) => {
     let chat = await ensureChatForUser({ userId: req.user._id, userEmail: req.user.email });
     console.log('Chat for order:', chat.id);
 
+    const normalizedFiles = Array.isArray(files)
+      ? files.map((f) => ({
+          id: f?.id,
+          name: f?.name || f?.originalName || f?.filename || '',
+          type: f?.type || f?.mimetype || '',
+          size: f?.size ?? null,
+          url: f?.url || f?.fileUrl || f?.path || ''
+        }))
+      : [];
+
     const newOrder = {
       firstName: firstName || '',
       lastName: lastName || '',
       contact: contact || '',
+      phone: phone || '',
+      city: city || '',
       services: services || [], // Используем правильные значения по умолчанию
       comment: comment || '',
-      files: files || [], // Сохраняем файлы к заказу
+      files: normalizedFiles, // Сохраняем файлы к заказу
+      aiSession: aiSession && typeof aiSession === 'object' ? aiSession : null,
       status: 'new', // ИСПОЛЬЗУЕМ 'new' ВМЕСТО 'pending' ДЛЯ ВАЛИДАЦИИ
-      createdAt: new Date()
+      createdAt: new Date().toISOString()
     };
     
     console.log('Creating order:', newOrder);

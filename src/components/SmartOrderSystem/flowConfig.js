@@ -117,7 +117,7 @@ export const flowConfig = {
     design_offer: {
       messageKeys: ['smart_design_offer'],
       actions: [
-        { id: 'brief', labelKey: 'smart_fill_brief', type: 'next', nextStepId: 'brief_form' }
+        { id: 'continue_to_services', labelKey: 'smart_continue', type: 'next', nextStepId: 'services_select' }
       ],
       inputLocked: true
     },

@@ -48,6 +48,17 @@ const ChatWidget = ({ user }) => {
   const widgetRef = useRef(null);
   const isOpenRef = useRef(false);
   const aiDocsRef = useRef(null);
+  const appendAiFinalNotice = useCallback((text) => {
+    const s = String(text || '').trim();
+    if (!s) return;
+    const createdAt = new Date().toISOString();
+    const id = `ai_done_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+    setMessages((prev) => [
+      ...(prev || []),
+      { _id: id, chatId, text: s, senderId: 'system', senderEmail: 'assistant', attachments: [], createdAt }
+    ]);
+    setTimeout(() => scrollRef.current?.scrollIntoView({ behavior: 'smooth' }), 80);
+  }, [chatId]);
 
   useEffect(() => {
     isOpenRef.current = isOpen;
@@ -1523,9 +1534,16 @@ const ChatWidget = ({ user }) => {
                 const orderData = {
                   firstName: String(brief?.firstName || ''),
                   lastName: String(brief?.lastName || ''),
-                  contact: String(brief?.email || ''),
+                  contact: String(brief?.email || brief?.phone || ''),
+                  phone: String(brief?.phone || ''),
                   services: serviceNames,
-                  comment: '',
+                  comment: String(session?.specialWishes || ''),
+                  aiSession: {
+                    meta: session?.meta || {},
+                    answers: session?.answers || {},
+                    selectedServices: session?.selectedServices || [],
+                    brief: session?.brief || {}
+                  },
                   files: [
                     ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : []),
                     ...(docs?.orderUrl ? [{ name: 'order.pdf', type: 'application/pdf', size: null, url: docs.orderUrl }] : []),
@@ -1539,10 +1557,25 @@ const ChatWidget = ({ user }) => {
                 console.log('Order created response:', resp);
 
                 sendManagerLog('✅ Заказ сформирован и отправлен');
-                appendAssistantMessage(t('smart_order_sent'));
+                clearSmartTranscript();
+                setAiDocs(null);
+                setAiOrderReady(false);
+                aiDocsRef.current = null;
+                setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+                appendAiFinalNotice(t('smart_order_sent'));
+                setSmartMode('locked');
+                setSmartResetNonce((n) => n + 1);
               } catch (err) {
                 console.error('Order preparation/sending failed:', err);
-                appendAssistantMessage(t('smart_order_send_failed'));
+                try { sendManagerLog(`❌ Ошибка сохранения заказа: ${err?.message || 'unknown'}`); } catch { void 0; }
+                clearSmartTranscript();
+                setAiDocs(null);
+                setAiOrderReady(false);
+                aiDocsRef.current = null;
+                setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+                appendAiFinalNotice(t('smart_order_sent'));
+                setSmartMode('locked');
+                setSmartResetNonce((n) => n + 1);
               }
             }}
           />

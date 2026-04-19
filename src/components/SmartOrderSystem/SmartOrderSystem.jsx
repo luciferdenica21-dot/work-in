@@ -170,6 +170,18 @@ export default function SmartOrderSystem({
     }
 
     if (action.type === 'generate_order') {
+      try {
+        const w = String(orderSession.specialWishes || '').trim();
+        if (w) onManagerLogRef.current?.(`Клиент оставил комментарий: ${w}`);
+      } catch { void 0; }
+      try {
+        const files = Array.isArray(orderSession.files) ? orderSession.files : [];
+        if (files.length) {
+          const names = files.map((f) => f?.name).filter(Boolean).slice(0, 10).join(', ');
+          onManagerLogRef.current?.(`Клиент приложил файлы: ${names || `${files.length} шт.`}`);
+        }
+      } catch { void 0; }
+
       const payload = {
         version: 1,
         flow: 'SmartOrderSystem',
@@ -240,7 +252,7 @@ export default function SmartOrderSystem({
         : flowConfig.questionnaires.multi.length;
 
     if (questionIndex + 1 >= total) {
-      setStepId('finalize');
+      setStepId('brief_form');
       setQuestionIndex(0);
       return;
     }
@@ -273,6 +285,10 @@ export default function SmartOrderSystem({
       files: [...(prev.files || []), ...list.map((f) => ({ name: f.name, type: f.type, size: f.size, file: f }))]
     }));
     try { onAssistantMessageRef.current?.(t('smart_files_added', { count: list.length })); } catch { void 0; }
+    try {
+      const names = list.map((f) => f?.name).filter(Boolean).slice(0, 10).join(', ');
+      onManagerLogRef.current?.(`Клиент прикрепил файлы: ${names || `${list.length} шт.`}`);
+    } catch { void 0; }
     try { e.target.value = ''; } catch { void 0; }
   };
 
@@ -423,7 +439,10 @@ export default function SmartOrderSystem({
                           try { onAssistantMessageRef.current?.(t('smart_brief_required')); } catch { void 0; }
                           return;
                         }
-                        setStepId('services_select');
+                        try {
+                          onManagerLogRef.current?.(`Клиент заполнил данные заказчика: ${String(b.firstName || '').trim()} ${String(b.lastName || '').trim()}, ${String(b.email || '').trim()}, ${String(b.phone || '').trim()}`);
+                        } catch { void 0; }
+                        setStepId('finalize');
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                     >
