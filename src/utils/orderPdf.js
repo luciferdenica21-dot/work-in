@@ -138,17 +138,43 @@ export const buildOrderPdfForLang = async (lang, { brief, selectedServices, answ
 
   section(fixed('smart_summary_section_files'));
   let hasF = false;
-  Object.entries(sd).forEach(([k, v]) => {
-    const ff = Array.isArray(v?.files) ? v.files : []; if (!ff.length) return;
-    const safeStep = String(k).replace(/[^a-zA-Z0-9_-]+/g, '_');
-    const slug = String(stepTitle(k)).replace(/[\\/:*?"<>|]+/g, '_').replace(/\s+/g, ' ').trim().slice(0, 60);
-    const folder = slug ? `${safeStep}_${slug}` : safeStep;
-    ff.forEach((f) => {
-      const fname = String(f?.name || ''); if (!fname) return;
-      line(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)}) — attachments/${folder}/`);
+  for (const [k, v] of Object.entries(sd)) {
+    const ff = Array.isArray(v?.files) ? v.files : [];
+    if (!ff.length) continue;
+    for (const f of ff) {
+      const fname = String(f?.name || ''); if (!fname) continue;
+      const mime = String(f?.file?.type || f?.type || '').toLowerCase();
+      const isImg = mime === 'image/png' || mime === 'image/jpeg' || mime === 'image/jpg' ||
+        /\.(png|jpe?g)$/i.test(fname);
+      if (isImg && f?.file) {
+        try {
+          // Draw filename label
+          line(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)})`);
+          // Embed image
+          const imgBuf = await f.file.arrayBuffer();
+          const isPng = mime === 'image/png' || /\.png$/i.test(fname);
+          const embedded = isPng
+            ? await doc.embedPng(imgBuf)
+            : await doc.embedJpg(imgBuf);
+          const maxW = mw;
+          const maxH = 200;
+          const scale = Math.min(maxW / embedded.width, maxH / embedded.height, 1);
+          const imgW = embedded.width * scale;
+          const imgH = embedded.height * scale;
+          // Ensure enough space on page
+          if (y - imgH < m + 40) { page = doc.addPage([595.28, 841.89]); y = 841.89 - m; }
+          page.drawImage(embedded, { x: m, y: y - imgH, width: imgW, height: imgH });
+          y -= imgH + 10;
+          if (y < m + 40) { page = doc.addPage([595.28, 841.89]); y = 841.89 - m; }
+          hasF = true;
+          continue;
+        } catch { void 0; }
+      }
+      // Non-image or failed embed: show text only
+      line(`• ${fname} (${fixed('smart_summary_file_service')}: ${stepTitle(k)})`);
       hasF = true;
-    });
-  });
+    }
+  }
   if (!hasF) line(fixed('smart_no'));
 
   const bytes = await doc.save();
