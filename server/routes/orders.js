@@ -2,6 +2,7 @@ import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { supabase } from '../config/supabase.js';
 import { protect, admin } from '../middleware/auth.js';
+import { sendTelegram } from '../config/telegram.js';
 
 const router = express.Router();
 
@@ -126,6 +127,20 @@ router.post('/', protect, async (req, res) => {
     if (io) {
       io.emit('order-created', { chatId: chat.id.toString(), order: newOrder });
     }
+
+    try {
+      const tgText = [
+        '🆕 Новый заказ',
+        `От: ${req.user.email || req.user._id}`,
+        `Клиент: ${(newOrder.firstName || '').trim()} ${(newOrder.lastName || '').trim()}`.trim(),
+        `Контакт: ${newOrder.contact || '-'}`,
+        `Телефон: ${newOrder.phone || '-'}`,
+        `Город: ${newOrder.city || '-'}`,
+        `Услуги: ${Array.isArray(newOrder.services) ? newOrder.services.join(', ') : '-'}`,
+        `Чат: ${chat.id.toString()}`
+      ].join('\n');
+      sendTelegram(tgText);
+    } catch { void 0; }
     
     console.log('Order created successfully:', newOrder);
     res.status(201).json(newOrder);

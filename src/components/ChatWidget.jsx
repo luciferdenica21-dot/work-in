@@ -1910,7 +1910,7 @@ const ChatWidget = ({ user }) => {
                         const txt = String(aiHelpFlow.text || '').trim();
                         if (!txt || !chatId) return;
                         try {
-                          await messagesAPI.send(chatId, `👤 Комментарий клиента после оформления заказа: ${txt}`);
+                          await messagesAPI.send(chatId, `👤 ${t('smart_manager_comment_prefix')} ${txt}`);
                         } catch { void 0; }
                         appendAssistantMessage(t('smart_help_question'));
                         setAiHelpFlow({ stage: 'ask' });

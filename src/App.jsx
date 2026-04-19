@@ -1,7 +1,7 @@
 import './i18n';
 import { useState, useEffect, lazy, Suspense } from 'react' 
 import { useTranslation } from 'react-i18next'; 
-import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { useRef } from 'react';
 import './App.css'
 import Navbar from './components/Navbar';
@@ -72,67 +72,7 @@ function App() {
    } catch { void 0; }
  }, [user]);
 
- const MobileSwipeBack = () => {
-   const navigate = useNavigate();
-   const location = useLocation();
-   const startRef = useRef({ x: 0, y: 0, t: 0 });
-   const enabled = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-   useEffect(() => {
-     if (!enabled) return;
-     const pushGuard = () => {
-       try {
-         const url = location.pathname + location.search + location.hash;
-         window.history.pushState({ guard: true }, '', url);
-       } catch { /* ignore */ }
-     };
-     // Добавляем защитный слой от выхода из сайта кнопкой/жестом "назад" на мобильных
-     pushGuard();
-     const onPop = () => {
-       const idx = (window.history && window.history.state && typeof window.history.state.idx === 'number') ? window.history.state.idx : 0;
-       // Если в истории роутера ещё есть шаги — позволяем обычный back.
-       // Если это край и браузер хочет выйти с сайта — возвращаем защитный state.
-       if (idx <= 0) {
-         pushGuard();
-       }
-     };
-     window.addEventListener('popstate', onPop);
-     return () => {
-       window.removeEventListener('popstate', onPop);
-     };
-   }, [enabled, location.pathname, location.search, location.hash]);
-   useEffect(() => {
-     if (!enabled) return;
-     const onStart = (e) => {
-       const t = e.touches && e.touches[0];
-       if (!t) return;
-       // Игнорируем край у экрана (системные жесты)
-       if (t.clientX < 24 || (window.innerWidth - t.clientX) < 24) return;
-       startRef.current = { x: t.clientX, y: t.clientY, t: Date.now() };
-     };
-     const onEnd = (e) => {
-       const t = e.changedTouches && e.changedTouches[0];
-       if (!t) return;
-       const dx = t.clientX - startRef.current.x;
-       const dy = t.clientY - startRef.current.y;
-       const dt = Date.now() - startRef.current.t;
-       // Свайп влево: короткий, почти горизонтальный
-       if (dt < 500 && Math.abs(dy) < 70 && dx < -60) {
-         const idx = (window.history && window.history.state && typeof window.history.state.idx === 'number') ? window.history.state.idx : 0;
-         if (idx > 0) {
-           e.preventDefault?.();
-           try { navigate(-1); } catch { /* ignore */ }
-         }
-       }
-     };
-     document.addEventListener('touchstart', onStart, { passive: true });
-     document.addEventListener('touchend', onEnd, { passive: false });
-     return () => {
-       document.removeEventListener('touchstart', onStart);
-       document.removeEventListener('touchend', onEnd);
-     };
-   }, [navigate, location.pathname, enabled]);
-   return null;
- };
+ const MobileSwipeBack = () => null;
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
