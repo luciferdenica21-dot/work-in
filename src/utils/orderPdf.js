@@ -1,6 +1,5 @@
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import fontkit from '@pdf-lib/fontkit';
-import JSZip from 'jszip';
 
 const b64ToBytes = (b64) => {
   const bin = atob(String(b64 || ''));
@@ -20,11 +19,9 @@ const bytesToB64 = (bytes) => {
 
 const loadFont = async (doc, lang) => {
   try {
-    // Always load both fonts: Roboto for latin/cyrillic, NotoSansGeorgian for georgian
-    // Use NotoSansGeorgian as primary for 'ka', Roboto for others
-    const primary = lang === 'ka' ? 'NotoSansGeorgian' : 'Roboto';
-    const cacheKey = `smart_pdf_font_ttf_v3_${primary}`;
-    const sample = lang === 'ka' ? 'აბ' : 'БЯ';
+    const isKa = lang === 'ka';
+    const cacheKey = isKa ? 'smart_pdf_font_NotoSansGeorgian' : 'smart_pdf_font_Roboto';
+    const sample = isKa ? 'აბ' : 'БЯ';
     const validate = (f) => { try { f.encodeText(sample); return true; } catch { return false; } };
 
     const cached = localStorage.getItem(cacheKey);
@@ -36,20 +33,12 @@ const loadFont = async (doc, lang) => {
     }
 
     const base = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
-    const urls = lang === 'ka'
-      ? [
-          `${base}fonts/NotoSansGeorgian-Regular.ttf`,
-          `${base}fonts/noto-sans-georgian.ttf`,
-          `${base}fonts/Roboto-Regular.ttf`,
-          `${base}fonts/roboto-regular.ttf`,
-          'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'
-        ]
+    const urls = isKa
+      ? [`${base}fonts/NotoSansGeorgian-Regular.ttf`, `${base}fonts/noto-sans-georgian.ttf`]
       : [
           `${base}fonts/Roboto-Regular.ttf`,
           `${base}fonts/roboto-regular.ttf`,
-          'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
-          `${base}fonts/NotoSansGeorgian-Regular.ttf`,
-          `${base}fonts/noto-sans-georgian.ttf`
+          'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf'
         ];
 
     for (const url of urls) {
@@ -164,18 +153,4 @@ export const buildOrderPdfForLang = async (lang, { brief, selectedServices, answ
 
   const bytes = await doc.save();
   return new Blob([bytes], { type: 'application/pdf' });
-};
-
-export const buildOrderSummaryZip = async ({ brief, selectedServices, answers, stepData }, i18n) => {
-  const params = { brief, selectedServices, answers, stepData };
-  const [ru, en, ka] = await Promise.all([
-    buildOrderPdfForLang('ru', params, i18n),
-    buildOrderPdfForLang('en', params, i18n),
-    buildOrderPdfForLang('ka', params, i18n),
-  ]);
-  const zip = new JSZip();
-  zip.file('order_summary_ru.pdf', ru);
-  zip.file('order_summary_en.pdf', en);
-  zip.file('order_summary_ka.pdf', ka);
-  return zip;
 };

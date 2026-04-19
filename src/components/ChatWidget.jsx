@@ -624,16 +624,11 @@ const ChatWidget = ({ user }) => {
       stepData: session?.stepData || {}
     };
 
-    const [pdfRu, pdfEn, pdfKa] = await Promise.all([
-      buildOrderPdfForLang('ru', params, i18n),
-      buildOrderPdfForLang('en', params, i18n),
-      buildOrderPdfForLang('ka', params, i18n),
-    ]);
+    const lang2 = String(i18n?.language || '').toLowerCase().slice(0, 2);
+    const summaryPdf = await buildOrderPdfForLang(lang2, params, i18n);
 
     const zip = new JSZip();
-    zip.file('order_summary_ru.pdf', pdfRu);
-    zip.file('order_summary_en.pdf', pdfEn);
-    zip.file('order_summary_ka.pdf', pdfKa);
+    zip.file('order_summary.pdf', summaryPdf);
 
     const stepData = session?.stepData && typeof session.stepData === 'object' ? session.stepData : {};
     const allFiles = [];
