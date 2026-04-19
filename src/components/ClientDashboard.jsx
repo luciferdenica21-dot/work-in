@@ -448,11 +448,16 @@ const ClientDashboard = ({ user: initialUser }) => {
   {t('Файлы заказа:')}
 </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
-                          {order.files.map((file) => (
-                            <div key={file.id || file.url || file.name}>
-                              {renderOrderFile(file)}
-                            </div>
-                          ))}
+                          {order.files
+                            .filter((f) => {
+                              const name = String(f?.name || '').toLowerCase();
+                              return name !== 'chat_session' && !name.startsWith('chat_session_');
+                            })
+                            .map((file) => (
+                              <div key={file.id || file.url || file.name}>
+                                {renderOrderFile(file)}
+                              </div>
+                            ))}
                         </div>
                       </div>
                     )}

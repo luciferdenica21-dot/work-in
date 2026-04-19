@@ -3692,11 +3692,16 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                   <div>
                                     <p className="text-xs text-gray-400">Файлы заказа</p>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                                      {order.files.map((file) => (
-                                        <div key={file.id || file.url || file.name}>
-                                          {renderOrderFile(file)}
-                                        </div>
-                                      ))}
+                                      {order.files
+                                        .filter((f) => {
+                                          const name = String(f?.name || '').toLowerCase();
+                                          return name !== 'chat_session' && !name.startsWith('chat_session_');
+                                        })
+                                        .map((file) => (
+                                          <div key={file.id || file.url || file.name}>
+                                            {renderOrderFile(file)}
+                                          </div>
+                                        ))}
                                     </div>
                                   </div>
                                 )}

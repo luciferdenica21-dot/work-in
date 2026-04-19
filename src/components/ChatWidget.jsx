@@ -652,27 +652,49 @@ const ChatWidget = ({ user }) => {
       return k;
     };
 
+    // Separate images (upload to server) from videos (put in zip)
+    const uploadedImageFiles = [];
+
     for (const item of allFiles) {
       try {
         const fileObj = item?.file?.file;
         if (!fileObj) continue;
         const originalName = String(item?.file?.name || fileObj.name || 'file');
+        const mime = String(fileObj.type || '');
         const safeStep = String(item?.stepKey || 'step').replace(/[^a-zA-Z0-9_-]+/g, '_');
         const label = getStepLabel(item?.stepKey);
         const folderSlug = slug(label);
         const folderName = folderSlug ? `${safeStep}_${folderSlug}` : safeStep;
         const fileName = `${safeStep}__${originalName}`;
         const buf = await fileObj.arrayBuffer();
-        zip.file(`attachments/${folderName}/${fileName}`, buf);
+
+        if (mime.startsWith('video/')) {
+          // Videos go into zip under video/ folder
+          zip.file(`video/${fileName}`, buf);
+        } else {
+          // All other files (images, docs) go into attachments/ in zip
+          zip.file(`attachments/${folderName}/${fileName}`, buf);
+          // Images also get uploaded separately so they appear in order.files
+          if (mime.startsWith('image/')) {
+            try {
+              const uploadFile = new File([buf], originalName, { type: mime });
+              const resp = await filesAPI.upload(uploadFile, null);
+              const url = resp?.fileUrl || resp?.message?.attachments?.[0]?.url || resp?.data?.fileUrl;
+              if (url) {
+                uploadedImageFiles.push({ name: originalName, type: mime, size: fileObj.size, url });
+              }
+            } catch { void 0; }
+          }
+        }
       } catch { void 0; }
     }
 
     const zipBlob = await zip.generateAsync({ type: 'blob' });
-
     const zipResp = await uploadZipToChat(zipBlob, 'ai_order.zip');
 
     const docs = {
-      zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url
+      zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url,
+      imageFiles: uploadedImageFiles
     };
     aiDocsRef.current = docs;
     return docs;
@@ -1356,7 +1378,8 @@ const ChatWidget = ({ user }) => {
                     stepData: session?.stepData || {}
                   },
                   files: [
-                    ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : [])
+                    ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : []),
+                    ...(docs?.imageFiles || [])
                   ]
                 };
 
