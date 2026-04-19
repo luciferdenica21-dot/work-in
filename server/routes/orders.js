@@ -142,8 +142,44 @@ router.post('/', protect, async (req, res) => {
       sendTelegram(tgText);
     } catch { void 0; }
     
+    const orderIndex = existingOrders.length; // индекс нового заказа
     console.log('Order created successfully:', newOrder);
-    res.status(201).json(newOrder);
+    res.status(201).json({ ...newOrder, chatId: chat.id, orderIndex });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// КЛИЕНТСКОЕ ОБНОВЛЕНИЕ КОММЕНТАРИЯ К СВОЕМУ ЗАКАЗУ
+router.put('/:chatId/:orderIndex/client-comment', protect, async (req, res) => {
+  try {
+    const { chatId, orderIndex } = req.params;
+    const orderIdx = parseInt(orderIndex);
+    const { clientComment } = req.body;
+
+    const { data: chat, error: chatErr } = await supabase
+      .from('chats')
+      .select('id,user_id,orders')
+      .eq('id', chatId)
+      .maybeSingle();
+    if (chatErr) throw chatErr;
+    if (!chat) return res.status(404).json({ message: 'Chat not found' });
+    if (String(chat.user_id) !== String(req.user._id)) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    const orders = Array.isArray(chat.orders) ? chat.orders : [];
+    if (!orders[orderIdx]) return res.status(404).json({ message: 'Order not found' });
+
+    orders[orderIdx] = { ...orders[orderIdx], clientComment: String(clientComment || '') };
+    const nowIso = new Date().toISOString();
+    const { error: updErr } = await supabase
+      .from('chats')
+      .update({ orders, updated_at: nowIso })
+      .eq('id', chatId);
+    if (updErr) throw updErr;
+
+    res.json({ message: 'Updated' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

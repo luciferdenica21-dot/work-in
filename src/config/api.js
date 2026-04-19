@@ -176,6 +176,10 @@ export const ordersAPI = {
     });
   },
   getAll: () => apiRequest('/orders'),
+  updateClientComment: (chatId, orderIndex, clientComment) => apiRequest(`/orders/${chatId}/${orderIndex}/client-comment`, {
+    method: 'PUT',
+    body: JSON.stringify({ clientComment }),
+  }),
   updateStatus: (chatId, orderIndex, status) => apiRequest(`/orders/${chatId}/${orderIndex}/status`, {
     method: 'PUT',
     body: JSON.stringify({ status }),

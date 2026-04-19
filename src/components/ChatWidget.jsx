@@ -361,7 +361,7 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         setChatId(chat.chatId);
-        if (chat?.unread) {
+        if (chat?.unread && !isOpenRef.current) {
           setHasNewMessage(true);
         }
         try {
@@ -519,7 +519,7 @@ const ChatWidget = ({ user }) => {
       try {
         const chat = await chatsAPI.getMyChat();
         if (!mounted) return;
-        if (chat?.unread) setHasNewMessage(true);
+        setHasNewMessage(!!chat?.unread);
       } catch { void 0; }
     };
 
@@ -1824,6 +1824,10 @@ const ChatWidget = ({ user }) => {
                 const resp = await ordersAPI.create(orderData);
                 console.log('Order created response:', resp);
 
+                const createdOrderRef = resp?.chatId && resp?.orderIndex != null
+                  ? { chatId: resp.chatId, orderIndex: resp.orderIndex }
+                  : null;
+
                 sendManagerLog('✅ Заказ сформирован и отправлен');
                 clearSmartTranscript();
                 aiDocsRef.current = null;
@@ -1835,28 +1839,22 @@ const ChatWidget = ({ user }) => {
                   return true;
                 }));
                 appendAiFinalNotice(t('smart_order_sent'));
-                setSmartMode('locked');
-                setSmartResetNonce((n) => n + 1);
-                appendAssistantMessage(t('smart_help_question'));
-                setAiHelpFlow({ stage: 'ask' });
+                setAiHelpFlow({ stage: 'ask', orderRef: createdOrderRef });
               } catch (err) {
                 console.error('Order preparation/sending failed:', err);
                 try { sendManagerLog(`❌ Ошибка сохранения заказа: ${err?.message || 'unknown'}`); } catch { void 0; }
                 clearSmartTranscript();
                 aiDocsRef.current = null;
-              setMessages((prev) => (prev || []).filter((m) => {
-                const id = String(m?._id || m?.id || '');
-                if (id.startsWith('smart_')) return false;
-                if (id.startsWith('smart_prompt_')) return false;
-                if (id.startsWith('ai_done_')) return false;
-                if (String(m?.senderId || '') === 'assistant') return false;
-                return true;
-              }));
+                setMessages((prev) => (prev || []).filter((m) => {
+                  const id = String(m?._id || m?.id || '');
+                  if (id.startsWith('smart_')) return false;
+                  if (id.startsWith('smart_prompt_')) return false;
+                  if (id.startsWith('ai_done_')) return false;
+                  if (String(m?.senderId || '') === 'assistant') return false;
+                  return true;
+                }));
                 appendAiFinalNotice(t('smart_order_sent'));
-                setSmartMode('locked');
-                setSmartResetNonce((n) => n + 1);
-                appendAssistantMessage(t('smart_help_question'));
-                setAiHelpFlow({ stage: 'ask' });
+                setAiHelpFlow({ stage: 'ask', orderRef: null });
               }
             }}
           />
@@ -1870,7 +1868,7 @@ const ChatWidget = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setAiHelpFlow({ stage: 'comment', text: '' });
+                        setAiHelpFlow((p) => ({ ...p, stage: 'comment', text: '' }));
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                     >
@@ -1879,7 +1877,7 @@ const ChatWidget = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setAiHelpFlow({ stage: 'confirm_close' });
+                        setAiHelpFlow((p) => ({ ...p, stage: 'confirm_close' }));
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
                     >
@@ -1904,12 +1902,17 @@ const ChatWidget = ({ user }) => {
                       type="button"
                       onClick={async () => {
                         const txt = String(aiHelpFlow.text || '').trim();
-                        if (!txt || !chatId) return;
+                        if (!txt) return;
+                        const orderRef = aiHelpFlow.orderRef;
                         try {
-                          await messagesAPI.send(chatId, `👤 ${t('smart_manager_comment_prefix')} ${txt}`);
+                          if (orderRef?.chatId && orderRef?.orderIndex != null) {
+                            await ordersAPI.updateClientComment(orderRef.chatId, orderRef.orderIndex, txt);
+                          }
+                          if (chatId) await messagesAPI.send(chatId, `👤 ${t('smart_manager_comment_prefix')} ${txt}`);
                         } catch { void 0; }
-                        appendAssistantMessage(t('smart_help_question'));
-                        setAiHelpFlow({ stage: 'ask' });
+                        setAiHelpFlow((p) => ({ ...p, stage: 'ask' }));
+                        setSmartMode('locked');
+                        setSmartResetNonce((n) => n + 1);
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-blue-600/20 border border-blue-500/30 text-blue-200 text-[12px] hover:bg-blue-600/30"
                     >
@@ -1918,8 +1921,7 @@ const ChatWidget = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        appendAssistantMessage(t('smart_help_question'));
-                        setAiHelpFlow({ stage: 'ask' });
+                        setAiHelpFlow((p) => ({ ...p, stage: 'ask' }));
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
                     >
@@ -1958,7 +1960,7 @@ const ChatWidget = ({ user }) => {
                     <button
                       type="button"
                       onClick={() => {
-                        setAiHelpFlow({ stage: 'ask' });
+                        setAiHelpFlow((p) => ({ ...p, stage: 'ask' }));
                       }}
                       className="min-h-[44px] px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10"
                     >
