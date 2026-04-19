@@ -3626,6 +3626,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                     {order.firstName} {order.lastName}
                                   </p>
                                   <p className="text-xs text-gray-400">{order.contact}</p>
+                                  {order.phone && <p className="text-xs text-gray-400">{order.phone}</p>}
                                 </div>
 
                                 <div>

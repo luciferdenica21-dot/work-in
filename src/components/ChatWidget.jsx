@@ -574,11 +574,22 @@ const ChatWidget = ({ user }) => {
 
   const loadCyrillicFont = async (doc) => {
     try {
-      const cacheKey = 'smart_pdf_font_roboto_ttf_v1';
+      const cacheKey = 'smart_pdf_font_roboto_ttf_v2';
+      const validateCyrillic = (embedded) => {
+        try {
+          embedded.encodeText('БЯ');
+          return true;
+        } catch {
+          return false;
+        }
+      };
+
       const cached = localStorage.getItem(cacheKey);
       if (cached) {
         doc.registerFontkit(fontkit);
-        return await doc.embedFont(b64ToBytes(cached));
+        const embedded = await doc.embedFont(b64ToBytes(cached));
+        if (validateCyrillic(embedded)) return embedded;
+        try { localStorage.removeItem(cacheKey); } catch { void 0; }
       }
 
       const baseUrl = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
@@ -596,14 +607,17 @@ const ChatWidget = ({ user }) => {
           const res = await fetch(url);
           if (!res.ok) continue;
           fontBytes = await res.arrayBuffer();
-          break;
+          doc.registerFontkit(fontkit);
+          const embedded = await doc.embedFont(fontBytes);
+          if (!validateCyrillic(embedded)) {
+            fontBytes = null;
+            continue;
+          }
+          try { localStorage.setItem(cacheKey, bytesToB64(fontBytes)); } catch { void 0; }
+          return embedded;
         } catch { void 0; }
       }
       if (!fontBytes) throw new Error('Font download failed');
-      doc.registerFontkit(fontkit);
-      const embedded = await doc.embedFont(fontBytes);
-      try { localStorage.setItem(cacheKey, bytesToB64(fontBytes)); } catch { void 0; }
-      return embedded;
     } catch (e) {
       console.error('Failed to load Cyrillic font, falling back to Helvetica', e);
       return await doc.embedFont(StandardFonts.Helvetica);
