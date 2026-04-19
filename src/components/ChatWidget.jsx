@@ -1969,7 +1969,7 @@ const ChatWidget = ({ user }) => {
             </div>
           )}
 
-          <div className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-3 md:px-5 md:py-4 space-y-3 custom-scrollbar">
             {messages.map((msg) => {
               const isMine = isUserMessage(msg);
               const msgId = getMsgId(msg);
