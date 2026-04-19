@@ -3649,15 +3649,38 @@ const getAbsoluteFileUrl = (fileUrl) => {
                                 {order.aiSession && (
                                   <div>
                                     <p className="text-xs text-gray-400">Данные ИИ</p>
-                                    <div className="mt-1 space-y-1 text-xs text-gray-300">
-                                      {Object.keys(order.aiSession.meta || {}).length > 0 && (
-                                        <div className="whitespace-pre-wrap break-words">
-                                          {`Контекст: ${JSON.stringify(order.aiSession.meta)}`}
+                                    <div className="mt-1 space-y-2 text-xs text-gray-300">
+                                      {Array.isArray(order.aiSession.actions) && order.aiSession.actions.length > 0 && (
+                                        <div>
+                                          <div className="text-gray-400">Действия</div>
+                                          <div className="mt-1 space-y-1">
+                                            {order.aiSession.actions.slice(-50).map((a, idx) => (
+                                              <div key={idx} className="whitespace-pre-wrap break-words">
+                                                {a}
+                                              </div>
+                                            ))}
+                                          </div>
                                         </div>
                                       )}
-                                      {Object.keys(order.aiSession.answers || {}).length > 0 && (
-                                        <div className="whitespace-pre-wrap break-words">
-                                          {`Ответы: ${JSON.stringify(order.aiSession.answers)}`}
+
+                                      {order.aiSession.stepData && typeof order.aiSession.stepData === 'object' && (
+                                        <div>
+                                          <div className="text-gray-400">Пожелания и файлы</div>
+                                          <div className="mt-1 space-y-2">
+                                            {Object.entries(order.aiSession.stepData).map(([k, v]) => {
+                                              const wishes = String(v?.wishes || '').trim();
+                                              const files = Array.isArray(v?.files) ? v.files : [];
+                                              const names = files.map((f) => f?.name).filter(Boolean);
+                                              if (!wishes && names.length === 0) return null;
+                                              return (
+                                                <div key={k} className="rounded-lg border border-white/10 bg-white/5 px-2 py-2">
+                                                  <div className="text-[11px] text-gray-400">{k}</div>
+                                                  {wishes && <div className="mt-1 whitespace-pre-wrap break-words">{`Клиент оставил пожелание: ${wishes}`}</div>}
+                                                  {names.length > 0 && <div className="mt-1 whitespace-pre-wrap break-words">{`Клиент приложил файлы: ${names.join(', ')}`}</div>}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
                                         </div>
                                       )}
                                     </div>

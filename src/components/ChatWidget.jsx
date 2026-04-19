@@ -48,6 +48,7 @@ const ChatWidget = ({ user }) => {
   const widgetRef = useRef(null);
   const isOpenRef = useRef(false);
   const aiDocsRef = useRef(null);
+  const aiActionLogRef = useRef([]);
   const appendAiFinalNotice = useCallback((text) => {
     const s = String(text || '').trim();
     if (!s) return;
@@ -496,8 +497,10 @@ const ChatWidget = ({ user }) => {
       const raw = localStorage.getItem(key);
       const parsed = raw ? JSON.parse(raw) : [];
       const list = Array.isArray(parsed) ? parsed : [];
-      list.push(entry);
-      localStorage.setItem(key, JSON.stringify(list.slice(-250)));
+      const id = String(entry?._id || entry?.id || '');
+      const filtered = id ? list.filter((m) => String(m?._id || m?.id || '') !== id) : list;
+      filtered.push(entry);
+      localStorage.setItem(key, JSON.stringify(filtered.slice(-250)));
     } catch { void 0; }
   }, [chatId]);
 
@@ -555,6 +558,7 @@ const ChatWidget = ({ user }) => {
     if (!chatId) return;
     const s = String(text || '').trim();
     if (!s) return;
+    aiActionLogRef.current = [...(aiActionLogRef.current || []), s].slice(-300);
     try {
       await messagesAPI.send(chatId, `🤖 ${s}`);
     } catch (e) {
@@ -580,6 +584,7 @@ const ChatWidget = ({ user }) => {
       const baseUrl = (import.meta?.env?.BASE_URL || '/').replace(/\/?$/, '/');
       const urls = [
         `${baseUrl}fonts/Roboto-Regular.ttf`,
+        `${baseUrl}fonts/roboto-regular.ttf`,
         'https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Me5WZLCzYlKw.ttf',
         'https://fonts.gstatic.com/s/roboto/v19/KFOmCnqEu92Fr1Mu4mxPKTU1Kg.ttf',
         'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/Roboto-Regular.ttf'
@@ -781,7 +786,7 @@ const ChatWidget = ({ user }) => {
     return new Blob([bytes], { type: 'application/pdf' });
   }, [i18n]);
 
-  const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes }) => {
+  const makeOrderPdf = useCallback(async ({ brief, selectedServices, answers, files, specialWishes, stepData }) => {
     const doc = await PDFDocument.create();
     const font = await loadCyrillicFont(doc);
     let page = doc.addPage([595.28, 841.89]);
@@ -920,15 +925,41 @@ const ChatWidget = ({ user }) => {
       if (String(val).trim()) pushLine(`• ${label}: ${val}`);
     });
 
+    const stepTitle = (key) => {
+      const k = String(key || '');
+      if (k === 'services_select') return fixed('smart_select_services');
+      if (k === 'brief_form') return fixed('smart_fill_brief');
+      return k;
+    };
+
     // Wishes
     drawSection(fixed('smart_order_pdf_section_wishes'));
-    const wishes = String(specialWishes || '').trim();
-    pushLine(wishes || fixed('smart_no'));
+    const sd = stepData && typeof stepData === 'object' ? stepData : {};
+    const wishLines = [];
+    Object.entries(sd).forEach(([k, v]) => {
+      const w = String(v?.wishes || '').trim();
+      if (!w) return;
+      wishLines.push(`• ${stepTitle(k)}: ${w}`);
+    });
+    const fallbackWishes = String(specialWishes || '').trim();
+    if (wishLines.length) wishLines.forEach((l) => pushLine(l));
+    else pushLine(fallbackWishes || fixed('smart_no'));
 
     // Files
     drawSection(fixed('smart_order_pdf_section_files'));
-    (files || []).forEach((f) => pushLine(`• ${String(f?.name || '')}`));
-    if ((files || []).length === 0) pushLine(fixed('smart_no'));
+    const fileLines = [];
+    Object.entries(sd).forEach(([k, v]) => {
+      const ff = Array.isArray(v?.files) ? v.files : [];
+      if (!ff.length) return;
+      const names = ff.map((f) => String(f?.name || '')).filter(Boolean);
+      if (!names.length) return;
+      fileLines.push(`• ${stepTitle(k)}: ${names.join(', ')}`);
+    });
+    if (fileLines.length) fileLines.forEach((l) => pushLine(l));
+    else {
+      (files || []).forEach((f) => pushLine(`• ${String(f?.name || '')}`));
+      if ((files || []).length === 0) pushLine(fixed('smart_no'));
+    }
 
     const bytes = await doc.save();
     return new Blob([bytes], { type: 'application/pdf' });
@@ -971,41 +1002,47 @@ const ChatWidget = ({ user }) => {
       meta: session?.meta || {},
       selectedServices: session?.selectedServices || [],
       answers: session?.answers || {},
-      files: session?.files || []
+      files: session?.files || [],
+      stepData: session?.stepData || {}
     });
     const orderPdf = await makeOrderPdf({
       brief,
       selectedServices: session?.selectedServices || [],
       answers: session?.answers || {},
       files: session?.files || [],
-      specialWishes: session?.specialWishes || ''
+      specialWishes: session?.specialWishes || '',
+      stepData: session?.stepData || {}
     });
 
     const zip = new JSZip();
     zip.file('order.pdf', orderPdf);
-    zip.file('brief.pdf', briefPdf);
-    for (const f of (session?.files || [])) {
+    zip.file('customer.pdf', briefPdf);
+
+    const stepData = session?.stepData && typeof session.stepData === 'object' ? session.stepData : {};
+    const allFiles = [];
+    Object.entries(stepData).forEach(([k, v]) => {
+      const files = Array.isArray(v?.files) ? v.files : [];
+      files.forEach((f) => allFiles.push({ stepKey: k, file: f }));
+    });
+
+    for (const item of allFiles) {
       try {
-        const fileObj = f?.file;
+        const fileObj = item?.file?.file;
         if (!fileObj) continue;
-        const name = String(f?.name || fileObj.name || 'file');
+        const name = String(item?.file?.name || fileObj.name || 'file');
+        const safeStep = String(item?.stepKey || 'step').replace(/[^a-zA-Z0-9_-]+/g, '_');
         const buf = await fileObj.arrayBuffer();
-        zip.file(`attachments/${name}`, buf);
+        zip.file(`attachments/${safeStep}/${name}`, buf);
       } catch { void 0; }
     }
+
     const zipBlob = await zip.generateAsync({ type: 'blob' });
 
     const zipResp = await uploadZipToChat(zipBlob, 'ai_order.zip');
     if (zipResp?.messageId) trackAiServerMessageId(zipResp.messageId);
-    const briefResp = await filesAPI.upload(new File([briefPdf], 'brief.pdf', { type: 'application/pdf' }), chatId);
-    if (briefResp?.messageId) trackAiServerMessageId(briefResp.messageId);
-    const orderResp = await filesAPI.upload(new File([orderPdf], 'order.pdf', { type: 'application/pdf' }), chatId);
-    if (orderResp?.messageId) trackAiServerMessageId(orderResp.messageId);
 
     const docs = {
-      zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url,
-      briefUrl: briefResp?.fileUrl || briefResp?.message?.attachments?.[0]?.url,
-      orderUrl: orderResp?.fileUrl || orderResp?.message?.attachments?.[0]?.url
+      zipUrl: zipResp?.fileUrl || zipResp?.message?.attachments?.[0]?.url
     };
     aiDocsRef.current = docs;
     setAiDocs(docs);
@@ -1048,18 +1085,6 @@ const ChatWidget = ({ user }) => {
       loadMessages();
     }
   }, [isOpen, chatId]);
-
-  useEffect(() => {
-    if (!isOpen || !chatId) return;
-    if (smartMode !== 'locked') return;
-    try {
-      const key = `smart_greeted_${chatId}`;
-      const greeted = localStorage.getItem(key);
-      if (greeted) return;
-      localStorage.setItem(key, '1');
-      appendAssistantMessage(t('smart_greeting'));
-    } catch { void 0; }
-  }, [appendAssistantMessage, chatId, isOpen, smartMode, t]);
 
   useEffect(() => {
     try {
@@ -1565,6 +1590,12 @@ const ChatWidget = ({ user }) => {
             onModeChange={(next) => {
               setSmartMode(next);
             }}
+            initialBrief={{
+              firstName: user?.firstName || '',
+              lastName: user?.lastName || '',
+              email: user?.email || '',
+              phone: user?.phone || ''
+            }}
             resetNonce={smartResetNonce}
             onCloseAssistant={async () => {
               const ok = window.confirm(t('smart_close_confirm'));
@@ -1577,7 +1608,14 @@ const ChatWidget = ({ user }) => {
                 }
                 clearAiServerMessageIds();
               })();
-              setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+              setMessages((prev) => (prev || []).filter((m) => {
+                const id0 = String(m?._id || m?.id || '');
+                if (id0.startsWith('smart_')) return false;
+                if (id0.startsWith('smart_prompt_')) return false;
+                if (id0.startsWith('ai_done_')) return false;
+                if (String(m?.senderId || '') === 'assistant') return false;
+                return true;
+              }));
               setSmartMode('locked');
               setSmartResetNonce((n) => n + 1);
             }}
@@ -1586,8 +1624,16 @@ const ChatWidget = ({ user }) => {
               setAiDocs(null);
               setAiOrderReady(false);
               aiDocsRef.current = null;
+              aiActionLogRef.current = [];
               clearAiServerMessageIds();
-              setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+              setMessages((prev) => (prev || []).filter((m) => {
+                const id = String(m?._id || m?.id || '');
+                if (id.startsWith('smart_')) return false;
+                if (id.startsWith('ai_done_')) return false;
+                if (String(m?.senderId || '') === 'assistant') return false;
+                if (id.startsWith('smart_prompt_')) return false;
+                return true;
+              }));
             }}
             onAssistantMessage={appendAssistantMessage}
             onManagerLog={sendManagerLog}
@@ -1630,18 +1676,26 @@ const ChatWidget = ({ user }) => {
                   contact: String(brief?.email || brief?.phone || ''),
                   phone: String(brief?.phone || ''),
                   services: serviceNames,
-                  comment: String(session?.specialWishes || ''),
+                  comment: (() => {
+                    const sd = session?.stepData && typeof session.stepData === 'object' ? session.stepData : {};
+                    const lines = [];
+                    Object.entries(sd).forEach(([k, v]) => {
+                      const w = String(v?.wishes || '').trim();
+                      if (!w) return;
+                      lines.push(`${k}: ${w}`);
+                    });
+                    return lines.join(' | ');
+                  })(),
                   aiSession: {
                     meta: session?.meta || {},
                     answers: session?.answers || {},
                     selectedServices: session?.selectedServices || [],
-                    brief: session?.brief || {}
+                    brief: session?.brief || {},
+                    actions: aiActionLogRef.current || [],
+                    stepData: session?.stepData || {}
                   },
                   files: [
-                    ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : []),
-                    ...(docs?.orderUrl ? [{ name: 'order.pdf', type: 'application/pdf', size: null, url: docs.orderUrl }] : []),
-                    ...(docs?.briefUrl ? [{ name: 'brief.pdf', type: 'application/pdf', size: null, url: docs.briefUrl }] : []),
-                    ...(session?.files || []).map((f) => ({ name: f.name, type: f.type, size: f.size }))
+                    ...(docs?.zipUrl ? [{ name: 'ai_order.zip', type: 'application/zip', size: null, url: docs.zipUrl }] : [])
                   ]
                 };
 
@@ -1665,7 +1719,14 @@ const ChatWidget = ({ user }) => {
                 setAiDocs(null);
                 setAiOrderReady(false);
                 aiDocsRef.current = null;
-                setMessages((prev) => (prev || []).filter((m) => !String(m?._id || m?.id || '').startsWith('smart_') && String(m?.senderId || '') !== 'assistant'));
+              setMessages((prev) => (prev || []).filter((m) => {
+                const id = String(m?._id || m?.id || '');
+                if (id.startsWith('smart_')) return false;
+                if (id.startsWith('smart_prompt_')) return false;
+                if (id.startsWith('ai_done_')) return false;
+                if (String(m?.senderId || '') === 'assistant') return false;
+                return true;
+              }));
                 appendAiFinalNotice(t('smart_order_sent'));
                 setSmartMode('locked');
                 setSmartResetNonce((n) => n + 1);
@@ -1688,28 +1749,6 @@ const ChatWidget = ({ user }) => {
                   >
                     <Download className="w-3.5 h-3.5" />
                     {t('smart_download_zip')}
-                  </a>
-                )}
-                {aiDocs.orderUrl && (
-                  <a
-                    href={aiDocs.orderUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-xs hover:bg-white/10 transition"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    {t('smart_download_order')}
-                  </a>
-                )}
-                {aiDocs.briefUrl && (
-                  <a
-                    href={aiDocs.briefUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-xs hover:bg-white/10 transition"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    {t('smart_download_brief')}
                   </a>
                 )}
               </div>

@@ -17,6 +17,7 @@ export default function SmartOrderSystem({
   onManagerLog,
   onOrderPrepared,
   onRestart,
+  initialBrief,
   onTransferToManager,
   onContractCompleted,
   onCloseAssistant,
@@ -53,7 +54,7 @@ export default function SmartOrderSystem({
     },
     selectedServices: [],
     answers: {},
-    files: [],
+    stepData: {},
     brief: {
       firstName: '',
       lastName: '',
@@ -64,34 +65,45 @@ export default function SmartOrderSystem({
   });
 
   const fileInputRef = useRef(null);
+  const fileTargetStepRef = useRef(null);
   const prevStepRef = useRef(null);
   const lastPromptRef = useRef('');
 
   const step = flowConfig.steps[stepId];
   const isPanelActive = mode === 'assistant' || mode === 'locked' || mode === 'manager';
   const isScripted = mode === 'assistant';
-  const resetFlow = () => {
+  const startNewSession = () => {
     prevStepRef.current = null;
     lastPromptRef.current = '';
     setStepId(flowConfig.initialStepId);
     setQuestionIndex(0);
-    setOrderSession((p) => ({
-      ...p,
-      startedAt: p.startedAt || new Date().toISOString()
-    }));
+    const b = initialBrief && typeof initialBrief === 'object' ? initialBrief : {};
+    setOrderSession({
+      startedAt: new Date().toISOString(),
+      meta: { hasSpecificRequest: null, consultFormat: null, hasProject: null, needsCorrection: null },
+      selectedServices: [],
+      answers: {},
+      stepData: {},
+      brief: { firstName: String(b.firstName || ''), lastName: String(b.lastName || ''), email: String(b.email || ''), phone: String(b.phone || '') },
+      specialWishes: ''
+    });
   };
 
   useEffect(() => {
     if (resetNonce == null) return;
     const id = setTimeout(() => {
-      resetFlow();
+      prevStepRef.current = null;
+      lastPromptRef.current = '';
+      setStepId(flowConfig.initialStepId);
+      setQuestionIndex(0);
+      const b = initialBrief && typeof initialBrief === 'object' ? initialBrief : {};
       setOrderSession({
         startedAt: null,
         meta: { hasSpecificRequest: null, consultFormat: null, hasProject: null, needsCorrection: null },
         selectedServices: [],
         answers: {},
-        files: [],
-        brief: { firstName: '', lastName: '', email: '', phone: '' },
+        stepData: {},
+        brief: { firstName: String(b.firstName || ''), lastName: String(b.lastName || ''), email: String(b.email || ''), phone: String(b.phone || '') },
         specialWishes: ''
       });
       onModeChangeRef.current?.('locked');
@@ -121,7 +133,7 @@ export default function SmartOrderSystem({
 
     if (action.id === 'start_ai' && mode === 'locked') {
       try { onRestartRef.current?.(); } catch { void 0; }
-      resetFlow();
+      startNewSession();
       onModeChangeRef.current?.('assistant');
     }
 
@@ -147,7 +159,7 @@ export default function SmartOrderSystem({
         meta: { hasSpecificRequest: null, consultFormat: null, hasProject: null, needsCorrection: null },
         selectedServices: [],
         answers: {},
-        files: [],
+        stepData: {},
         brief: { firstName: '', lastName: '', email: '', phone: '' },
         specialWishes: ''
       });
@@ -171,15 +183,29 @@ export default function SmartOrderSystem({
 
     if (action.type === 'generate_order') {
       try {
-        const w = String(orderSession.specialWishes || '').trim();
-        if (w) onManagerLogRef.current?.(`Клиент оставил комментарий: ${w}`);
+        const sd = orderSession.stepData && typeof orderSession.stepData === 'object' ? orderSession.stepData : {};
+        Object.entries(sd).forEach(([k, v]) => {
+          const w = String(v?.wishes || '').trim();
+          if (w) onManagerLogRef.current?.(`Клиент оставил пожелания (${k}): ${w}`);
+        });
       } catch { void 0; }
       try {
-        const files = Array.isArray(orderSession.files) ? orderSession.files : [];
-        if (files.length) {
+        const sd = orderSession.stepData && typeof orderSession.stepData === 'object' ? orderSession.stepData : {};
+        Object.entries(sd).forEach(([k, v]) => {
+          const files = Array.isArray(v?.files) ? v.files : [];
+          if (!files.length) return;
           const names = files.map((f) => f?.name).filter(Boolean).slice(0, 10).join(', ');
-          onManagerLogRef.current?.(`Клиент приложил файлы: ${names || `${files.length} шт.`}`);
-        }
+          onManagerLogRef.current?.(`Клиент приложил файлы (${k}): ${names || `${files.length} шт.`}`);
+        });
+      } catch { void 0; }
+
+      const flattenedFiles = [];
+      try {
+        const sd = orderSession.stepData && typeof orderSession.stepData === 'object' ? orderSession.stepData : {};
+        Object.entries(sd).forEach(([k, v]) => {
+          const files = Array.isArray(v?.files) ? v.files : [];
+          files.forEach((f) => flattenedFiles.push({ ...f, __stepKey: k }));
+        });
       } catch { void 0; }
 
       const payload = {
@@ -189,11 +215,12 @@ export default function SmartOrderSystem({
         language: lang2,
         orderSession: {
           ...orderSession,
-          files: (orderSession.files || []).map((f) => ({ 
-            name: f.name, 
-            type: f.type, 
+          files: flattenedFiles.map((f) => ({
+            name: f.name,
+            type: f.type,
             size: f.size,
-            file: f.file // Keep the original file object for ZIP generation
+            file: f.file,
+            stepKey: f.__stepKey
           }))
         }
       };
@@ -275,25 +302,37 @@ export default function SmartOrderSystem({
     });
   };
 
-  const openFilePicker = () => fileInputRef.current?.click();
+  const openFilePicker = (stepKey) => {
+    fileTargetStepRef.current = stepKey || stepId;
+    fileInputRef.current?.click();
+  };
 
   const onFilesPicked = (e) => {
     const list = Array.from(e.target.files || []);
     if (list.length === 0) return;
-    setOrderSession((prev) => ({
-      ...prev,
-      files: [...(prev.files || []), ...list.map((f) => ({ name: f.name, type: f.type, size: f.size, file: f }))]
-    }));
+    const stepKey = String(fileTargetStepRef.current || stepId || 'step');
+    setOrderSession((prev) => {
+      const sd = prev.stepData && typeof prev.stepData === 'object' ? prev.stepData : {};
+      const cur = sd[stepKey] || {};
+      const files0 = Array.isArray(cur.files) ? cur.files : [];
+      const nextFiles = [...files0, ...list.map((f) => ({ name: f.name, type: f.type, size: f.size, file: f }))];
+      return { ...prev, stepData: { ...sd, [stepKey]: { ...cur, files: nextFiles } } };
+    });
     try { onAssistantMessageRef.current?.(t('smart_files_added', { count: list.length })); } catch { void 0; }
     try {
       const names = list.map((f) => f?.name).filter(Boolean).slice(0, 10).join(', ');
-      onManagerLogRef.current?.(`Клиент прикрепил файлы: ${names || `${list.length} шт.`}`);
+      onManagerLogRef.current?.(`Клиент прикрепил файлы (${stepKey}): ${names || `${list.length} шт.`}`);
     } catch { void 0; }
     try { e.target.value = ''; } catch { void 0; }
   };
 
-  const removeFile = (idx) => {
-    setOrderSession((prev) => ({ ...prev, files: (prev.files || []).filter((_, i) => i !== idx) }));
+  const removeFile = (stepKey, idx) => {
+    setOrderSession((prev) => {
+      const sd = prev.stepData && typeof prev.stepData === 'object' ? prev.stepData : {};
+      const cur = sd[stepKey] || {};
+      const files0 = Array.isArray(cur.files) ? cur.files : [];
+      return { ...prev, stepData: { ...sd, [stepKey]: { ...cur, files: files0.filter((_, i) => i !== idx) } } };
+    });
   };
 
   if (!isPanelActive) return null;
@@ -311,7 +350,7 @@ export default function SmartOrderSystem({
                 type="button"
                 onClick={() => {
                   try { onRestartRef.current?.(); } catch { void 0; }
-                  resetFlow();
+                  startNewSession();
                   onModeChangeRef.current?.('assistant');
                 }}
                 className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 text-[12px] hover:bg-white/10 min-h-[44px]"
@@ -334,7 +373,7 @@ export default function SmartOrderSystem({
               <button
                 type="button"
                 onClick={() => {
-                  resetFlow();
+                  startNewSession();
                   onModeChangeRef.current?.('assistant');
                   onRestartRef.current?.();
                 }}
@@ -370,7 +409,7 @@ export default function SmartOrderSystem({
           </div>
         )}
 
-        {mode === 'manager' ? null : (
+        {mode === 'assistant' ? (
         <div className="mt-3">
           <AnimatePresence mode="popLayout" initial={false}>
             <MotionDiv
@@ -412,12 +451,47 @@ export default function SmartOrderSystem({
                     })}
                   </div>
                   <textarea
-                    value={orderSession.specialWishes || ''}
-                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
+                    value={orderSession.stepData?.[stepId]?.wishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({
+                      ...p,
+                      stepData: { ...(p.stepData || {}), [stepId]: { ...((p.stepData || {})[stepId] || {}), wishes: e.target.value } }
+                    }))}
                     rows={3}
                     className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
                     placeholder={t('smart_special_wishes')}
                   />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => openFilePicker(stepId)}
+                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
+                    >
+                      {t('smart_upload_files')}
+                    </button>
+                  </div>
+                  {(orderSession.stepData?.[stepId]?.files || []).length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-[11px] text-white/60">{t('smart_files')}</div>
+                      <div className="flex flex-col gap-2">
+                        {(orderSession.stepData?.[stepId]?.files || []).slice(0, 5).map((f, idx) => (
+                          <div key={`${f.name}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
+                            <div className="min-w-0">
+                              <div className="text-[12px] text-white truncate">{f.name}</div>
+                              <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => removeFile(stepId, idx)}
+                              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
+                              aria-label={t('smart_remove')}
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : null}
 
@@ -452,7 +526,7 @@ export default function SmartOrderSystem({
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={() => openFilePicker()}
+                      onClick={() => openFilePicker(stepId)}
                       className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
                     >
                       {t('smart_upload_files')}
@@ -477,17 +551,20 @@ export default function SmartOrderSystem({
                     </button>
                   </div>
                   <textarea
-                    value={orderSession.specialWishes || ''}
-                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
+                    value={orderSession.stepData?.[stepId]?.wishes || ''}
+                    onChange={(e) => setOrderSession((p) => ({
+                      ...p,
+                      stepData: { ...(p.stepData || {}), [stepId]: { ...((p.stepData || {})[stepId] || {}), wishes: e.target.value } }
+                    }))}
                     rows={3}
                     className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
                     placeholder={t('smart_special_wishes')}
                   />
-                  {(orderSession.files || []).length > 0 && (
+                  {(orderSession.stepData?.[stepId]?.files || []).length > 0 && (
                     <div className="space-y-2">
                       <div className="text-[11px] text-white/60">{t('smart_files')}</div>
                       <div className="flex flex-col gap-2">
-                        {(orderSession.files || []).slice(0, 5).map((f, idx) => (
+                        {(orderSession.stepData?.[stepId]?.files || []).slice(0, 5).map((f, idx) => (
                           <div key={`${f.name}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
                             <div className="min-w-0">
                               <div className="text-[12px] text-white truncate">{f.name}</div>
@@ -495,7 +572,7 @@ export default function SmartOrderSystem({
                             </div>
                             <button
                               type="button"
-                              onClick={() => removeFile(idx)}
+                              onClick={() => removeFile(stepId, idx)}
                               className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
                               aria-label={t('smart_remove')}
                             >
@@ -523,47 +600,6 @@ export default function SmartOrderSystem({
                       </button>
                     ))}
                   </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={openFilePicker}
-                      className="min-h-[44px] px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10"
-                    >
-                      {t('smart_upload_files')}
-                    </button>
-                  </div>
-                  <textarea
-                    value={orderSession.specialWishes || ''}
-                    onChange={(e) => setOrderSession((p) => ({ ...p, specialWishes: e.target.value }))}
-                    rows={3}
-                    className="w-full px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] outline-none focus:border-blue-500/40 resize-none"
-                    placeholder={t('smart_special_wishes')}
-                  />
-
-                  {(orderSession.files || []).length > 0 && (
-                    <div className="space-y-2">
-                      <div className="text-[11px] text-white/60">{t('smart_files')}</div>
-                      <div className="flex flex-col gap-2">
-                        {(orderSession.files || []).slice(0, 5).map((f, idx) => (
-                          <div key={`${f.name}-${idx}`} className="flex items-center justify-between gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2">
-                            <div className="min-w-0">
-                              <div className="text-[12px] text-white truncate">{f.name}</div>
-                              <div className="text-[10px] text-white/50 truncate">{f.type || 'file'}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => removeFile(idx)}
-                              className="p-2 rounded-lg text-white/70 hover:text-white hover:bg-white/10"
-                              aria-label={t('smart_remove')}
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
               ) : null}
 
@@ -596,7 +632,7 @@ export default function SmartOrderSystem({
             </MotionDiv>
           </AnimatePresence>
         </div>
-        )}
+        ) : null}
       </div>
 
       <input ref={fileInputRef} type="file" multiple className="hidden" onChange={onFilesPicked} />
