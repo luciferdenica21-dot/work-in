@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { authAPI, setToken, analyticsAPI } from '../config/api';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +7,7 @@ import { supabase } from '../config/supabaseClient';
 const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const pushedRef = useRef(false);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState(''); 
   const [login, setLogin] = useState(''); // Состояние для нового поля login
@@ -33,7 +34,40 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
     } catch { void 0; }
   }, [isOpen]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      pushedRef.current = false;
+      return;
+    }
+    try {
+      const st = window.history.state || {};
+      if (st && st.__overlay !== 'auth') {
+        window.history.pushState({ ...st, __overlay: 'auth' }, '', window.location.href);
+        pushedRef.current = true;
+      }
+    } catch { void 0; }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (isOpen) onClose();
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
+
+  const requestClose = () => {
+    try {
+      if (pushedRef.current && window.history.state && window.history.state.__overlay === 'auth') {
+        pushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    onClose();
+  };
 
   const handleGoogle = async () => {
     if (loading) return;
@@ -84,7 +118,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
       if (isLogin) {
         userData = await authAPI.login({ email, password }); 
         setToken(userData.token);
-        onClose();
+        requestClose();
 
         fullUserData = await authAPI.me();
         try {
@@ -125,7 +159,7 @@ const AuthModal = ({ isOpen, onClose, onAuthSuccess }) => {
           lastName
         });
         setToken(userData.token);
-        onClose();
+        requestClose();
 
         fullUserData = await authAPI.me();
         try {

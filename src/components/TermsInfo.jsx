@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { FileText } from 'lucide-react';
 
 const TermsInfo = () => {
   const [open, setOpen] = useState(false);
+  const pushedRef = useRef(false);
   const { t } = useTranslation();
   // modal controlled via global events
 
@@ -30,6 +31,39 @@ const TermsInfo = () => {
     };
   }, []);
 
+  useEffect(() => {
+    if (!open) {
+      pushedRef.current = false;
+      return;
+    }
+    try {
+      const st = window.history.state || {};
+      if (st && st.__overlay !== 'terms') {
+        window.history.pushState({ ...st, __overlay: 'terms' }, '', window.location.href);
+        pushedRef.current = true;
+      }
+    } catch { void 0; }
+  }, [open]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (open) setOpen(false);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [open]);
+
+  const requestClose = () => {
+    try {
+      if (pushedRef.current && window.history.state && window.history.state.__overlay === 'terms') {
+        pushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    setOpen(false);
+  };
+
   if (typeof document === 'undefined') return null;
 
   return createPortal(
@@ -40,7 +74,7 @@ const TermsInfo = () => {
         <div className="fixed inset-0 z-[520]">
           <div
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setOpen(false)}
+            onClick={requestClose}
           />
           <div className="relative z-[530] mx-auto my-12 md:my-12 w-[92%] max-w-[760px] rounded-3xl border border-white/10 bg-[#0a0a0a] shadow-2xl max-h-[85vh] overflow-hidden">
             <div className="p-6 md:p-8">
@@ -52,7 +86,7 @@ const TermsInfo = () => {
                   <div className="w-14 h-[2px] bg-blue-500 mt-3" />
                 </div>
                 <button
-                  onClick={() => setOpen(false)}
+                  onClick={requestClose}
                   className="text-white/50 hover:text-white transition-colors"
                   aria-label="Close"
                 >

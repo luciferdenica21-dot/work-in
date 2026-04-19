@@ -1662,11 +1662,7 @@ const ChatWidget = ({ user }) => {
                     });
                     const payload = lines.join('\n');
                     const file = new File([payload], `chat_session_${new Date().toISOString().replace(/[:.]/g, '-')}.txt`, { type: 'text/plain' });
-                    const up = await filesAPI.upload(file, null);
-                    const url = up?.fileUrl || up?.message?.attachments?.[0]?.url;
-                    if (url) {
-                      try { await messagesAPI.send(chatId, `🤖 Текстовый файл истории сессии: ${url}`); } catch { void 0; }
-                    }
+                    await filesAPI.upload(file, chatId);
                   } catch { void 0; }
 
                   setAiHelpFlow(null);
@@ -1988,6 +1984,9 @@ const ChatWidget = ({ user }) => {
               const hasAttachments = msg.attachments && msg.attachments.length > 0;
               const isAiLog = typeof msg.text === 'string' && msg.text.trim().startsWith('🤖');
               if (isAiLog) return null;
+              const firstAtt = Array.isArray(msg.attachments) ? msg.attachments[0] : null;
+              const firstName = String(firstAtt?.originalName || firstAtt?.filename || firstAtt?.name || '');
+              if (firstName.toLowerCase().startsWith('chat_session_')) return null;
               const isAutoFileText =
                 typeof msg.text === 'string' &&
                 (msg.text.startsWith('📎') || msg.text.includes('Отправлен файл'));

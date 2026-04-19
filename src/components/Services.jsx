@@ -27,6 +27,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
   const [selectedKey, setSelectedKey] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
+  const pushedRef = React.useRef(false);
 
   const isLocked = selectedKey ? LOCKED_KEYS.includes(selectedKey) : false;
 
@@ -79,6 +80,39 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
   }, [i18n.language]);
 
   useEffect(() => {
+    if (!selectedKey) {
+      pushedRef.current = false;
+      return;
+    }
+    try {
+      const st = window.history.state || {};
+      if (st && st.__overlay !== 'service') {
+        window.history.pushState({ ...st, __overlay: 'service', serviceKey: selectedKey }, '', window.location.href);
+        pushedRef.current = true;
+      }
+    } catch { void 0; }
+  }, [selectedKey]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (selectedKey) setSelectedKey(null);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [selectedKey]);
+
+  const requestCloseService = () => {
+    try {
+      if (pushedRef.current && window.history.state && window.history.state.__overlay === 'service') {
+        pushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    setSelectedKey(null);
+  };
+
+  useEffect(() => {
     const onServicesClose = () => {
       setSelectedKey(null);
       setIsOpen(false);
@@ -105,7 +139,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
   }, [selectedKey]);
 
   const handleGoHome = () => {
-    setSelectedKey(null);
+    requestCloseService();
     setIsOpen(false);
     if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
     if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);

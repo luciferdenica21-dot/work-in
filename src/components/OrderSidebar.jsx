@@ -10,6 +10,7 @@ const OrderSidebar = ({
   user           
 }) => {
   const { t } = useTranslation();
+  const pushedRef = useRef(false);
 
   const [chosenServices, setChosenServices] = useState([]);
   const [tempSelection, setTempSelection] = useState([]);
@@ -34,6 +35,13 @@ const OrderSidebar = ({
   // ВАЖНО: Сбрасываем успех только при НОВОМ открытии, если до этого всё было успешно
   useEffect(() => {
     if (isOrderOpen) {
+      try {
+        const st = window.history.state || {};
+        if (st && st.__overlay !== 'order') {
+          window.history.pushState({ ...st, __overlay: 'order' }, '', window.location.href);
+          pushedRef.current = true;
+        }
+      } catch { void 0; }
       if (showSuccess) {
           setShowSuccess(false);
       }
@@ -95,6 +103,25 @@ const OrderSidebar = ({
       } catch { void 0; }
     };
   }, [isOrderOpen, user, authAPI]);
+
+  useEffect(() => {
+    const onPop = () => {
+      if (isOrderOpen) setIsOrderOpen(false);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, [isOrderOpen, setIsOrderOpen]);
+
+  const requestClose = () => {
+    try {
+      if (pushedRef.current && window.history.state && window.history.state.__overlay === 'order') {
+        pushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    setIsOrderOpen(false);
+  };
 
   const services = [
     "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
@@ -274,12 +301,12 @@ const handleSubmit = async (e) => {
     <div className="fixed inset-0 z-[200] flex justify-end" data-section="order">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-        onClick={() => setIsOrderOpen(false)}
+        onClick={requestClose}
       />
       
       <div className="relative w-full max-w-[500px] bg-[#0A0A0B] h-full shadow-2xl border-l border-white/5 flex flex-col animate-slideLeft">
         <button 
-          onClick={() => setIsOrderOpen(false)}
+          onClick={requestClose}
           className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-10"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -300,7 +327,7 @@ const handleSubmit = async (e) => {
                 {t("Спасибо за доверие. Мы свяжемся с вами в ближайшее время для уточнения деталей.")}
               </p>
               <button 
-                onClick={() => setIsOrderOpen(false)}
+                onClick={requestClose}
                 className={`px-8 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white ${brandGradient || 'bg-blue-600'}`}
               >
                 {t("Закрыть")}
