@@ -23,6 +23,8 @@ const ChatWidget = ({ user }) => {
   const [aiSessionStartMs, setAiSessionStartMs] = useState(0);
   
 
+
+  
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [pinnedMessage, setPinnedMessage] = useState(null);
   const [replyTo, setReplyTo] = useState(null);
