@@ -37,7 +37,6 @@ function App() {
     }
 
     try {
-      // ИСПРАВЛЕНО: me() вместо getMe()
       const userData = await authAPI.me(); 
       setUser(userData);
       setUserRole(userData.role);
@@ -47,7 +46,6 @@ function App() {
       setUser(null);
       setUserRole(null);
     } finally {
-      // ВАЖНО: всегда выключаем загрузку в конце
       setLoading(false); 
     }
   };
@@ -71,8 +69,6 @@ function App() {
      }
    } catch { void 0; }
  }, [user]);
-
- const MobileSwipeBack = () => null;
 
   const handleAuthSuccess = (userData) => {
     setUser(userData);
@@ -243,56 +239,56 @@ function App() {
         user={user} 
         setIsAuthOpen={setIsAuthOpen} 
       />
-      {user && userRole !== 'admin' && <ChatWidget user={user} />}
       <TermsInfo />
     </div>
   );
 
   return (
-   <Router>
-     <MobileSwipeBack />
-  <Routes>
-    <Route 
-      path="/" 
-      element={
-        user && userRole === 'admin' 
-          ? <Navigate to="/manager" replace />
-          : mainSiteElement
-      } 
-    />
-    <Route path="/auth/callback" element={<AuthCallback />} />
-    <Route 
-      path="/manager" 
-      element={
-        loading ? (
-          null
-        ) : user && userRole === 'admin' ? (
-          <Suspense fallback={<div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div></div>}>
-            <ManagerPanel user={user} />
-          </Suspense>
-        ) : (
-          <Navigate to="/" replace />
-        )
-      } 
-    />
-    <Route 
-      path="/dashboard" 
-      element={
-        loading ? (
-          null
-        ) : user && userRole === 'user' ? (
-          <>
-            <ClientDashboard user={user} onLogout={handleLogout} />
-            <TermsInfo />
-          </>
-        ) : (
-          <Navigate to="/" replace />
-        )
-      } 
-    />
-    <Route path="/sign/:id" element={<SignDocumentView />} />
-  </Routes>
-</Router>
+    <Router>
+      <Routes>
+        <Route 
+          path="/" 
+          element={
+            user && userRole === 'admin' 
+              ? <Navigate to="/manager" replace />
+              : mainSiteElement
+          } 
+        />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route 
+          path="/manager" 
+          element={
+            loading ? (
+              null
+            ) : user && userRole === 'admin' ? (
+              <Suspense fallback={<div style={{ background: '#050a18', color: 'white', height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500"></div></div>}>
+                <ManagerPanel user={user} />
+              </Suspense>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+        <Route 
+          path="/dashboard" 
+          element={
+            loading ? (
+              null
+            ) : user && userRole === 'user' ? (
+              <>
+                <ClientDashboard user={user} onLogout={handleLogout} />
+                <TermsInfo />
+              </>
+            ) : (
+              <Navigate to="/" replace />
+            )
+          } 
+        />
+        <Route path="/sign/:id" element={<SignDocumentView />} />
+      </Routes>
+      {/* ChatWidget вне роутов — не размонтируется при навигации */}
+      {user && userRole === 'user' && <ChatWidget user={user} />}
+    </Router>
   );
 }
 

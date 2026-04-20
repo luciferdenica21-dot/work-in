@@ -136,6 +136,24 @@ const ChatWidget = ({ user }) => {
   useEffect(() => {
     window.dispatchEvent(new Event(isOpen ? 'chatwidget:open' : 'chatwidget:close'));
   }, [isOpen]);
+
+  // Блокируем браузерный свайп назад на мобиле когда чат открыт
+  useEffect(() => {
+    if (!isMobile || !isOpen) return;
+    // Пушим фиктивную запись в историю чтобы свайп назад не уходил со страницы
+    window.history.pushState({ chatOpen: true }, '');
+    const onPopState = (e) => {
+      if (isOpen) {
+        // Перехватываем — закрываем чат вместо навигации назад
+        setIsOpen(false);
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => {
+      window.removeEventListener('popstate', onPopState);
+    };
+  }, [isMobile, isOpen]);
   useEffect(() => {
     try {
       if (isOpen) {
