@@ -44,6 +44,9 @@ const ClientDashboard = ({ user: initialUser }) => {
           phone: userData.phone || '',
           city: userData.city || ''
         });
+        // Обновляем настройки аватара после загрузки
+        setAvatarType(userData.avatarType || 'gravatar');
+        setCustomAvatarUrl(userData.customAvatarUrl || '');
 
         const chatData = await chatsAPI.getMyChat();
         setChat(chatData);
@@ -120,15 +123,17 @@ const ClientDashboard = ({ user: initialUser }) => {
 
     setUploadingAvatar(true);
     try {
-      // Конвертируем base64 в файл
+      // Конвертируем base64 data URL в blob через fetch
       const response = await fetch(cropPreview);
       const blob = await response.blob();
       const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
       
       const result = await filesAPI.upload(file, null);
+      // fileUrl возвращается как /uploads/filename.ext
       const uploadedUrl = result?.fileUrl;
 
       if (uploadedUrl) {
+        // Сохраняем относительный URL, useAvatarUrl сам преобразует в полный
         const updated = await authAPI.updateProfile({
           avatarType: 'custom',
           customAvatarUrl: uploadedUrl

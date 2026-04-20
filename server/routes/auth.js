@@ -257,7 +257,7 @@ router.put('/me', protect, async (req, res) => {
       .from('users')
       .update(update)
       .eq('id', req.user._id)
-      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .select('id,email,login,role,phone,city,first_name,last_name,avatar_type,custom_avatar_url,quick_scripts,created_at,updated_at')
       .maybeSingle();
     if (updErr) throw updErr;
     if (!updated) return res.status(404).json({ message: 'User not found' });
@@ -271,6 +271,8 @@ router.put('/me', protect, async (req, res) => {
       city: updated.city || '',
       firstName: updated.first_name || '',
       lastName: updated.last_name || '',
+      avatarType: updated.avatar_type || 'gravatar',
+      customAvatarUrl: updated.custom_avatar_url || '',
       quickScripts: updated.quick_scripts || [],
       createdAt: updated.created_at,
       updatedAt: updated.updated_at
@@ -290,7 +292,7 @@ router.get('/users/:userId', protect, async (req, res) => {
     
     const { data: row, error } = await supabase
       .from('users')
-      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .select('id,email,login,role,phone,city,first_name,last_name,avatar_type,custom_avatar_url,quick_scripts,created_at,updated_at')
       .eq('id', req.params.userId)
       .maybeSingle();
     if (error) throw error;
@@ -307,6 +309,8 @@ router.get('/users/:userId', protect, async (req, res) => {
       city: row.city || '',
       firstName: row.first_name || '',
       lastName: row.last_name || '',
+      avatarType: row.avatar_type || 'gravatar',
+      customAvatarUrl: row.custom_avatar_url || '',
       quickScripts: row.quick_scripts || [],
       createdAt: row.created_at,
       updatedAt: row.updated_at
@@ -325,7 +329,7 @@ router.get('/users', protect, async (req, res) => {
     
     const { data: rows, error } = await supabase
       .from('users')
-      .select('id,email,login,role,phone,city,first_name,last_name,quick_scripts,created_at,updated_at')
+      .select('id,email,login,role,phone,city,first_name,last_name,avatar_type,custom_avatar_url,quick_scripts,created_at,updated_at')
       .order('created_at', { ascending: false });
     if (error) throw error;
 
@@ -338,6 +342,8 @@ router.get('/users', protect, async (req, res) => {
       city: r.city || '',
       firstName: r.first_name || '',
       lastName: r.last_name || '',
+      avatarType: r.avatar_type || 'gravatar',
+      customAvatarUrl: r.custom_avatar_url || '',
       quickScripts: r.quick_scripts || [],
       createdAt: r.created_at,
       updatedAt: r.updated_at

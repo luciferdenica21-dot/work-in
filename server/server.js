@@ -318,12 +318,15 @@ server.listen(PORT, '0.0.0.0', () => {
         console.log('analytics_events table OK');
       }
 
-      // Добавляем колонку avatar_url в users если нет
+      // Добавляем колонки для аватара если нет
       try {
-        const { error: alterErr } = await supabase.rpc('exec_sql', {
-          sql: `ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';`
+        await supabase.rpc('exec_sql', {
+          sql: `
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_type TEXT NOT NULL DEFAULT 'gravatar';
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT NOT NULL DEFAULT '';
+          `
         });
-        if (alterErr) { void 0; }
       } catch { void 0; }
 
     } catch (e) {
