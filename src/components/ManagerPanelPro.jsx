@@ -14,8 +14,8 @@ import {
   Eye, EyeOff, Upload, RefreshCw, AlertCircle, TrendingUp, Activity, Calendar, ChevronDown, Pin, CheckSquare, Square, Reply
 } from 'lucide-react';
 
-const UserAvatar = ({ email, name, size = "w-10 h-10", showStatus = false, isOnline = false, className = "" }) => {
-  const url = useAvatarUrl(email);
+const UserAvatar = ({ email, name, avatarType, customAvatarUrl, size = "w-10 h-10", showStatus = false, isOnline = false, className = "" }) => {
+  const url = useAvatarUrl(email, null, avatarType, customAvatarUrl);
   const label = String(name || '').trim() || String(email || '').trim() || '?';
   const initial = (label[0] || '?').toUpperCase();
   return (

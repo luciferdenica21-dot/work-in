@@ -320,8 +320,13 @@ const resources = {
 "Цена: ": "Цена: ",
 "Комментарий:": "Комментарий:",
 "Файлы заказа:": "Файлы заказа:",
-      
-      
+      "avatar_title": "Аватар",
+      "avatar_custom": "Своё фото",
+      "avatar_gravatar": "Gravatar",
+      "avatar_email": "Фото из почты",
+      "avatar_upload": "Загрузить",
+      "avatar_setup": "Настройка аватара",
+      "avatar_preview_hint": "Ваше фото будет отображаться в кружке. Убедитесь, что лицо видно чётко.",
 
       "S1_T": "Гибочные работы по металлам",
       "S1_D": `ЧПУ Гибка Листовых Металлических Материалов (Press Brake): Высокоточное Формирование Деталей
@@ -812,11 +817,13 @@ TIG (Tungsten Inert Gas) Сварка:
 "Цена: ": "Price: ",
 "Комментарий:": "Comment:",
 "Файлы заказа:": "Order files:",
-
-
-
-      
-
+      "avatar_title": "Avatar",
+      "avatar_custom": "My photo",
+      "avatar_gravatar": "Gravatar",
+      "avatar_email": "Email photo",
+      "avatar_upload": "Upload",
+      "avatar_setup": "Avatar setup",
+      "avatar_preview_hint": "Your photo will be shown in a circle. Make sure your face is clearly visible.",
 
       "S1_T": "Metal Bending Services",
 
@@ -1379,8 +1386,13 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
 "Цена: ": "ფასი: ",
 "Комментарий:": "კომენტარი:",
 "Файлы заказа:": "შეკვეთის ფაილები:",
-     
-
+      "avatar_title": "ავატარი",
+      "avatar_custom": "ჩემი ფოტო",
+      "avatar_gravatar": "Gravatar",
+      "avatar_email": "ელფოსტის ფოტო",
+      "avatar_upload": "ატვირთვა",
+      "avatar_setup": "ავატარის დაყენება",
+      "avatar_preview_hint": "თქვენი ფოტო წრეში გამოჩნდება. დარწმუნდით, რომ სახე კარგად ჩანს.",
 
       "S1_T": "ლითონის მოღუნვითი სამუშაოები",
       "S1_D": `რიცხვითი პროგრამული მართვა ფურცლოვანი მეტალის მასალების მოღუნვა (Press Brake): დეტალების მაღალი სიზუსტით ფორმირება

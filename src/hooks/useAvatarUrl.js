@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { gravatarUrl, supabaseProfileAvatarUrl } from '../utils/avatar';
 import { filesAPI } from '../config/api';
+// NOTE: uses filesAPI from config/api (not utils/avatar) for correct URL resolution
 
 export const useAvatarUrl = (email, directUrl, avatarType = 'gravatar', customAvatarUrl = '') => {
   const [supabaseUrl, setSupabaseUrl] = useState('');
@@ -21,17 +22,10 @@ export const useAvatarUrl = (email, directUrl, avatarType = 'gravatar', customAv
     return () => { active = false; };
   }, [email, directUrl]);
 
-  // Обработка кастомного аватара
   useEffect(() => {
     if (customAvatarUrl) {
-      // Если это уже полный URL (загруженный файл)
-      if (customAvatarUrl.startsWith('http') || customAvatarUrl.startsWith('/')) {
-        setCustomUrl(customAvatarUrl);
-      } else {
-        // Если это путь к файлу, получаем полный URL
-        const fullUrl = filesAPI.getFileUrl(customAvatarUrl);
-        setCustomUrl(fullUrl);
-      }
+      const fullUrl = filesAPI.getFileUrl(customAvatarUrl);
+      setCustomUrl(fullUrl || customAvatarUrl);
     } else {
       setCustomUrl('');
     }

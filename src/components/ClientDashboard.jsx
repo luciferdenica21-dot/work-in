@@ -123,10 +123,15 @@ const ClientDashboard = ({ user: initialUser }) => {
 
     setUploadingAvatar(true);
     try {
-      // Конвертируем base64 data URL в blob через fetch
-      const response = await fetch(cropPreview);
-      const blob = await response.blob();
-      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      // Конвертируем base64 data URL в blob через atob (без fetch, работает с data: URL)
+      const [header, base64Data] = cropPreview.split(',');
+      const mimeMatch = header.match(/:(.*?);/);
+      const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+      const binary = atob(base64Data);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const blob = new Blob([bytes], { type: mime });
+      const file = new File([blob], 'avatar.jpg', { type: mime });
       
       const result = await filesAPI.upload(file, null);
       // fileUrl возвращается как /uploads/filename.ext
@@ -422,7 +427,7 @@ const ClientDashboard = ({ user: initialUser }) => {
             <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
               <div style={{ fontSize: '11px', color: theme.textMuted, fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Image size={12} />
-                {t('Аватар')}
+                {t('avatar_title')}
               </div>
               
               {/* Preview аватара */}
@@ -452,27 +457,6 @@ const ClientDashboard = ({ user: initialUser }) => {
                   onChange={handleAvatarFileSelect}
                   style={{ display: 'none' }}
                 />
-                <button
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={uploadingAvatar}
-                  style={{
-                    background: 'rgba(56, 189, 248, 0.1)',
-                    border: `1px solid rgba(56, 189, 248, 0.3)`,
-                    borderRadius: '10px',
-                    padding: '10px 14px',
-                    color: theme.accent,
-                    cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    opacity: uploadingAvatar ? 0.6 : 1
-                  }}
-                >
-                  <Upload size={14} />
-                  {uploadingAvatar ? '...' : t('Загрузить')}
-                </button>
               </div>
 
               {/* Выбор типа аватара */}
@@ -501,8 +485,33 @@ const ClientDashboard = ({ user: initialUser }) => {
                     style={{ accentColor: theme.accent }}
                   />
                   <span style={{ fontSize: '12px', color: avatarType === 'custom' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
-                    🖼️ {t('Свое фото')}
+                    🖼️ {t('avatar_custom')}
                   </span>
+                  {avatarType === 'custom' && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); avatarInputRef.current?.click(); }}
+                      disabled={uploadingAvatar}
+                      style={{
+                        marginLeft: 'auto',
+                        background: 'rgba(56, 189, 248, 0.15)',
+                        border: `1px solid rgba(56, 189, 248, 0.3)`,
+                        borderRadius: '8px',
+                        padding: '5px 10px',
+                        color: theme.accent,
+                        cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        opacity: uploadingAvatar ? 0.6 : 1
+                      }}
+                    >
+                      <Upload size={12} />
+                      {uploadingAvatar ? '...' : t('avatar_upload')}
+                    </button>
+                  )}
                 </label>
 
                 <label 
@@ -529,7 +538,7 @@ const ClientDashboard = ({ user: initialUser }) => {
                     style={{ accentColor: theme.accent }}
                   />
                   <span style={{ fontSize: '12px', color: avatarType === 'gravatar' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
-                    👤 {t('Gravatar')}
+                    👤 {t('avatar_gravatar')}
                   </span>
                 </label>
 
@@ -557,7 +566,7 @@ const ClientDashboard = ({ user: initialUser }) => {
                     style={{ accentColor: theme.accent }}
                   />
                   <span style={{ fontSize: '12px', color: avatarType === 'email' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
-                    📧 {t('Фото из почты')}
+                    📧 {t('avatar_email')}
                   </span>
                 </label>
               </div>
@@ -796,7 +805,7 @@ const ClientDashboard = ({ user: initialUser }) => {
             onClick={(e) => e.stopPropagation()}
           >
             <h3 style={{ color: '#f8fafc', fontSize: '18px', fontWeight: 800, marginBottom: '20px', textAlign: 'center' }}>
-              {t('Настройка аватара')}
+              {t('avatar_setup')}
             </h3>
             
             {/* Круглый preview */}
@@ -828,7 +837,7 @@ const ClientDashboard = ({ user: initialUser }) => {
             </div>
 
             <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
-              {t('Ваше фото будет отображаться в кружке. Убедитесь, что лицо видно четко.')}
+              {t('avatar_preview_hint')}
             </p>
             
             <div style={{ display: 'flex', gap: '12px' }}>
@@ -846,7 +855,7 @@ const ClientDashboard = ({ user: initialUser }) => {
                   fontWeight: 700
                 }}
               >
-                {t('Отмена')}
+                {t('cancel')}
               </button>
               <button
                 onClick={handleAvatarUpload}
@@ -864,7 +873,7 @@ const ClientDashboard = ({ user: initialUser }) => {
                   opacity: uploadingAvatar ? 0.6 : 1
                 }}
               >
-                {uploadingAvatar ? '...' : t('Сохранить')}
+                {uploadingAvatar ? '...' : t('save')}
               </button>
             </div>
           </div>
