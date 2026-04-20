@@ -42,7 +42,7 @@ const UserAvatar = ({ email, name, size = "w-10 h-10", showStatus = false, isOnl
 
 function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
-  const adminAvatarUrl = useAvatarUrl(user?.email);
+  const adminAvatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
   
   // Функция форматирования размера файла
   const formatFileSize = (bytes) => {

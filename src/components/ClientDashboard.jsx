@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authAPI, chatsAPI, ordersAPI, filesAPI } from '../config/api';
@@ -7,7 +7,7 @@ import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import { 
   User, Mail, Phone, MapPin, LogOut, Edit2, 
   FileText, MessageSquare, Package, CheckCircle, 
-  XCircle, Clock, ArrowLeft, Settings, Trash2
+  XCircle, Clock, ArrowLeft, Settings, Trash2, Upload, Image
 } from 'lucide-react';
 
 const ClientDashboard = ({ user: initialUser }) => {
@@ -24,7 +24,14 @@ const ClientDashboard = ({ user: initialUser }) => {
     phone: user?.phone || '',
     city: user?.city || ''
   });
-  const avatarUrl = useAvatarUrl(user?.email);
+  const [avatarType, setAvatarType] = useState(user?.avatarType || 'gravatar');
+  const [customAvatarUrl, setCustomAvatarUrl] = useState(user?.customAvatarUrl || '');
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarModalOpen, setAvatarModalOpen] = useState(false);
+  const [cropPreview, setCropPreview] = useState(null);
+  const avatarInputRef = useRef(null);
+  
+  const avatarUrl = useAvatarUrl(user?.email, null, avatarType, customAvatarUrl);
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,6 +67,83 @@ const ClientDashboard = ({ user: initialUser }) => {
     } catch (error) {
       console.error('Error updating profile:', error);
       alert(t('profile_updated_error'));
+    }
+  };
+
+  const handleAvatarTypeChange = async (newType) => {
+    try {
+      const updated = await authAPI.updateProfile({ 
+        avatarType: newType,
+        customAvatarUrl: newType === 'custom' ? customAvatarUrl : ''
+      });
+      setUser(updated);
+      setAvatarType(newType);
+      if (newType !== 'custom') {
+        setCustomAvatarUrl('');
+      }
+    } catch (error) {
+      console.error('Error updating avatar type:', error);
+      alert('Ошибка при обновлении типа аватара');
+    }
+  };
+
+  const handleAvatarFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Пожалуйста, выберите изображение');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Файл слишком большой. Максимальный размер — 5 МБ');
+      return;
+    }
+
+    setUploadingAvatar(true);
+    try {
+      // Создаем круглый preview перед загрузкой
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setCropPreview(event.target.result);
+        setAvatarModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!cropPreview) return;
+
+    setUploadingAvatar(true);
+    try {
+      // Конвертируем base64 в файл
+      const response = await fetch(cropPreview);
+      const blob = await response.blob();
+      const file = new File([blob], 'avatar.jpg', { type: 'image/jpeg' });
+      
+      const result = await filesAPI.upload(file, null);
+      const uploadedUrl = result?.fileUrl;
+
+      if (uploadedUrl) {
+        const updated = await authAPI.updateProfile({
+          avatarType: 'custom',
+          customAvatarUrl: uploadedUrl
+        });
+        setUser(updated);
+        setAvatarType('custom');
+        setCustomAvatarUrl(uploadedUrl);
+        setAvatarModalOpen(false);
+        setCropPreview(null);
+      }
+    } catch (error) {
+      console.error('Error uploading avatar:', error);
+      alert('Ошибка при загрузке аватара');
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -328,6 +412,151 @@ const ClientDashboard = ({ user: initialUser }) => {
                 </div>
               </div>
             )}
+
+            {/* Настройки аватара */}
+            <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: `1px solid ${theme.border}` }}>
+              <div style={{ fontSize: '11px', color: theme.textMuted, fontWeight: 800, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.15em', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Image size={12} />
+                {t('Аватар')}
+              </div>
+              
+              {/* Preview аватара */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div style={{ 
+                  width: '60px', 
+                  height: '60px', 
+                  borderRadius: '50%', 
+                  overflow: 'hidden',
+                  border: `2px solid ${theme.accent}`,
+                  background: 'rgba(56, 189, 248, 0.1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0
+                }}>
+                  {avatarUrl ? (
+                    <img src={avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <User size={28} color={theme.accent} />
+                  )}
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  ref={avatarInputRef}
+                  onChange={handleAvatarFileSelect}
+                  style={{ display: 'none' }}
+                />
+                <button
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                  style={{
+                    background: 'rgba(56, 189, 248, 0.1)',
+                    border: `1px solid rgba(56, 189, 248, 0.3)`,
+                    borderRadius: '10px',
+                    padding: '10px 14px',
+                    color: theme.accent,
+                    cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    opacity: uploadingAvatar ? 0.6 : 1
+                  }}
+                >
+                  <Upload size={14} />
+                  {uploadingAvatar ? '...' : t('Загрузить')}
+                </button>
+              </div>
+
+              {/* Выбор типа аватара */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    padding: '10px 12px', 
+                    background: avatarType === 'custom' ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+                    border: `1px solid ${avatarType === 'custom' ? 'rgba(56, 189, 248, 0.3)' : theme.border}`,
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => { if (avatarType !== 'custom') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                  onMouseLeave={(e) => { if (avatarType !== 'custom') e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="radio"
+                    name="avatarType"
+                    value="custom"
+                    checked={avatarType === 'custom'}
+                    onChange={() => handleAvatarTypeChange('custom')}
+                    style={{ accentColor: theme.accent }}
+                  />
+                  <span style={{ fontSize: '12px', color: avatarType === 'custom' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
+                    🖼️ {t('Свое фото')}
+                  </span>
+                </label>
+
+                <label 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    padding: '10px 12px', 
+                    background: avatarType === 'gravatar' ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+                    border: `1px solid ${avatarType === 'gravatar' ? 'rgba(56, 189, 248, 0.3)' : theme.border}`,
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => { if (avatarType !== 'gravatar') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                  onMouseLeave={(e) => { if (avatarType !== 'gravatar') e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="radio"
+                    name="avatarType"
+                    value="gravatar"
+                    checked={avatarType === 'gravatar'}
+                    onChange={() => handleAvatarTypeChange('gravatar')}
+                    style={{ accentColor: theme.accent }}
+                  />
+                  <span style={{ fontSize: '12px', color: avatarType === 'gravatar' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
+                    👤 {t('Gravatar')}
+                  </span>
+                </label>
+
+                <label 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '10px', 
+                    padding: '10px 12px', 
+                    background: avatarType === 'email' ? 'rgba(56, 189, 248, 0.1)' : 'transparent',
+                    border: `1px solid ${avatarType === 'email' ? 'rgba(56, 189, 248, 0.3)' : theme.border}`,
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => { if (avatarType !== 'email') e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                  onMouseLeave={(e) => { if (avatarType !== 'email') e.currentTarget.style.background = 'transparent'; }}
+                >
+                  <input
+                    type="radio"
+                    name="avatarType"
+                    value="email"
+                    checked={avatarType === 'email'}
+                    onChange={() => handleAvatarTypeChange('email')}
+                    style={{ accentColor: theme.accent }}
+                  />
+                  <span style={{ fontSize: '12px', color: avatarType === 'email' ? theme.accent : theme.textMuted, fontWeight: 600 }}>
+                    📧 {t('Фото из почты')}
+                  </span>
+                </label>
+              </div>
+            </div>
           </div>
 
           <div className="card-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '2rem', padding: '30px' }}>
@@ -534,6 +763,108 @@ const ClientDashboard = ({ user: initialUser }) => {
         </div>
       </div>
       <ChatWidget user={user} />
+
+      {/* Модальное окно для кропа аватара */}
+      {avatarModalOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 1000,
+            background: 'rgba(0, 0, 0, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => { setAvatarModalOpen(false); setCropPreview(null); }}
+        >
+          <div 
+            style={{
+              background: '#0a0a0a',
+              borderRadius: '24px',
+              padding: '32px',
+              maxWidth: '400px',
+              width: '100%',
+              border: '1px solid rgba(56, 189, 248, 0.2)'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 style={{ color: '#f8fafc', fontSize: '18px', fontWeight: 800, marginBottom: '20px', textAlign: 'center' }}>
+              {t('Настройка аватара')}
+            </h3>
+            
+            {/* Круглый preview */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              marginBottom: '24px' 
+            }}>
+              <div style={{
+                width: '150px',
+                height: '150px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: '3px solid #38bdf8',
+                background: 'rgba(56, 189, 248, 0.1)'
+              }}>
+                {cropPreview && (
+                  <img 
+                    src={cropPreview} 
+                    alt="Preview" 
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      objectFit: 'cover' 
+                    }} 
+                  />
+                )}
+              </div>
+            </div>
+
+            <p style={{ color: '#94a3b8', fontSize: '13px', textAlign: 'center', marginBottom: '24px', lineHeight: 1.5 }}>
+              {t('Ваше фото будет отображаться в кружке. Убедитесь, что лицо видно четко.')}
+            </p>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => { setAvatarModalOpen(false); setCropPreview(null); }}
+                style={{
+                  flex: 1,
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: '#94a3b8',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 700
+                }}
+              >
+                {t('Отмена')}
+              </button>
+              <button
+                onClick={handleAvatarUpload}
+                disabled={uploadingAvatar}
+                style={{
+                  flex: 1,
+                  background: '#38bdf8',
+                  border: 'none',
+                  borderRadius: '12px',
+                  padding: '14px',
+                  color: '#000',
+                  cursor: uploadingAvatar ? 'not-allowed' : 'pointer',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  opacity: uploadingAvatar ? 0.6 : 1
+                }}
+              >
+                {uploadingAvatar ? '...' : t('Сохранить')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

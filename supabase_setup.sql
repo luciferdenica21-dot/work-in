@@ -26,5 +26,9 @@ CREATE INDEX IF NOT EXISTS idx_analytics_timestamp ON analytics_events(timestamp
 -- 3. Колонка avatar_url в таблице users (для OAuth аватарок)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT NOT NULL DEFAULT '';
 
--- 4. RLS отключаем (сервер использует service role key)
+-- 4. Колонки для выбора типа аватарки и кастомного аватара
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_type TEXT NOT NULL DEFAULT 'gravatar';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS custom_avatar_url TEXT NOT NULL DEFAULT '';
+
+-- 5. RLS отключаем (сервер использует service role key)
 ALTER TABLE analytics_events DISABLE ROW LEVEL SECURITY;

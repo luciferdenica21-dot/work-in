@@ -217,13 +217,15 @@ router.get('/me', protect, async (req, res) => {
 // ОБНОВЛЕНИЕ ПРОФИЛЯ (данные о себе)
 router.put('/me', protect, async (req, res) => {
   try {
-    const { firstName, lastName, phone, city, quickScripts } = req.body;
+    const { firstName, lastName, phone, city, quickScripts, avatarType, customAvatarUrl } = req.body;
 
     const update = {};
     if (firstName !== undefined) update.first_name = firstName ?? '';
     if (lastName !== undefined) update.last_name = lastName ?? '';
     if (phone !== undefined) update.phone = phone ?? '';
     if (city !== undefined) update.city = city ?? '';
+    if (avatarType !== undefined) update.avatar_type = avatarType ?? 'gravatar';
+    if (customAvatarUrl !== undefined) update.custom_avatar_url = customAvatarUrl ?? '';
     if (Array.isArray(quickScripts)) {
       update.quick_scripts = quickScripts
         .filter(s => s && typeof s.title === 'string' && typeof s.text === 'string')

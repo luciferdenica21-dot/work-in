@@ -121,7 +121,7 @@ const ChatWidget = ({ user }) => {
     };
   }, [clearSmartTranscript, isOpen]);
   const [scrolled, setScrolled] = useState(false);
-  const avatarUrl = useAvatarUrl(user?.email);
+  const avatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
   const [supportOnline, setSupportOnline] = useState(false);
   const [supportTyping, setSupportTyping] = useState(false);
   const typingTimeoutRef = useRef(null);

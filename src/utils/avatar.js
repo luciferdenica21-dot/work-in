@@ -121,6 +121,17 @@ const md5 = (string) => {
   return (toHex(a) + toHex(b) + toHex(c) + toHex(d)).toLowerCase();
 };
 
+const defaultApiUrl = (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:5000/api');
+const API_URL = defaultApiUrl;
+
+export const filesAPI = {
+  getFileUrl: (filename) => {
+    if (!filename) return '';
+    if (filename.startsWith('http')) return filename;
+    return `${API_URL}/files/${filename}`;
+  }
+};
+
 export const gravatarUrl = (email) => {
   const e = String(email || '').trim().toLowerCase();
   if (!e) return '';
