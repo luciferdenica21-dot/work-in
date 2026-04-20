@@ -61,7 +61,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
   };
 
   const navigate = useNavigate();
-  const avatarUrl = useAvatarUrl(user?.email);
+  const avatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
   
   const handleLogout = () => {
     if (onLogout) {

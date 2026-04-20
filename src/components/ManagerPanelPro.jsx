@@ -43,6 +43,13 @@ const UserAvatar = ({ email, name, avatarType, customAvatarUrl, size = "w-10 h-1
 function ManagerPanelPro({ user }) {
   const { t, i18n } = useTranslation();
   const adminAvatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
+
+  // Получить avatarType/customAvatarUrl для клиента по email
+  const getClientAvatarProps = (email) => {
+    const e = normalizeEmail(email);
+    const u = (allUsers || []).find((x) => normalizeEmail(x?.email) === e);
+    return { avatarType: u?.avatarType || 'gravatar', customAvatarUrl: u?.customAvatarUrl || '' };
+  };
   
   // Функция форматирования размера файла
   const formatFileSize = (bytes) => {
@@ -1059,7 +1066,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
           lastSeen: user.lastSeen || new Date(),
           createdAt: user.createdAt || new Date(),
           ordersCount: 0,
-          unreadCount: 0
+          unreadCount: 0,
+          avatarType: user.avatarType || 'gravatar',
+          customAvatarUrl: user.customAvatarUrl || ''
         });
       });
       
@@ -1995,6 +2004,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
       <UserAvatar 
         email={userEmail} 
         name={name}
+        avatarType={u?.avatarType}
+        customAvatarUrl={u?.customAvatarUrl}
         size="w-6 h-6 sm:w-7 sm:h-7" 
         className="shrink-0"
       />
@@ -2318,6 +2329,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <UserAvatar 
                         email={client.email} 
                         name={`${client.firstName || ''} ${client.lastName || ''}`.trim()}
+                        avatarType={client.avatarType}
+                        customAvatarUrl={client.customAvatarUrl}
                         size="w-9 h-9" 
                         showStatus={true}
                         isOnline={isUserOnline(client)} 
@@ -2347,6 +2360,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <UserAvatar 
                           email={clientsSelectedClient.email} 
                           name={`${clientsSelectedClient.firstName || ''} ${clientsSelectedClient.lastName || ''}`.trim()}
+                          avatarType={clientsSelectedClient.avatarType}
+                          customAvatarUrl={clientsSelectedClient.customAvatarUrl}
                           size="w-9 h-9"
                           showStatus={true}
                           isOnline={isUserOnline(clientsSelectedClient)} 
@@ -2444,6 +2459,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                             <UserAvatar
                               email={u.email}
                               name={`${u.firstName || ''} ${u.lastName || ''}`.trim()}
+                              avatarType={u.avatarType}
+                              customAvatarUrl={u.customAvatarUrl}
                               size="w-9 h-9"
                               showStatus={true}
                               isOnline={isUserOnline(u)}
@@ -2658,6 +2675,8 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <UserAvatar 
                           email={chat.userEmail} 
                           name={chatUser ? `${chatUser.firstName || ''} ${chatUser.lastName || ''}`.trim() : (chat.userEmail?.split('@')[0] || 'User')}
+                          avatarType={chatUser?.avatarType}
+                          customAvatarUrl={chatUser?.customAvatarUrl}
                           size="w-14 h-14" 
                           showStatus={true} 
                           isOnline={isOnline} 
@@ -2710,6 +2729,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                               const chatUser = (allUsers || []).find(u => normalizeEmail(u?.email) === normalizeEmail(email));
                               return chatUser ? `${chatUser.firstName || ''} ${chatUser.lastName || ''}`.trim() : (email?.split('@')[0] || 'User');
                             })()}
+                            {...getClientAvatarProps(chats.find(c => c.chatId === activeId)?.userEmail)}
                             size="w-8 h-8 sm:w-10 sm:h-10"
                             showStatus={true}
                             isOnline={isUserOnline(allUsers.find(u => u.email === chats.find(c => c.chatId === activeId)?.userEmail))}
@@ -3460,6 +3480,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <UserAvatar
                           email={ou.email}
                           name={ou.name}
+                          {...getClientAvatarProps(ou.email)}
                           size="w-9 h-9 sm:w-10 sm:h-10"
                         />
                         <div className="flex-1 min-w-0">
@@ -3500,6 +3521,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
                           <UserAvatar
                             email={ordersByUser.get(selectedOrdersUserKey)?.email}
                             name={ordersByUser.get(selectedOrdersUserKey)?.name}
+                            {...getClientAvatarProps(ordersByUser.get(selectedOrdersUserKey)?.email)}
                             size="w-9 h-9 sm:w-10 sm:h-10"
                           />
                           <div className="min-w-0">
