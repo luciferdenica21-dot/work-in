@@ -624,14 +624,20 @@ const handleSubmit = async (e) => {
       )}
       {isSelectorOpen && (
         <div
-          className="fixed inset-0 z-[120] flex items-start justify-center px-3 md:px-6"
+          className="fixed inset-0 z-[120] flex items-start justify-center px-3 md:px-6 overflow-hidden"
           style={{
             paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px) + 0.75rem)',
             paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem)',
           }}
         >
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={requestCloseSelector} />
-          <div className="relative w-full max-w-[400px] bg-[#0A0A0B] border border-white/10 rounded-3xl p-5 md:p-8 shadow-2xl animate-modalEnter max-h-full overflow-hidden">
+          <div
+            className="relative w-full max-w-[400px] bg-[#0A0A0B] border border-white/10 rounded-3xl p-5 md:p-8 shadow-2xl animate-modalEnter overflow-hidden flex flex-col min-h-0"
+            style={{
+              maxHeight:
+                'calc(100dvh - (5rem + env(safe-area-inset-top, 0px) + 0.75rem) - (5.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem))',
+            }}
+          >
             <button 
               onClick={requestCloseSelector}
               className="absolute top-5 right-5 md:top-6 md:right-6 text-white/40 hover:text-white"
@@ -639,9 +645,9 @@ const handleSubmit = async (e) => {
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
-            <div className="h-full flex flex-col">
+            <div className="flex flex-col min-h-0 flex-1">
               <h3 className="text-base md:text-xl font-bold text-white uppercase tracking-[0.14em] md:tracking-widest mb-4 md:mb-8">{t('order_choose_service')}</h3>
-              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-2 custom-scrollbar overscroll-contain [-webkit-overflow-scrolling:touch]">
                 {services.map(s => {
                   const isLocked = lockedKeys.includes(s);
                   const isSelected = tempSelection.includes(s);
@@ -667,7 +673,7 @@ const handleSubmit = async (e) => {
                   );
                 })}
               </div>
-              <div className="pt-6">
+              <div className="pt-6 shrink-0">
                 <button 
                   onClick={confirmSelection}
                   className={`w-full py-4 rounded-xl text-[10px] font-bold uppercase tracking-widest text-white ${brandGradient || 'bg-blue-600'}`}
