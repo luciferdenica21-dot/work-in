@@ -78,6 +78,23 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
   }, []);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (location?.pathname !== '/') return;
+    if (heroLayout !== 'mobilePortrait') return;
+
+    const prevHtmlOverflowY = document.documentElement.style.overflowY;
+    const prevBodyOverflowY = document.body.style.overflowY;
+
+    document.documentElement.style.overflowY = 'hidden';
+    document.body.style.overflowY = 'hidden';
+
+    return () => {
+      document.documentElement.style.overflowY = prevHtmlOverflowY;
+      document.body.style.overflowY = prevBodyOverflowY;
+    };
+  }, [heroLayout, location?.pathname]);
+
+  useEffect(() => {
     const updateLayout = () => {
       if (typeof window === 'undefined') return;
       const width = window.innerWidth;

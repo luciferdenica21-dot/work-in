@@ -193,7 +193,7 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
                 </div>
               </div>
 
-              <div className="shrink-0 border-t border-white/10 px-4 py-3 md:px-8 md:py-4 flex items-center justify-end gap-2 bg-[#0a0a0a]/40 backdrop-blur-lg">
+              <div className="shrink-0 border-t border-white/10 px-4 py-3 md:px-8 md:py-4 flex items-center justify-start md:justify-end gap-2 bg-[#0a0a0a]/40 backdrop-blur-lg">
                 <button
                   type="button"
                   onClick={requestCloseService}

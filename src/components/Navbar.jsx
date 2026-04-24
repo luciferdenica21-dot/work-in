@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
 const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
@@ -8,6 +8,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [_isServicesOpen, setIsServicesOpen] = useState(false);
   const [_isContactOpen, setIsContactOpen] = useState(false);
+  const location = useLocation();
 
   const contactLinks = [
     { name: 'Telegram', url: 'https://t.me/ConnectorGe', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg> },
@@ -61,6 +62,15 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
       onLogout();
     }
     navigate('/');
+  };
+
+  const toggleDashboard = () => {
+    if (location?.pathname === '/dashboard') {
+      navigate('/');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    navigate('/dashboard');
   };
 
   return (
@@ -183,7 +193,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
               {user ? (
                 <>
                   {user.role !== 'admin' && (
-                    <button onClick={() => navigate('/dashboard')} className="tablet-auth-btn hidden md:flex items-center gap-2 px-3 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
+                    <button onClick={toggleDashboard} className="tablet-auth-btn hidden md:flex items-center gap-2 px-3 py-2 border border-blue-500/30 rounded-lg hover:bg-blue-500/10 transition-all group">
                       <div className="tablet-avatar w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
                         {avatarUrl ? (
                           <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
@@ -307,7 +317,20 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
 
           {/* КАБИНЕТ */}
           {user && user.role !== 'admin' ? (
-            <button onClick={() => navigate('/dashboard')} className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5">
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setIsServicesOpen(false);
+                setIsContactOpen(false);
+                if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
+                if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);
+                window.dispatchEvent(new Event('useterms:close'));
+                window.dispatchEvent(new Event('services:close'));
+                toggleDashboard();
+              }}
+              className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5"
+              aria-label={t('КАБИНЕТ')}
+            >
               <div className="w-7 h-7 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
                 {avatarUrl ? (
                   <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
