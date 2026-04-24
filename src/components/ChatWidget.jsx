@@ -1110,7 +1110,7 @@ const ChatWidget = ({ user }) => {
   };
 
   return (
-    <div className="fixed bottom-24 right-2 md:bottom-8 md:right-8 z-[150]">
+    <div className="fixed bottom-24 right-2 md:bottom-8 md:right-8 z-[95]">
       {hasNewMessage && !isOpen && (
         <div className="pointer-events-none fixed bottom-[11rem] right-2 md:bottom-[7.5rem] md:right-8 z-[9999]">
           <div className="bg-[#050a18]/95 border border-white/10 text-white text-[11px] md:text-xs px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md max-w-[80vw] md:max-w-none text-center">
@@ -1134,7 +1134,7 @@ const ChatWidget = ({ user }) => {
           data-section="chat"
           className={`
             ${isMobile 
-              ? 'fixed inset-0 w-full h-full rounded-none' 
+              ? 'fixed left-0 right-0 rounded-none' 
               : isMaximized 
                 ? 'fixed inset-4 md:left-8 md:right-8 md:bottom-8 md:top-24 rounded-4xl' 
                 : 'fixed top-24 right-24 md:right-28 rounded-4xl'
@@ -1142,11 +1142,18 @@ const ChatWidget = ({ user }) => {
             bg-[#0a0a0a] border border-blue-500/20 shadow-2xl flex flex-col overflow-hidden backdrop-blur-xl animate-fadeIn
           `}
           style={
-            !isMobile && !isMaximized ? {
-              width: `${dimensions.width}px`,
-              height: `${dimensions.height}px`,
-              maxHeight: 'calc(100vh - 8rem)'
-            } : {}
+            isMobile
+              ? {
+                  top: 'calc(5rem + env(safe-area-inset-top, 0px))',
+                  bottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px))',
+                }
+              : !isMaximized
+                ? {
+                    width: `${dimensions.width}px`,
+                    height: `${dimensions.height}px`,
+                    maxHeight: 'calc(100vh - 8rem)'
+                  }
+                : {}
           }
         >
           <div className="px-4 py-3 border-b border-white/10 flex justify-between items-center bg-white/5">
