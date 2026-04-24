@@ -640,7 +640,7 @@ const handleSubmit = async (e) => {
             </button>
             
             <div className="h-full flex flex-col">
-              <h3 className="text-base md:text-xl font-bold text-white uppercase tracking-[0.14em] md:tracking-widest mb-4 md:mb-8">{t("Выберите услуги")}</h3>
+              <h3 className="text-base md:text-xl font-bold text-white uppercase tracking-[0.14em] md:tracking-widest mb-4 md:mb-8">{t('order_choose_service')}</h3>
               <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                 {services.map(s => {
                   const isLocked = lockedKeys.includes(s);
