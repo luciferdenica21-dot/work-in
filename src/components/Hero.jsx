@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MessageCircle } from 'lucide-react';
+import OrderButton from './OrderButton';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const Hero = () => {
+const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const iconClassName = "w-10 h-10 md:w-16 md:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24";
 
@@ -96,7 +100,12 @@ const Hero = () => {
   }, []);
 
   const handleServiceClick = (key) => {
-    window.dispatchEvent(new CustomEvent('service:open', { detail: { key } }));
+    if (location?.pathname === '/services') {
+      window.dispatchEvent(new CustomEvent('service:open', { detail: { key } }));
+      return;
+    }
+    navigate('/services', { state: { serviceKey: key } });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
@@ -124,14 +133,14 @@ const Hero = () => {
     heroLayout === 'shortLandscape'
       ? {
           position: 'relative',
-          top: '14vh',
+          top: '10vh',
           width: '100%',
           transform: 'none',
         }
       : heroLayout === 'smallPortrait'
         ? {
             position: 'relative',
-            top: '6vh',
+            top: '4vh',
             width: '100%',
             transform: 'none',
         }
@@ -173,13 +182,16 @@ const Hero = () => {
 
   const heroWhatsappStyle =
     heroLayout === 'shortLandscape'
-      ? { padding: '0.5rem 0.9rem', fontSize: '0.7rem' }
+      ? { padding: '0.5rem 0.9rem', fontSize: '0.62rem', whiteSpace: 'nowrap', lineHeight: '1' }
       : heroLayout === 'smallPortrait'
-        ? { padding: '0.6rem 1rem', fontSize: '0.72rem' }
+        ? { padding: '0.55rem 0.9rem', fontSize: '0.64rem', whiteSpace: 'nowrap', lineHeight: '1' }
         : undefined;
 
   const heroWhatsappWrapStyle =
     undefined;
+
+  const heroCtaTrackingClassName =
+    heroLayout === 'default' ? 'tracking-widest' : 'tracking-[0.08em]';
 
   return (
     <header 
@@ -260,12 +272,12 @@ const Hero = () => {
           })}
         </div>
 
-        <div className="flex justify-center mt-1 md:mt-2" style={heroWhatsappWrapStyle}>
+        <div className="flex flex-col items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-2" style={heroWhatsappWrapStyle}>
           <a
             href="https://wa.me/+995591160685"
             target="_blank"
             rel="noopener noreferrer"
-            className="group relative flex items-center gap-2 md:gap-3 px-6 py-3 md:px-8 md:py-4 lg:px-7 lg:py-3 rounded-xl md:rounded-2xl bg-[#25D366] text-white font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(37,211,102,0.4)] active:scale-95"
+            className={`group relative flex items-center justify-center gap-2 px-5 py-2 md:px-6 md:py-2.5 rounded-xl bg-[#25D366] text-white font-bold uppercase ${heroCtaTrackingClassName} text-[10px] md:text-xs whitespace-nowrap transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(37,211,102,0.4)] active:scale-95 w-full max-w-[280px]`}
             style={heroWhatsappStyle}
           >
             <MessageCircle className="w-4 h-4 md:w-5 md:h-5 fill-current" />
@@ -273,6 +285,17 @@ const Hero = () => {
             
             <div className="absolute inset-0 rounded-xl md:rounded-2xl bg-white opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
           </a>
+
+          <OrderButton
+            user={user}
+            setIsOrderOpen={setIsOrderOpen}
+            setIsAuthOpen={setIsAuthOpen}
+            onRequireAuth={onRequireAuthForOrder}
+            variant="cta"
+            labelKey="ORDER_ON_SITE"
+            className={`bg-blue-600 text-white px-5 py-2 md:px-6 md:py-2.5 rounded-xl text-[10px] md:text-xs font-bold uppercase ${heroCtaTrackingClassName} shadow-lg shadow-blue-600/30 hover:bg-blue-700 active:scale-95 transition-all duration-300 w-full max-w-[280px] whitespace-nowrap`}
+            style={heroWhatsappStyle}
+          />
         </div>
       </div>
 

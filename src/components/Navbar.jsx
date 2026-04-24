@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import OrderButton from './OrderButton';
-import OrderSidebar from './OrderSidebar';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 
-const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, onLogout }) => {
+const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const { t, i18n } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [_isServicesOpen, setIsServicesOpen] = useState(false);
   const [_isContactOpen, setIsContactOpen] = useState(false);
-  const [showOrderAuthPrompt, setShowOrderAuthPrompt] = useState(false);
-
-  const servicesList = [
-    "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
-  ];
 
   const contactLinks = [
     { name: 'Telegram', url: 'https://t.me/ConnectorGe', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg> },
@@ -70,14 +63,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
     navigate('/');
   };
 
-  const handleRequireAuthForOrder = () => {
-    if (typeof onRequireAuthForOrder === 'function') {
-      onRequireAuthForOrder();
-    } else {
-      setShowOrderAuthPrompt(true);
-    }
-  };
-
   return (
     <>
       <nav
@@ -128,32 +113,23 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
                 {t('ГЛАВНАЯ')}<span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover:w-full"></span>
               </a>
               
-              <div className="relative group/dropdown">
-                <button className="relative font-medium tracking-widest hover:text-blue-400 transition-all flex items-center gap-1 cursor-default uppercase">
-                  {t('УСЛУГИ')}
-                  <svg className="w-4 h-4 transition-transform group-hover/dropdown:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                  <span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover/dropdown:w-full"></span>
-                </button>
-                <div className="absolute left-0 mt-2 w-72 bg-[#0a0a0a] border border-blue-500/20 rounded-xl py-4 opacity-0 invisible group-hover/dropdown:opacity-100 group-hover/dropdown:visible transition-all duration-300 z-[60] shadow-2xl backdrop-blur-xl">
-                  {servicesList.map((sKey) => (
-                    <a 
-                        key={sKey} 
-                        href={`#services?service=${t(sKey)}`} 
-                        className="block px-6 py-2 text-[10px] uppercase tracking-widest text-white/70 hover:text-blue-400 hover:bg-white/5 transition-colors"
-                        data-service={sKey}
-                        onClick={() => { 
-                          try {
-                            const tracker = window.__analyticsTracker;
-                            if (tracker) tracker.serviceOpen(sKey);
-                          } catch { /* ignore */ }
-                          window.location.hash = `services?service=${t(sKey)}`;
-                        }}
-                    >
-                        {t(sKey)}
-                    </a>
-                  ))}
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false);
+                  setIsServicesOpen(false);
+                  setIsContactOpen(false);
+                  if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
+                  if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);
+                  window.dispatchEvent(new Event('useterms:close'));
+                  window.dispatchEvent(new Event('services:close'));
+                  navigate('/services');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="relative font-medium tracking-widest hover:text-blue-400 transition-all group uppercase"
+              >
+                {t('УСЛУГИ')}<span className="absolute -bottom-2 left-0 w-0 h-[2px] bg-blue-500 transition-all group-hover:w-full"></span>
+              </button>
 
               <div className="relative group/dropdown">
                 <button className="relative font-medium tracking-widest hover:text-blue-400 transition-all flex items-center gap-1 cursor-default uppercase">
@@ -181,26 +157,9 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
                 </div>
               </div>
 
-              <OrderButton 
-                user={user} 
-                setIsOrderOpen={setIsOrderOpen} 
-                setIsAuthOpen={setIsAuthOpen}
-                onRequireAuth={handleRequireAuthForOrder}
-                className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-2 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
-              />
-              
-              
             </div>
 
             <div className="tablet-right flex items-center gap-2 md:gap-4">
-              {/* кнопка заказать — только на планшете 770–1200px */}
-              <OrderButton
-                user={user}
-                setIsOrderOpen={setIsOrderOpen}
-                setIsAuthOpen={setIsAuthOpen}
-                onRequireAuth={handleRequireAuthForOrder}
-                className="tablet-order-btn bg-blue-500 text-white px-4 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 active:scale-95 transition-all duration-300"
-              />
               {/* select языка — только на десктопе >1200px */}
               <div className="hidden md:block tablet-select">
                 <select onChange={changeLanguage} value={i18n.language} className="bg-transparent border border-blue-500/30 rounded-lg px-2 py-2 outline-none text-xs cursor-pointer">
@@ -277,28 +236,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
       >
         <div className="px-4 pt-4 pb-6 h-full flex flex-col gap-4 overflow-y-auto">
 
-          {/* УСЛУГИ — уже раскрыты */}
-          <div>
-            <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-blue-400 border-b border-white/5 mb-1 text-center">
-              {t('УСЛУГИ')}
-            </div>
-            <div className="bg-white/5 rounded-xl">
-              {servicesList.map((sKey) => (
-                <button
-                  key={sKey}
-                  className="group block w-full px-5 py-2.5 text-[11px] uppercase tracking-widest text-white/80 hover:text-blue-400 text-center transition-colors"
-                  onClick={() => {
-                    setIsOpen(false);
-                    const key = sKey.replace('_T', '');
-                    window.dispatchEvent(new CustomEvent('service:open', { detail: { key } }));
-                  }}
-                >
-                  {t(sKey)}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* КОНТАКТЫ — уже раскрыты, соцсети иконками горизонтально */}
           <div>
             <div className="px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-blue-400 border-b border-white/5 mb-1 text-center">
@@ -332,43 +269,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
           </div>
         </div>
       </div>
-      {showOrderAuthPrompt && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div
-            className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-            onClick={() => setShowOrderAuthPrompt(false)}
-          />
-          <div className="relative w-full max-w-[420px] bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
-            <div className="text-white text-sm font-bold uppercase tracking-widest">
-              {t('Уведомление')}
-            </div>
-            <div className="mt-3 text-white/70 text-sm leading-relaxed">
-              {t('Чтобы заказать услугу, сначала войдите')}
-            </div>
-
-            <div className="mt-6 flex items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowOrderAuthPrompt(false)}
-                className="px-4 py-2 rounded-xl border border-white/10 text-white/80 hover:bg-white/5 transition-colors"
-              >
-                {t('Отмена')}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowOrderAuthPrompt(false);
-                  if (typeof setIsAuthOpen === 'function') setIsAuthOpen(true);
-                }}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors"
-              >
-                {t('Войти')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#0a0a0a]/40 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
         <div className="grid grid-cols-5 items-center justify-items-center">
           
@@ -379,6 +279,31 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
               <path d="M9 21V12h6v9" />
             </svg>
           </a>
+
+          {/* СЕРВИСЫ */}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOpen(false);
+              setIsServicesOpen(false);
+              setIsContactOpen(false);
+              if (typeof setIsOrderOpen === 'function') setIsOrderOpen(false);
+              if (typeof setIsAuthOpen === 'function') setIsAuthOpen(false);
+              window.dispatchEvent(new Event('useterms:close'));
+              window.dispatchEvent(new Event('services:close'));
+              navigate('/services');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className="flex flex-col items-center gap-1 text-blue-400 translate-y-1.5"
+            aria-label={t('УСЛУГИ')}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="7" height="7" rx="1" />
+              <rect x="14" y="4" width="7" height="7" rx="1" />
+              <rect x="3" y="13" width="7" height="7" rx="1" />
+              <rect x="14" y="13" width="7" height="7" rx="1" />
+            </svg>
+          </button>
 
           {/* КАБИНЕТ */}
           {user && user.role !== 'admin' ? (
@@ -402,15 +327,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
               </svg>
             </div>
           )}
-
-          {/* ЗАКАЗАТЬ */}
-          <OrderButton 
-            user={user} 
-            setIsOrderOpen={setIsOrderOpen} 
-            setIsAuthOpen={setIsAuthOpen}
-            onRequireAuth={handleRequireAuthForOrder}
-            className="text-blue-400"
-          />
 
           {/* СМЕНА ЯЗЫКА */}
           <div className="flex flex-col items-center gap-1 relative text-blue-400 translate-y-1.5">

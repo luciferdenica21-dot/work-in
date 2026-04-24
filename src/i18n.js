@@ -6,6 +6,7 @@ const resources = {
     translation: {
       "HERE_YOU_CAN_ORDER": "Здесь вы можете заказать",
       "CONTACT_WHATSAPP": "Связаться через WhatsApp",
+      "ORDER_ON_SITE": "Заказать на сайте",
       "ГЛАВНАЯ": "ГЛАВНАЯ",
       "УСЛУГИ": "УСЛУГИ",
       "КОНТАКТЫ": "КОНТАКТЫ",
@@ -513,6 +514,7 @@ TIG (Tungsten Inert Gas) Сварка:
     translation: {
       "HERE_YOU_CAN_ORDER": "Here you can order",
       "CONTACT_WHATSAPP": "Contact via WhatsApp",
+      "ORDER_ON_SITE": "Order on the website",
       "ГЛАВНАЯ": "HOME",
       "УСЛУГИ": "SERVICES",
       "КОНТАКТЫ": "CONTACTS",
@@ -1085,6 +1087,7 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
     translation: {
       "HERE_YOU_CAN_ORDER": "აქ შეგიძლიათ შეუკვეთოთ",
       "CONTACT_WHATSAPP": "დაგვიკავშირდით WhatsApp-ით",
+      "ORDER_ON_SITE": "შეუკვეთეთ საიტზე",
       "ГЛАВНАЯ": "მთავარი",
       "УСЛУГИ": "სერვისები",
       "КОНТАКТЫ": "კონტაქტი",

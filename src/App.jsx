@@ -7,7 +7,6 @@ import './App.css'
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Services from './components/Services';
-import Contact from './components/Contact';
 import OrderSidebar from './components/OrderSidebar';
 import AuthModal from './components/AuthModal';
 import ChatWidget from './components/ChatWidget';
@@ -221,38 +220,27 @@ function App() {
     </div>
   );
 
-  const mainSiteElement = (
+  const MainLayout = ({ children }) => (
     <div className={`min-h-screen flex flex-col ${i18n.language === 'ka' ? 'font-georgian' : 'font-sans'}`} data-section="site">
-      <Navbar 
-        setIsOrderOpen={setIsOrderOpen} 
-        isOrderOpen={isOrderOpen} 
+      <Navbar
+        setIsOrderOpen={setIsOrderOpen}
         setIsAuthOpen={setIsAuthOpen}
-        onRequireAuthForOrder={handleRequireAuthForOrder}
         user={user}
         onLogout={handleLogout}
       />
       <main className="flex-grow">
-        <Hero />
-        <Services 
-          user={user} 
-          setIsAuthOpen={setIsAuthOpen} 
-          setIsOrderOpen={setIsOrderOpen}
-          isOrderOpen={isOrderOpen}
-          onLogout={handleLogout}
-          onRequireAuthForOrder={handleRequireAuthForOrder}
-        />
-        <Contact />
+        {children}
       </main>
-      <AuthModal 
-        isOpen={isAuthOpen} 
+      <AuthModal
+        isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
         onAuthSuccess={handleAuthSuccess}
       />
-      <OrderSidebar 
-        isOrderOpen={isOrderOpen} 
-        setIsOrderOpen={setIsOrderOpen} 
-        user={user} 
-        setIsAuthOpen={setIsAuthOpen} 
+      <OrderSidebar
+        isOrderOpen={isOrderOpen}
+        setIsOrderOpen={setIsOrderOpen}
+        user={user}
+        setIsAuthOpen={setIsAuthOpen}
       />
       <TermsInfo />
     </div>
@@ -266,8 +254,34 @@ function App() {
           element={
             user && userRole === 'admin' 
               ? <Navigate to="/manager" replace />
-              : mainSiteElement
+              : (
+                  <MainLayout>
+                    <Hero
+                      user={user}
+                      setIsOrderOpen={setIsOrderOpen}
+                      setIsAuthOpen={setIsAuthOpen}
+                      onRequireAuthForOrder={handleRequireAuthForOrder}
+                    />
+                  </MainLayout>
+                )
           } 
+        />
+        <Route
+          path="/services"
+          element={
+            user && userRole === 'admin'
+              ? <Navigate to="/manager" replace />
+              : (
+                  <MainLayout>
+                    <Services
+                      user={user}
+                      setIsAuthOpen={setIsAuthOpen}
+                      setIsOrderOpen={setIsOrderOpen}
+                      onRequireAuthForOrder={handleRequireAuthForOrder}
+                    />
+                  </MainLayout>
+                )
+          }
         />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route 
