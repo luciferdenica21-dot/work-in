@@ -151,24 +151,40 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
   return (
     <section id="services" className="relative py-24 px-4 bg-[#050505]" data-section="services">
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-4 max-w-7xl mx-auto tablet-grid-services">
-        {KEYS.map((key) => (
-          <div
-            key={key}
-            onClick={() => setSelectedKey(key)}
-            className="group relative cursor-pointer overflow-hidden rounded-[2rem] bg-[#0a0a0a] border border-white/10 transition-all duration-500 hover:border-cyan-500/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)]"
-          >
-            <div className="h-[340px] relative">
-              <img src={SERVICES_IMGS[key]} alt={t(`${key}_T`)} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <h3 className="text-white font-light text-sm tracking-[0.2em] uppercase leading-tight group-hover:text-cyan-400 transition-colors">
-                  {t(`${key}_T`)}
-                </h3>
-                <div className="w-8 group-hover:w-full h-[1px] bg-cyan-500 mt-4 transition-all duration-500 opacity-60"></div>
+        {KEYS.map((key) => {
+          const locked = LOCKED_KEYS.includes(key);
+
+          return (
+            <div
+              key={key}
+              aria-disabled={locked ? 'true' : 'false'}
+              onClick={() => { if (!locked) setSelectedKey(key); }}
+              className={`group relative overflow-hidden rounded-[2rem] bg-[#0a0a0a] border border-white/10 transition-all duration-500 hover:border-cyan-500/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] ${locked ? 'cursor-default' : 'cursor-pointer'}`}
+            >
+              <div className="h-[340px] relative">
+                <img
+                  src={SERVICES_IMGS[key]}
+                  alt={t(`${key}_T`)}
+                  className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105${locked ? ' filter blur-md' : ''}`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"></div>
+                {locked && (
+                  <div className="absolute inset-0 flex items-center justify-center px-6">
+                    <div className="px-4 py-2 rounded-xl bg-black/60 text-white text-sm md:text-base font-semibold text-center">
+                      {t('service_soon')}
+                    </div>
+                  </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 p-6">
+                  <h3 className="text-white font-light text-sm tracking-[0.2em] uppercase leading-tight group-hover:text-cyan-400 transition-colors">
+                    {t(`${key}_T`)}
+                  </h3>
+                  <div className="w-8 group-hover:w-full h-[1px] bg-cyan-500 mt-4 transition-all duration-500 opacity-60"></div>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {selectedKey && (
