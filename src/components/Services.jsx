@@ -46,9 +46,9 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
     navigate('/');
   };
 
-  const handleRequireAuthForOrder = () => {
+  const handleRequireAuthForOrder = (opts) => {
     if (typeof onRequireAuthForOrder === 'function') {
-      onRequireAuthForOrder();
+      onRequireAuthForOrder(opts);
     } else {
       setShowOrderAuthPrompt(true);
     }
@@ -245,6 +245,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
                     onRequireAuth={handleRequireAuthForOrder}
                     className="hidden md:block translate-y-[2px] bg-blue-500 text-white px-6 py-1 rounded-xl text-[10px] font-bold uppercase tracking-widest shadow-lg shadow-blue-500/30 hover:bg-blue-600 hover:shadow-blue-500/40 active:scale-95 transition-all duration-300"
                     locked={isLocked}
+                    serviceKey={selectedKey}
                   />
                 </div>
 
@@ -312,9 +313,9 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
             </div>
           </nav>
 
-          <div className="relative z-10 w-full max-w-5xl mt-32 px-4 pb-32 text-center">
-            <div className="flex flex-col gap-8">
-              <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/10">
+          <div className="relative z-10 w-full max-w-6xl xl:max-w-[92rem] 2xl:max-w-[104rem] mt-32 px-4 pb-32 text-center">
+            <div className="bg-white/[0.03] p-8 md:p-12 lg:p-10 rounded-[2rem] border border-white/5 shadow-inner mb-12 md:flow-root">
+              <div className="relative aspect-video md:aspect-auto md:w-[320px] md:h-[220px] lg:w-[420px] lg:h-[280px] rounded-[3rem] overflow-hidden border border-white/10 md:float-left md:mr-8 lg:mr-10 md:mb-6">
                 <img
                   src={SERVICES_IMGS[selectedKey]}
                   alt={t(`${selectedKey}_T`)}
@@ -329,10 +330,9 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
                   </div>
                 )}
               </div>
-              <div className="bg-white/[0.03] p-8 md:p-12 rounded-[2rem] border border-white/5 shadow-inner mb-12 flex flex-col items-start gap-8">
-                <div className="text-white/80 text-sm md:text-lg font-light leading-relaxed whitespace-pre-line text-left">
-                  {t(`${selectedKey}_D`)}
-                </div>
+
+              <div className="text-white/80 text-sm md:text-lg font-light leading-relaxed whitespace-pre-line text-left">
+                {t(`${selectedKey}_D`)}
               </div>
             </div>
           </div>

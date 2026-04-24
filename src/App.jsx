@@ -24,7 +24,7 @@ function App() {
   const [isOrderOpen, setIsOrderOpen] = useState(false);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [user, setUser] = useState(null);
-  const pendingOrderRef = useRef(false);
+  const pendingOrderRef = useRef({ open: false, serviceKey: null });
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -73,16 +73,31 @@ function App() {
   const handleAuthSuccess = (userData) => {
     setUser(userData);
     setUserRole(userData.role);
-    if (pendingOrderRef.current) {
-      pendingOrderRef.current = false;
+    if (pendingOrderRef.current?.open) {
+      const svc = pendingOrderRef.current?.serviceKey || null;
+      pendingOrderRef.current = { open: false, serviceKey: null };
       setIsOrderOpen(true);
+      if (svc) {
+        window.dispatchEvent(new CustomEvent('order:prefill', { detail: { serviceKey: svc } }));
+      }
     }
   };
 
-  const handleRequireAuthForOrder = () => {
-    pendingOrderRef.current = true;
+  const handleRequireAuthForOrder = (opts) => {
+    pendingOrderRef.current = { open: true, serviceKey: opts?.serviceKey || null };
     setIsAuthOpen(true);
   };
+
+  useEffect(() => {
+    if (!user) return;
+    if (!pendingOrderRef.current?.open) return;
+    const svc = pendingOrderRef.current?.serviceKey || null;
+    pendingOrderRef.current = { open: false, serviceKey: null };
+    setIsOrderOpen(true);
+    if (svc) {
+      window.dispatchEvent(new CustomEvent('order:prefill', { detail: { serviceKey: svc } }));
+    }
+  }, [user]);
 
   const handleLogout = () => {
     removeToken();

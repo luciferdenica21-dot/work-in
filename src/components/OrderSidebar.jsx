@@ -128,6 +128,22 @@ const OrderSidebar = ({
   ];
   const lockedKeys = ["S2_T", "S7_T"];
 
+  useEffect(() => {
+    const onPrefill = (e) => {
+      const key = e?.detail?.serviceKey;
+      if (!key) return;
+      const titleKey = `${String(key)}_T`;
+      if (!services.includes(titleKey)) return;
+      if (lockedKeys.includes(titleKey)) return;
+      if (!isOrderOpen) setIsOrderOpen(true);
+      setChosenServices([titleKey]);
+      setTempSelection([titleKey]);
+      setIsSelectorOpen(false);
+    };
+    window.addEventListener('order:prefill', onPrefill);
+    return () => window.removeEventListener('order:prefill', onPrefill);
+  }, [isOrderOpen, setIsOrderOpen]);
+
   const toggleService = (service) => {
     if (lockedKeys.includes(service)) return;
     setTempSelection(prev => 
