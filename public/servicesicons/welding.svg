@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="Capa_1" x="0px" y="0px" viewBox="0 0 512 512" style="enable-background:new 0 0 512 512;" xml:space="preserve" width="512" height="512">
+<g>
+	<g>
+		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#A1C5E4;" points="37.5,159.787 37.5,114.787 7.5,122.287 7.5,152.287 &#10;&#9;&#9;&#9;&#9;&#9;"/>
+		<rect x="37.5" y="99.787" style="fill-rule:evenodd;clip-rule:evenodd;fill:#86E895;" width="224.999" height="75"/>
+		<rect x="172.5" y="73.538" style="fill-rule:evenodd;clip-rule:evenodd;fill:#A1C5E4;" width="30" height="26.249"/>
+		<rect x="262.5" y="114.787" style="fill-rule:evenodd;clip-rule:evenodd;fill:#6B809A;" width="30" height="60"/>
+		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#FFFFFF;" points="202.499,174.787 142.5,174.787 142.5,204.787 &#10;&#9;&#9;&#9;172.5,204.787 &#9;&#9;"/>
+		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#A1C5E4;" points="292.5,129.787 292.5,159.787 337.499,159.787 &#10;&#9;&#9;&#9;364.925,187.213 364.925,217.213 394.925,217.213 394.925,174.787 349.925,129.787 &#9;&#9;"/>
+		<rect x="292.5" y="129.787" style="fill-rule:evenodd;clip-rule:evenodd;fill:#4796C6;" width="22.5" height="30"/>
+		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#A1C5E4;" points="349.925,217.213 364.925,262.213 394.925,262.213 &#10;&#9;&#9;&#9;409.925,217.213 &#9;&#9;"/>
+		<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:#A1C5E4;" points="450.999,408.462 450.999,363.462 402.425,363.462 &#10;&#9;&#9;&#9;379.925,378.462 357.425,363.462 61.001,363.462 61.001,408.462 &#9;&#9;"/>
+		<rect x="7.5" y="408.462" style="fill-rule:evenodd;clip-rule:evenodd;fill:#EE795F;" width="497" height="30"/>
+		<rect x="7.501" y="408.462" style="fill-rule:evenodd;clip-rule:evenodd;fill:#D34F30;" width="22.5" height="30"/>
+		<rect x="61.001" y="363.462" style="fill-rule:evenodd;clip-rule:evenodd;fill:#4796C6;" width="22.5" height="45"/>
+		<rect x="37.5" y="99.787" style="fill-rule:evenodd;clip-rule:evenodd;fill:#00D23D;" width="22.5" height="75"/>
+		<rect x="262.5" y="114.787" style="fill-rule:evenodd;clip-rule:evenodd;fill:#FFFFFF;" width="30" height="60"/>
+		<path style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#FFFFFF;stroke-width:15;stroke-miterlimit:22.9256;" d="&#10;&#9;&#9;&#9;M225,129.787h15 M195,129.787h15"/>
+	</g>
+	<g>
+		
+			<polyline style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" points="&#10;&#9;&#9;&#9;452,438.462 7.5,438.462 7.5,408.462 504.5,408.462 504.5,438.462 467,438.462 &#9;&#9;"/>
+		<path style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" d="&#10;&#9;&#9;&#9;M364.925,217.213v-30l-27.426-27.426h-45 M292.5,129.787h57.426l45,45v42.426"/>
+		<path style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" d="&#10;&#9;&#9;&#9;M262.5,114.787h30v60h-255v-75H75 M90,99.787h172.5v75"/>
+		
+			<polyline style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" points="&#10;&#9;&#9;&#9;37.5,159.787 7.5,152.287 7.5,122.287 37.5,114.787 &#9;&#9;"/>
+		
+			<polyline style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" points="&#10;&#9;&#9;&#9;142.5,174.787 142.5,204.787 172.5,204.787 202.499,174.787 &#9;&#9;"/>
+		
+			<polyline style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" points="&#10;&#9;&#9;&#9;61.001,408.462 61.001,363.462 357.425,363.462 379.925,378.462 402.425,363.462 450.999,363.462 450.999,408.462 &#9;&#9;"/>
+		
+			<polygon style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" points="&#10;&#9;&#9;&#9;349.925,217.213 409.925,217.213 394.925,262.213 364.925,262.213 &#9;&#9;"/>
+		<path style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" d="&#10;&#9;&#9;&#9;M150,73.538h75 M202.5,73.538v30 M172.5,103.538v-30"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="379.925" y1="299.713" x2="379.925" y2="262.213"/>
+		<path style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" d="&#10;&#9;&#9;&#9;M346.176,333.462h-37.5 M451.174,333.462h-37.5"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="430.306" y1="283.081" x2="403.79" y2="309.598"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="329.544" y1="283.081" x2="356.06" y2="309.598"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="307.171" y1="303.326" x2="265.596" y2="286.106"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="452.679" y1="303.326" x2="494.254" y2="286.106"/>
+		
+			<line style="fill-rule:evenodd;clip-rule:evenodd;fill:none;stroke:#000000;stroke-width:15;stroke-miterlimit:22.9256;" x1="379.925" y1="378.462" x2="379.925" y2="408.462"/>
+	</g>
+</g>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</svg>

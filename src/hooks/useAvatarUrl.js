@@ -5,7 +5,6 @@ import { filesAPI } from '../config/api';
 
 export const useAvatarUrl = (email, directUrl, avatarType = 'gravatar', customAvatarUrl = '') => {
   const [supabaseUrl, setSupabaseUrl] = useState('');
-  const [customUrl, setCustomUrl] = useState('');
 
   useEffect(() => {
     // Если есть прямой URL из БД — Supabase не нужен
@@ -22,15 +21,6 @@ export const useAvatarUrl = (email, directUrl, avatarType = 'gravatar', customAv
     return () => { active = false; };
   }, [email, directUrl]);
 
-  useEffect(() => {
-    if (customAvatarUrl) {
-      const fullUrl = filesAPI.getFileUrl(customAvatarUrl);
-      setCustomUrl(fullUrl || customAvatarUrl);
-    } else {
-      setCustomUrl('');
-    }
-  }, [customAvatarUrl]);
-
   // Приоритет в зависимости от типа аватарки:
   // - 'custom': custom_avatar_url > gravatar > Supabase OAuth > email initial
   // - 'gravatar': gravatar > Supabase OAuth > email initial  
@@ -40,6 +30,7 @@ export const useAvatarUrl = (email, directUrl, avatarType = 'gravatar', customAv
   if (directUrl) return directUrl;
 
   const e = String(email || '').trim().toLowerCase();
+  const customUrl = customAvatarUrl ? (filesAPI.getFileUrl(customAvatarUrl) || customAvatarUrl) : '';
 
   if (avatarType === 'custom' && customUrl) {
     return customUrl;

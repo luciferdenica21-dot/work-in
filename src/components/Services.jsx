@@ -150,7 +150,7 @@ const Services = ({ user, setIsAuthOpen, onLogout, setIsOrderOpen, onRequireAuth
 
   return (
     <section id="services" className="relative py-24 px-4 bg-[#050505]" data-section="services">
-      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
+      <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8 lg:gap-4 max-w-7xl mx-auto tablet-grid-services">
         {KEYS.map((key) => (
           <div
             key={key}

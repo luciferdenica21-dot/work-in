@@ -138,7 +138,7 @@ export const buildOrderPdfForLang = async (lang, { brief, selectedServices, answ
 
   section(fixed('smart_summary_section_files'));
   let hasF = false;
-  for (const [k, v] of Object.entries(sd)) {
+  for (const v of Object.values(sd)) {
     const ff = Array.isArray(v?.files) ? v.files : [];
     if (!ff.length) continue;
     for (const f of ff) {

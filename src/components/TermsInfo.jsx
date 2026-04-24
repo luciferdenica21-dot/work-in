@@ -8,6 +8,7 @@ const TermsInfo = () => {
   const pushedRef = useRef(false);
   const { t } = useTranslation();
   // modal controlled via global events
+  
 
   useEffect(() => {
     const onOpen = () => {

@@ -4,6 +4,8 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   ru: {
     translation: {
+      "HERE_YOU_CAN_ORDER": "Здесь вы можете заказать",
+      "CONTACT_WHATSAPP": "Связаться через WhatsApp",
       "ГЛАВНАЯ": "ГЛАВНАЯ",
       "УСЛУГИ": "УСЛУГИ",
       "КОНТАКТЫ": "КОНТАКТЫ",
@@ -251,9 +253,6 @@ const resources = {
       "smart_download_brief": "Скачать бриф (PDF)",
       "smart_sign_act": "Подписать акт приёма‑передачи",
       "smart_sign_act_info": "Дальше будет подписание акта (электронная подпись).",
-      "smart_log_answer": "Ответ",
-      "smart_log_service_added": "Добавлена услуга",
-      "smart_log_service_removed": "Удалена услуга",
       "smart_q_deadline": "Сроки выполнения?",
       "smart_deadline_asap": "Как можно быстрее",
       "smart_deadline_week": "До 1 недели",
@@ -370,7 +369,7 @@ const resources = {
 
 
 
-      "S3_T": "Лазерная гравировка",
+      "S3_T": "Лазерная резка и гравировка",
       "S3_D": `Лазерная гравировка — это современный способ нанесения изображений и надписей, при котором тонкий лазерный луч испаряет верхний слой материала. Это не просто печать, это изменение структуры поверхности, что делает изображение практически вечным.
 
 Преимущества нашего метода:
@@ -491,6 +490,7 @@ TIG (Tungsten Inert Gas) Сварка:
 
 
       "S10_T": "ЧПУ фрезеровка",
+      "S11_T": "Подготовка файлов, чертежей, инженерные расчёты и консультации",
       "S10_D": `Фрезеровка на станках с ЧПУ (CNC Router) – это высокоэффективный метод механической обработки, основанный на удалении материала с помощью вращающейся фрезы. Технология позволяет выполнять как точную фрезеровку элементов, так и скоростной раскрой крупноформатных листовых материалов, обеспечивая чистый рез и высокую повторяемость.
 
 Технологические режимы:
@@ -511,6 +511,8 @@ TIG (Tungsten Inert Gas) Сварка:
   
   en: {
     translation: {
+      "HERE_YOU_CAN_ORDER": "Here you can order",
+      "CONTACT_WHATSAPP": "Contact via WhatsApp",
       "ГЛАВНАЯ": "HOME",
       "УСЛУГИ": "SERVICES",
       "КОНТАКТЫ": "CONTACTS",
@@ -885,7 +887,7 @@ The Cost and Quality Factor:
 A key feature of this service is the necessity of a highly skilled painter. The quality and uniformity of the coating, as well as the execution of complex effects, directly depend on the specialist's craftsmanship. Consequently, due to the high proportion of manual labor and the requirements for personnel qualification, traditional liquid paint application is a more expensive service, yet more flexible in terms of design.`,
 
 
-"S3_T": "Laser Engraving",
+"S3_T": "Laser Cutting and Engraving",
 
 "S3_D": `Laser engraving is a modern method of applying images and inscriptions, where a thin laser beam evaporates the top layer of the material. This is not merely printing; it is an alteration of the surface structure, making the image practically eternal.
 
@@ -1051,6 +1053,7 @@ Capabilities: Creation of flat surfaces, machining of slots and pockets, and sho
 
 
 "S10_T": "CNC Milling",
+ "S11_T": "File preparation, drawings, engineering calculations and consultations.",
 
 "S10_D": `CNC Milling (CNC Router) is a highly efficient mechanical processing method based on material removal using a rotating cutter. The technology allows for both the precise milling of elements and high-speed cutting of large-format sheet materials, ensuring a clean cut and high repeatability.
 
@@ -1080,6 +1083,8 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
 
   ka: {
     translation: {
+      "HERE_YOU_CAN_ORDER": "აქ შეგიძლიათ შეუკვეთოთ",
+      "CONTACT_WHATSAPP": "დაგვიკავშირდით WhatsApp-ით",
       "ГЛАВНАЯ": "მთავარი",
       "УСЛУГИ": "სერვისები",
       "КОНТАКТЫ": "კონტაქტი",
@@ -1430,7 +1435,7 @@ CNC milling technology is indispensable in the production of furniture, outdoor 
 ამ სერვისის საკვანძო თვისებურება - აუცილებელია მაღალი კვალიფიკაციის მქონე მღებავის (მალიარის) მონაწილეობა. დაფარვის ხარისხი და თანაბრობა, და ასევე რთული ეფექტების შექმნა პირდაპირ დამოკიდებულია სპეციალისტის ოსტატობაზე. შესაბამისად, ხელის შრომის მაღალი წილისა და პერსონალის კვალიფიკაციის მოთხოვნიდან გამომდინარე, თხევადი შეღებვა როგორც წესი უფრო ძვირია, მაგრამ ამასთან დიზაინის სფეროში უფრო მოქნილი მომსახურების ფორმაა.`,
 
 
-      "S3_T": "ლაზერული გრავირება",
+      "S3_T": "ლაზერული ჭრა და გრავირება",
       "S3_D": `ლაზერული გრავირება - ესაა გამოსახულებების და წარწერების დატანის თანამედროვე მეთოდი, რომლის დროს ლაზერის სხივი აორთქლებს მასალის ზედა შრეს. ეს არაა მარტივი ბეჭდვა, ესაა ზედაპირის სტრუქტურის ცვლილება, რაც გამოსახულებას თითქმის მარადს ხდის.  ჩვენი მეთოდის უპირატესობა:
 ხანგამძლეობა: გრავირება არ იცვითება, არ ხუნდება მზეზე და არ ეშინია ნესტის. ის დარჩება ნაკეთობაზე თვით ამ საგნის მოხმარების ბოლომდე.
 საიუველირო სიზუსტე: ჩვენ ვმუშაობთ 0.01 მმ-მდე სიზუსტით. ეს შეასაძლებლობას გვაძლევს დავიტანოთ ზედაპირზე რთული ლოგოტიპები, წვრილი შრიფტები და დეტალური ფოტოსურათები.
@@ -1521,6 +1526,7 @@ TIG (Tungsten Inert Gas) შედუღება:
 მიაქციეთ ყურადღება: უახლოვეს მომავალში ჩვენს არსენალში ხელმისაწვდომი იქნება მაღალი სიზუსტის მქონე დამუშავება ხუთღერძიან რპმ-დაზგაზე, მაგრამ ამჟამად ეს სერვისი ჯერ არ გვაქვს მისაწოდებლად.`,
 
       "S10_T": "რპმ-ფრეზირება",
+      "S11_T": "ფაილების მომზადება, ნახაზები, საინჟინრო გამოთვლები და კონსულტაციები.",
       "S10_D": `ფრეზირება რპბ-დაზგებზე (CNC Router) - მექანიკური დამუშვების მაღალ ეფექტური მეთოდი, რომელიც ეფუძნება ბრუნვადი ფრეზის მეშვეობით მასალის მოშორებას. ტექნოლოგია საშუალებაას იძლევა შევასრულოთ როგორც ელემენტების ზუსტი ფრეზირება, ასევე დიდფორმატიანი ფურცლოვანი მასალების ჩქაროსნული ჭრა, რაც წმინდა ჭრის და მაღალი გამეორების საშუალებას იძლევა.
 ტექნოლოგიური რეჟიმები:
 2D-ფრეზირება: გამოიყენება ბრტყელი მონიშვნა-მოჭრისთვის, კონტურების ამოჭრისთვის, ღარების, ნახვრეტების და გრავირების ერთ სიბრტყეზე შესაქმნელად,
