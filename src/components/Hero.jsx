@@ -9,7 +9,7 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
   const navigate = useNavigate();
   const location = useLocation();
 
-  const iconClassName = "w-10 h-10 md:w-16 md:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24";
+  const iconClassName = "w-12 h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 xl:w-24 xl:h-24";
 
   const services = [
     {
@@ -199,7 +199,7 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
     heroLayout === 'shortLandscape'
       ? { marginBottom: '0.1rem', transform: 'scale(0.78)', transformOrigin: 'center' }
       : heroLayout === 'mobilePortrait'
-        ? { transform: 'scale(0.78)', transformOrigin: 'center' }
+        ? { transform: 'scale(0.85)', transformOrigin: 'center' }
         : undefined;
 
   const heroWhatsappStyle =
@@ -294,7 +294,7 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
           })}
         </div>
 
-        <div className="flex flex-col items-center justify-center gap-1.5 md:gap-2 mt-1 md:mt-2" style={heroWhatsappWrapStyle}>
+        <div className="flex flex-col items-center justify-center gap-1.5 md:gap-2 mt-4 md:mt-2" style={heroWhatsappWrapStyle}>
           <a
             href="https://wa.me/+995591160685"
             target="_blank"

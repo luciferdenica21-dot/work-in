@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef, memo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'react-router-dom';
 import { chatsAPI, messagesAPI, filesAPI, ordersAPI, signaturesAPI } from '../config/api';
 import { initSocket, getSocket, disconnectSocket } from '../config/socket';
 import { playSound } from '../utils/sound';
 import { Paperclip, X, Download, Maximize2, Minimize2, Trash2, Pin, Reply, CheckSquare, Square, Check, CheckCheck } from 'lucide-react';
-import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import SmartOrderSystem from './SmartOrderSystem/SmartOrderSystem';
 import JSZip from 'jszip';
 import { buildOrderPdfForLang } from '../utils/orderPdf';
@@ -12,6 +12,7 @@ import { buildOrderPdfForLang } from '../utils/orderPdf';
 
 const ChatWidget = ({ user }) => {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [smartMode, setSmartMode] = useState('locked');
   const [smartResetNonce, setSmartResetNonce] = useState(0);
@@ -30,6 +31,21 @@ const ChatWidget = ({ user }) => {
   const longPressTimerRef = useRef(null);
   const longPressTriggeredRef = useRef(false);
   const closeResetTimerRef = useRef(null);
+  const closeReasonRef = useRef('');
+  const prevPathRef = useRef(location?.pathname || '');
+
+  const closeChat = useCallback((reason) => {
+    closeReasonRef.current = reason || 'user';
+    setIsOpen(false);
+  }, []);
+
+  const toggleChat = useCallback(() => {
+    setIsOpen((prev) => {
+      if (prev) closeReasonRef.current = 'user';
+      else closeReasonRef.current = '';
+      return !prev;
+    });
+  }, []);
 
   const clearSmartTranscript = useCallback(() => {
     if (!chatId) return;
@@ -103,7 +119,11 @@ const ChatWidget = ({ user }) => {
       clearTimeout(closeResetTimerRef.current);
       closeResetTimerRef.current = null;
     }
-    if (isOpen) return;
+    if (isOpen) {
+      closeReasonRef.current = '';
+      return;
+    }
+    if (closeReasonRef.current === 'nav') return;
     closeResetTimerRef.current = setTimeout(() => {
       if (isOpenRef.current) return;
       setAiHelpFlow(null);
@@ -121,7 +141,6 @@ const ChatWidget = ({ user }) => {
     };
   }, [clearSmartTranscript, isOpen]);
   const [scrolled, setScrolled] = useState(false);
-  const avatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
   const [supportOnline, setSupportOnline] = useState(false);
   const [supportTyping, setSupportTyping] = useState(false);
   const typingTimeoutRef = useRef(null);
@@ -137,6 +156,16 @@ const ChatWidget = ({ user }) => {
     window.dispatchEvent(new Event(isOpen ? 'chatwidget:open' : 'chatwidget:close'));
   }, [isOpen]);
 
+  useEffect(() => {
+    const nextPath = location?.pathname || '';
+    const prevPath = prevPathRef.current || '';
+    if (nextPath === prevPath) return;
+    prevPathRef.current = nextPath;
+    if (!isMobile) return;
+    if (!isOpenRef.current) return;
+    closeChat('nav');
+  }, [closeChat, isMobile, location?.pathname]);
+
   // Блокируем браузерный свайп назад на мобиле когда чат открыт
   useEffect(() => {
     if (!isMobile || !isOpen) return;
@@ -145,7 +174,7 @@ const ChatWidget = ({ user }) => {
     const onPopState = (e) => {
       if (isOpen) {
         // Перехватываем — закрываем чат вместо навигации назад
-        setIsOpen(false);
+        closeChat('nav');
         e.preventDefault();
       }
     };
@@ -153,7 +182,7 @@ const ChatWidget = ({ user }) => {
     return () => {
       window.removeEventListener('popstate', onPopState);
     };
-  }, [isMobile, isOpen]);
+  }, [closeChat, isMobile, isOpen]);
   useEffect(() => {
     try {
       if (isOpen) {
@@ -824,37 +853,6 @@ const ChatWidget = ({ user }) => {
     }
   };
 
-  const getClientLabel = () => {
-    return user?.name || user?.login || user?.email || 'Клиент';
-  };
-
-  const getClientInitial = () => {
-    const label = String(getClientLabel() || '').trim();
-    return (label[0] || 'U').toUpperCase();
-  };
-
-  const renderSupportAvatar = () => {
-    return (
-      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center">
-        <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-1.5" />
-      </div>
-    );
-  };
-
-  const renderClientAvatar = () => {
-    return (
-      <div className="w-7 h-7 md:w-8 md:h-8 rounded-full overflow-hidden bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-        {avatarUrl ? (
-          <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full text-blue-200 flex items-center justify-center font-bold text-[10px] md:text-[11px]">
-            {getClientInitial()}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   const normalizeForDisplay = (text) => {
     if (typeof text !== 'string') return text;
     return text.replace(/\u00ad/g, '').replace(/\u200b/g, '');
@@ -1119,7 +1117,7 @@ const ChatWidget = ({ user }) => {
         </div>
       )}
       <button 
-        onClick={() => setIsOpen(!isOpen)} 
+        onClick={toggleChat} 
         className={`w-14 h-14 md:w-14 md:h-14 rounded-full flex items-center justify-center text-white shadow-2xl transition-all relative
         ${isMobile && scrolled ? 'bg-blue-600 opacity-100' : 'bg-blue-600/60 opacity-90'} hover:bg-blue-600 hover:opacity-100 hover:scale-110`}
       >
@@ -1174,16 +1172,13 @@ const ChatWidget = ({ user }) => {
             ) : (
               <div className="flex items-center justify-between w-full min-w-0">
                 {/* Левая часть: лого + название */}
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-full overflow-hidden bg-white/10 border border-white/10 flex items-center justify-center flex-shrink-0">
-                    <img src="/img/logo.png" alt="support" className="w-full h-full object-contain p-2" />
-                  </div>
-                  <div className="text-white text-[10px] font-black tracking-[0.2em] uppercase leading-tight truncate">CONNECTOR SUPPORT</div>
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="text-white text-[9px] md:text-[10px] font-black tracking-[0.2em] uppercase leading-tight truncate">AI SUPPORT</div>
                 </div>
                 {/* Статус — с отступом справа чтобы не наслаивался на кнопки */}
                 <div className="flex items-center gap-1.5 flex-shrink-0 mr-8">
                   <span className={`inline-block w-2 h-2 rounded-full ${supportOnline ? 'bg-green-400' : 'bg-white/20'}`} />
-                  <span className="text-white/60 text-[10px]">
+                  <span className="text-white/60 text-[9px] md:text-[10px]">
                     {supportTyping ? t('chat_typing') : (supportOnline ? t('chat_online') : t('chat_offline'))}
                   </span>
                 </div>
@@ -1234,7 +1229,7 @@ const ChatWidget = ({ user }) => {
               <button
                 onClick={async () => {
                   const ok = window.confirm(t('chat_close_confirm_clear'));
-                  setIsOpen(false);
+                  closeChat('user');
                   if (!ok || !chatId) return;
 
                   const now = Date.now();
@@ -1587,12 +1582,9 @@ const ChatWidget = ({ user }) => {
                   return mime.startsWith('image/') || mime.startsWith('video/');
                 });
               const showText = (!hasAttachments || (!isMediaOnly && msg.text && !isAutoFileText)) && !extractSignLink(msg?.text || '');
-              const isSupportMessage = !isMine;
-              const avatarEl = isSupportMessage ? renderSupportAvatar() : renderClientAvatar();
               return (
                 <div key={msg._id || msg.id} className="w-full flex justify-end">
                   <div className="w-full flex flex-col items-end">
-                    <div className="mb-1">{avatarEl}</div>
                     <div
                       role={isSelecting ? 'button' : undefined}
                       tabIndex={isSelecting ? 0 : undefined}

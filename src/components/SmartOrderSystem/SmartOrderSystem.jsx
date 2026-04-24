@@ -422,11 +422,8 @@ export default function SmartOrderSystem({
   return (
     <div className="border-b border-white/10 bg-[#050a18]/95">
       <div className="px-3 py-3">
-        <div className="flex items-center justify-between gap-2">
-          <div className="text-[10px] tracking-[0.2em] uppercase text-white/60 truncate">
-            {t('smart_panel_title')}
-          </div>
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center">
+          <div className={`flex items-center justify-center gap-2 w-full ${mode === 'locked' ? '' : 'flex-wrap'}`}>
             {canGoBack && (
               <button
                 type="button"
@@ -468,7 +465,7 @@ export default function SmartOrderSystem({
                   onModeChangeRef.current?.('assistant');
                   onRestartRef.current?.();
                 }}
-                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px] flex items-center justify-center"
               >
                 {t('smart_start_ai')}
               </button>
@@ -476,7 +473,7 @@ export default function SmartOrderSystem({
               <button
                 type="button"
                 onClick={() => chooseAction({ id: 'start_ai' })}
-                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px] flex items-center justify-center flex-1 max-w-[240px]"
               >
                 {t('smart_start_ai')}
               </button>
@@ -486,7 +483,7 @@ export default function SmartOrderSystem({
               <button
                 type="button"
                 onClick={() => chooseAction({ type: 'contact_manager' })}
-                className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px]"
+                className={`px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[12px] hover:bg-white/10 min-h-[44px] flex items-center justify-center ${mode === 'locked' ? 'flex-1 max-w-[240px]' : ''}`}
               >
                 {t('smart_contact_manager')}
               </button>
