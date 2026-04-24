@@ -11,6 +11,8 @@ const OrderSidebar = ({
 }) => {
   const { t } = useTranslation();
   const pushedRef = useRef(false);
+  const selectorPushedRef = useRef(false);
+  const alertPushedRef = useRef(false);
 
   const [chosenServices, setChosenServices] = useState([]);
   const [tempSelection, setTempSelection] = useState([]);
@@ -106,11 +108,21 @@ const OrderSidebar = ({
 
   useEffect(() => {
     const onPop = () => {
+      if (isSelectorOpen) {
+        selectorPushedRef.current = false;
+        setIsSelectorOpen(false);
+        return;
+      }
+      if (alertModal) {
+        alertPushedRef.current = false;
+        setAlertModal(null);
+        return;
+      }
       if (isOrderOpen) setIsOrderOpen(false);
     };
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
-  }, [isOrderOpen, setIsOrderOpen]);
+  }, [alertModal, isOrderOpen, isSelectorOpen, setIsOrderOpen]);
 
   const requestClose = () => {
     try {
@@ -123,10 +135,54 @@ const OrderSidebar = ({
     setIsOrderOpen(false);
   };
 
+  const requestCloseAlert = () => {
+    try {
+      if (alertPushedRef.current && window.history.state && window.history.state.__overlay === 'orderAlert') {
+        alertPushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    setAlertModal(null);
+  };
+
+  const requestCloseSelector = () => {
+    try {
+      if (selectorPushedRef.current && window.history.state && window.history.state.__overlay === 'orderSelector') {
+        selectorPushedRef.current = false;
+        window.history.back();
+        return;
+      }
+    } catch { void 0; }
+    setIsSelectorOpen(false);
+  };
+
   const services = [
     "S1_T", "S2_T", "S3_T", "S4_T", "S5_T", "S6_T", "S7_T", "S8_T", "S9_T", "S10_T"
   ];
   const lockedKeys = ["S2_T", "S7_T"];
+
+  useEffect(() => {
+    if (!isSelectorOpen) return;
+    try {
+      const st = window.history.state || {};
+      if (st && st.__overlay !== 'orderSelector') {
+        window.history.pushState({ ...st, __overlay: 'orderSelector' }, '', window.location.href);
+        selectorPushedRef.current = true;
+      }
+    } catch { void 0; }
+  }, [isSelectorOpen]);
+
+  useEffect(() => {
+    if (!alertModal) return;
+    try {
+      const st = window.history.state || {};
+      if (st && st.__overlay !== 'orderAlert') {
+        window.history.pushState({ ...st, __overlay: 'orderAlert' }, '', window.location.href);
+        alertPushedRef.current = true;
+      }
+    } catch { void 0; }
+  }, [alertModal]);
 
   useEffect(() => {
     const onPrefill = (e) => {
@@ -156,7 +212,7 @@ const OrderSidebar = ({
   const confirmSelection = () => {
     const allowed = tempSelection.filter(s => !lockedKeys.includes(s));
     setChosenServices(allowed);
-    setIsSelectorOpen(false);
+    requestCloseSelector();
   };
 
   // Функция форматирования размера файла
@@ -550,30 +606,42 @@ const handleSubmit = async (e) => {
 
       {/* Селектор услуг (Выпадающий список) */}
       {alertModal && (
-        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/70" onClick={() => setAlertModal(null)} />
+        <div
+          className="fixed inset-0 z-[120] flex items-start justify-center px-3 md:px-6"
+          style={{
+            paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px) + 0.75rem)',
+            paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+          }}
+        >
+          <div className="absolute inset-0 bg-black/70" onClick={requestCloseAlert} />
           <div className="relative w-full max-w-sm bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
             <div className="text-white text-sm leading-relaxed">{alertModal}</div>
             <div className="mt-4 flex justify-end">
-              <button onClick={() => setAlertModal(null)} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs hover:bg-blue-700 transition-colors">{t('Закрыть')}</button>
+              <button onClick={requestCloseAlert} className="px-4 py-2 rounded-xl bg-blue-600 text-white text-xs hover:bg-blue-700 transition-colors">{t('Закрыть')}</button>
             </div>
           </div>
         </div>
       )}
       {isSelectorOpen && (
-        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsSelectorOpen(false)} />
-          <div className="relative w-full max-w-[400px] bg-[#0A0A0B] border border-white/10 rounded-3xl p-8 shadow-2xl animate-modalEnter">
+        <div
+          className="fixed inset-0 z-[120] flex items-start justify-center px-3 md:px-6"
+          style={{
+            paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px) + 0.75rem)',
+            paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+          }}
+        >
+          <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={requestCloseSelector} />
+          <div className="relative w-full max-w-[400px] bg-[#0A0A0B] border border-white/10 rounded-3xl p-5 md:p-8 shadow-2xl animate-modalEnter max-h-full overflow-hidden">
             <button 
-              onClick={() => setIsSelectorOpen(false)}
-              className="absolute top-6 right-6 text-white/40 hover:text-white"
+              onClick={requestCloseSelector}
+              className="absolute top-5 right-5 md:top-6 md:right-6 text-white/40 hover:text-white"
             >
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             
             <div className="h-full flex flex-col">
-              <h3 className="text-xl font-bold text-white uppercase tracking-widest mb-8">{t("Выберите услуги")}</h3>
-              <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-2 custom-scrollbar">
+              <h3 className="text-base md:text-xl font-bold text-white uppercase tracking-[0.14em] md:tracking-widest mb-4 md:mb-8">{t("Выберите услуги")}</h3>
+              <div className="flex-1 min-h-0 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                 {services.map(s => {
                   const isLocked = lockedKeys.includes(s);
                   const isSelected = tempSelection.includes(s);
