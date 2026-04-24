@@ -369,7 +369,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder, user, on
         </div>
       )}
 
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#0a0a0a]/40 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
+      <div className="mobile-bottom-nav md:hidden fixed bottom-0 left-0 right-0 z-[100] bg-[#0a0a0a]/40 backdrop-blur-lg border-t border-blue-500/20 px-2 py-3">
         <div className="grid grid-cols-5 items-center justify-items-center">
           
           {/* ГЛАВНАЯ */}

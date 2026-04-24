@@ -51,6 +51,7 @@ const Hero = () => {
   ];
 
   const [scrollY, setScrollY] = useState(0);
+  const [heroLayout, setHeroLayout] = useState('default');
   const sectionRef = useRef(null);
 
   useEffect(() => {
@@ -72,6 +73,28 @@ const Hero = () => {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    const updateLayout = () => {
+      if (typeof window === 'undefined') return;
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const isLandscape = width > height;
+
+      const isShortLandscape = isLandscape && width <= 900 && height <= 520;
+      const isSmallPortrait = !isLandscape && width <= 430 && height <= 740;
+
+      setHeroLayout(isShortLandscape ? 'shortLandscape' : isSmallPortrait ? 'smallPortrait' : 'default');
+    };
+
+    updateLayout();
+    window.addEventListener('resize', updateLayout);
+    window.addEventListener('orientationchange', updateLayout);
+    return () => {
+      window.removeEventListener('resize', updateLayout);
+      window.removeEventListener('orientationchange', updateLayout);
+    };
+  }, []);
+
   const handleServiceClick = (key) => {
     window.dispatchEvent(new CustomEvent('service:open', { detail: { key } }));
   };
@@ -80,13 +103,91 @@ const Hero = () => {
   const isMobileUa = /Mobi|Android|iPhone|iPad/i.test(ua);
   const isTelegram = /Telegram/i.test(ua);
   const heroOffsetStyle = isMobileUa && isTelegram ? { marginTop: 'calc(5rem + 16px)' } : undefined;
+  const heroHeaderStyle =
+    heroLayout === 'shortLandscape'
+      ? {
+          ...heroOffsetStyle,
+          alignItems: 'center',
+          paddingTop: 'calc(5.5rem + env(safe-area-inset-top, 0px))',
+          paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
+        }
+      : heroLayout === 'smallPortrait'
+        ? {
+            ...heroOffsetStyle,
+            alignItems: 'flex-start',
+            paddingTop: '5.5rem',
+            paddingBottom: '9.25rem',
+          }
+        : heroOffsetStyle;
+
+  const heroContentStyle =
+    heroLayout === 'shortLandscape'
+      ? {
+          position: 'relative',
+          top: '14vh',
+          width: '100%',
+          transform: 'none',
+        }
+      : heroLayout === 'smallPortrait'
+        ? {
+            position: 'relative',
+            top: '6vh',
+            width: '100%',
+            transform: 'none',
+        }
+      : undefined;
+
+  const heroTitleStyle =
+    heroLayout === 'shortLandscape' ? { marginTop: '1.25rem' } : undefined;
+
+  const heroGridStyle =
+    heroLayout === 'shortLandscape'
+      ? {
+          gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+          columnGap: '0.35rem',
+          rowGap: '0.25rem',
+          marginBottom: '0.75rem',
+          paddingLeft: 0,
+          paddingRight: 0,
+        }
+      : heroLayout === 'smallPortrait'
+        ? {
+            rowGap: '0.4rem',
+            marginBottom: '0.55rem',
+          }
+        : undefined;
+
+  const heroCardStyle =
+    heroLayout === 'shortLandscape'
+      ? { padding: '0.2rem' }
+      : heroLayout === 'smallPortrait'
+        ? { padding: '0.3rem' }
+        : undefined;
+
+  const heroIconWrapStyle =
+    heroLayout === 'shortLandscape'
+      ? { marginBottom: '0.1rem', transform: 'scale(0.78)', transformOrigin: 'center' }
+      : heroLayout === 'smallPortrait'
+        ? { transform: 'scale(0.78)', transformOrigin: 'center' }
+        : undefined;
+
+  const heroWhatsappStyle =
+    heroLayout === 'shortLandscape'
+      ? { padding: '0.5rem 0.9rem', fontSize: '0.7rem' }
+      : heroLayout === 'smallPortrait'
+        ? { padding: '0.6rem 1rem', fontSize: '0.72rem' }
+        : undefined;
+
+  const heroWhatsappWrapStyle =
+    undefined;
 
   return (
     <header 
       ref={sectionRef} 
       className="relative text-center text-white bg-[#050505] overflow-hidden min-h-[100svh] md:min-h-[100vh] flex items-center md:items-start justify-center pt-20 md:pt-14 lg:pt-16 pb-20 md:pb-10"
       data-section="hero"
-      style={heroOffsetStyle}
+      data-hero-layout={heroLayout}
+      style={heroHeaderStyle}
     >
       
       <div 
@@ -102,13 +203,22 @@ const Hero = () => {
 
       <div className="absolute inset-0 z-[1] bg-radial-gradient from-transparent via-[#050505]/60 to-[#050505]"></div>
 
-      <div className="hero-content relative z-10 container mx-auto px-4 flex flex-col items-center md:-mt-4 lg:-mt-6 xl:-mt-8">
+      <div
+        className="hero-content relative z-10 container mx-auto px-4 flex flex-col items-center md:-mt-4 lg:-mt-6 xl:-mt-8"
+        style={heroContentStyle}
+      >
         
-        <h1 className="text-xl md:text-2xl lg:text-3xl font-black mb-4 md:mb-6 lg:mb-4 tracking-tight uppercase bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 px-4 leading-tight">
+        <h1
+          className="text-xl md:text-2xl lg:text-3xl font-black mb-4 md:mb-6 lg:mb-4 tracking-tight uppercase bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 px-4 leading-tight"
+          style={heroTitleStyle}
+        >
           {t("HERE_YOU_CAN_ORDER")}
         </h1>
 
-        <div className="hero-services-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-6 md:gap-4 lg:gap-5 max-w-[1100px] lg:max-w-[1280px] mx-auto mb-6 md:mb-8 lg:mb-6 px-2 md:px-6">
+        <div
+          className="hero-services-grid grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-2 gap-y-6 md:gap-4 lg:gap-5 max-w-[1100px] lg:max-w-[1280px] mx-auto mb-6 md:mb-8 lg:mb-6 px-2 md:px-6"
+          style={heroGridStyle}
+        >
           {services.map((service) => {
             const colSpanClassName = service.colSpanClassName || '';
 
@@ -118,8 +228,9 @@ const Hero = () => {
                   key={service.key}
                   aria-disabled="true"
                   className={`${colSpanClassName} hero-service-card relative flex flex-col items-center justify-center p-2 md:p-4 lg:p-4 rounded-[0.75rem] md:rounded-[1.25rem] bg-white/[0.03] border border-white/10 backdrop-blur-xl cursor-default`}
+                  style={heroCardStyle}
                 >
-                  <div className="mb-1 md:mb-2 text-blue-400">
+                  <div className="mb-1 md:mb-2 text-blue-400" style={heroIconWrapStyle}>
                     {service.icon}
                   </div>
                   <span className="text-[7px] md:text-[9px] lg:text-[10px] font-semibold tracking-[0.02em] md:tracking-[0.05em] uppercase text-gray-400 text-center leading-tight">
@@ -134,8 +245,9 @@ const Hero = () => {
                 key={service.key}
                 onClick={() => handleServiceClick(service.key)}
                 className={`${colSpanClassName} hero-service-card group relative flex flex-col items-center justify-center p-2 md:p-4 lg:p-4 rounded-[0.75rem] md:rounded-[1.25rem] bg-white/[0.03] border border-white/10 backdrop-blur-xl transition-all duration-500 hover:bg-white/[0.08] hover:border-blue-500/50 hover:-translate-y-1 hover:shadow-[0_10px_30px_rgba(0,0,0,0.4)]`}
+                style={heroCardStyle}
               >
-                <div className="mb-1 md:mb-2 text-blue-400 group-hover:text-blue-300 transition-colors duration-500 transform group-hover:scale-105">
+                <div className="mb-1 md:mb-2 text-blue-400 group-hover:text-blue-300 transition-colors duration-500 transform group-hover:scale-105" style={heroIconWrapStyle}>
                   {service.icon}
                 </div>
                 <span className="text-[7px] md:text-[9px] lg:text-[10px] font-semibold tracking-[0.02em] md:tracking-[0.05em] uppercase text-gray-400 group-hover:text-white transition-colors duration-500 text-center leading-tight">
@@ -148,12 +260,13 @@ const Hero = () => {
           })}
         </div>
 
-        <div className="flex justify-center mt-1 md:mt-2">
+        <div className="flex justify-center mt-1 md:mt-2" style={heroWhatsappWrapStyle}>
           <a
             href="https://wa.me/+995591160685"
             target="_blank"
             rel="noopener noreferrer"
             className="group relative flex items-center gap-2 md:gap-3 px-6 py-3 md:px-8 md:py-4 lg:px-7 lg:py-3 rounded-xl md:rounded-2xl bg-[#25D366] text-white font-bold uppercase tracking-widest text-xs md:text-sm transition-all duration-300 hover:scale-105 hover:shadow-[0_0_30px_rgba(37,211,102,0.4)] active:scale-95"
+            style={heroWhatsappStyle}
           >
             <MessageCircle className="w-4 h-4 md:w-5 md:h-5 fill-current" />
             {t("CONTACT_WHATSAPP")}
@@ -168,7 +281,7 @@ const Hero = () => {
           background: radial-gradient(circle at center, transparent 0%, rgba(5,5,5,0.8) 100%);
         }
 
-        @media (min-width: 768px) and (max-width: 1366px) and (pointer: coarse) {
+        @media (min-width: 768px) and (max-width: 1366px) and (min-height: 700px) and (pointer: coarse) {
           header[data-section="hero"] {
             min-height: 100svh;
             align-items: center;
@@ -197,6 +310,77 @@ const Hero = () => {
 
           .hero-service-card {
             padding: 1rem;
+          }
+        }
+
+        @media (max-height: 430px) and (max-width: 900px) and (orientation: landscape) {
+          header[data-section="hero"] {
+            align-items: flex-start;
+            padding-top: calc(3.75rem + env(safe-area-inset-top, 0px)) !important;
+            padding-bottom: calc(5.75rem + env(safe-area-inset-bottom, 0px)) !important;
+          }
+
+          .hero-services-grid {
+            column-gap: 0.35rem !important;
+            row-gap: 0.15rem !important;
+            margin-bottom: 0.4rem !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+          }
+
+          .hero-service-card {
+            padding: 0.2rem !important;
+          }
+
+          .hero-service-card > div:first-child {
+            margin-bottom: 0.1rem !important;
+          }
+
+          .hero-service-card img {
+            transform: scale(0.78) !important;
+            transform-origin: center;
+          }
+
+          .hero-content h1 {
+            margin-bottom: 0.4rem !important;
+          }
+
+          a[href^="https://wa.me/"] {
+            margin-top: 0 !important;
+            padding: 0.5rem 0.9rem !important;
+          }
+        }
+
+        @media (max-width: 430px) and (max-height: 740px) {
+          header[data-section="hero"] {
+            align-items: flex-start;
+            padding-top: calc(5.5rem + env(safe-area-inset-top, 0px)) !important;
+            padding-bottom: calc(9.25rem + env(safe-area-inset-bottom, 0px)) !important;
+          }
+
+          .hero-content h1 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+          }
+
+          .hero-services-grid {
+            gap-x: 0.5rem;
+            gap-y: 0.4rem !important;
+            margin-bottom: 0.55rem !important;
+          }
+
+          .hero-service-card {
+            padding: 0.3rem !important;
+          }
+
+          .hero-service-card img {
+            transform: scale(0.78) !important;
+            transform-origin: center;
+          }
+
+          a[href^="https://wa.me/"] {
+            padding: 0.6rem 1rem;
+            font-size: 0.72rem;
           }
         }
       `}</style>
