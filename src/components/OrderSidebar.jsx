@@ -314,23 +314,30 @@ const handleSubmit = async (e) => {
   if (!isOrderOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex justify-end" data-section="order">
+    <div
+      className="fixed inset-0 z-[90] flex items-center justify-center px-3 md:px-6"
+      data-section="order"
+      style={{
+        paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px) + 0.75rem)',
+        paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px) + 0.75rem)',
+      }}
+    >
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
         onClick={requestClose}
       />
       
-      <div className="relative w-full max-w-[500px] bg-[#0A0A0B] h-full shadow-2xl border-l border-white/5 flex flex-col animate-slideLeft">
+      <div className="relative w-full max-w-[980px] bg-[#0A0A0B] max-h-full shadow-2xl border border-white/10 rounded-3xl flex flex-col overflow-hidden animate-modalEnter">
         <button 
           onClick={requestClose}
-          className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors z-10"
+          className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors z-10"
         >
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        <div className="flex-grow overflow-y-auto px-8 pt-20 pb-8 custom-scrollbar">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 md:px-8 pt-6 md:pt-8 pb-[calc(6rem+env(safe-area-inset-bottom,0px))] md:pb-8 custom-scrollbar">
           {showSuccess ? (
             <div className="h-full flex flex-col items-center justify-center text-center space-y-6 animate-fadeIn">
               <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -338,7 +345,7 @@ const handleSubmit = async (e) => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-white uppercase tracking-widest">{t("Заказ принят!")}</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-white uppercase tracking-widest">{t("Заказ принят!")}</h2>
               <p className="text-white/60 font-light leading-relaxed">
                 {t("Спасибо за доверие. Мы свяжемся с вами в ближайшее время для уточнения деталей.")}
               </p>
@@ -352,7 +359,7 @@ const handleSubmit = async (e) => {
           ) : (
             <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-white uppercase tracking-[0.2em] mb-2">{t("Оформить заказ")}</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-white uppercase tracking-[0.2em] mb-2">{t("Оформить заказ")}</h2>
                 <div className="w-12 h-1 bg-blue-500"></div>
               </div>
 
@@ -543,7 +550,7 @@ const handleSubmit = async (e) => {
 
       {/* Селектор услуг (Выпадающий список) */}
       {alertModal && (
-        <div className="fixed inset-0 z-[600] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/70" onClick={() => setAlertModal(null)} />
           <div className="relative w-full max-w-sm bg-[#0a0a0a] border border-blue-500/20 rounded-2xl p-6 shadow-2xl">
             <div className="text-white text-sm leading-relaxed">{alertModal}</div>
@@ -554,7 +561,7 @@ const handleSubmit = async (e) => {
         </div>
       )}
       {isSelectorOpen && (
-        <div className="fixed inset-0 z-[210] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[99] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setIsSelectorOpen(false)} />
           <div className="relative w-full max-w-[400px] bg-[#0A0A0B] border border-white/10 rounded-3xl p-8 shadow-2xl animate-modalEnter">
             <button 

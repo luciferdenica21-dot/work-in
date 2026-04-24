@@ -304,10 +304,9 @@ function App() {
             loading ? (
               null
             ) : user && userRole === 'user' ? (
-              <>
+              <MainLayout>
                 <ClientDashboard user={user} onLogout={handleLogout} />
-                <TermsInfo />
-              </>
+              </MainLayout>
             ) : (
               <Navigate to="/" replace />
             )

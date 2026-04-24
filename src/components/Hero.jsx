@@ -85,9 +85,9 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
       const isLandscape = width > height;
 
       const isShortLandscape = isLandscape && width <= 900 && height <= 520;
-      const isSmallPortrait = !isLandscape && width <= 430 && height <= 740;
+      const isMobilePortrait = !isLandscape && width < 768;
 
-      setHeroLayout(isShortLandscape ? 'shortLandscape' : isSmallPortrait ? 'smallPortrait' : 'default');
+      setHeroLayout(isShortLandscape ? 'shortLandscape' : isMobilePortrait ? 'mobilePortrait' : 'default');
     };
 
     updateLayout();
@@ -120,12 +120,12 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
           paddingTop: 'calc(5.5rem + env(safe-area-inset-top, 0px))',
           paddingBottom: 'calc(4.25rem + env(safe-area-inset-bottom, 0px))',
         }
-      : heroLayout === 'smallPortrait'
+      : heroLayout === 'mobilePortrait'
         ? {
             ...heroOffsetStyle,
             alignItems: 'flex-start',
-            paddingTop: '5.5rem',
-            paddingBottom: '9.25rem',
+            paddingTop: 'calc(5.5rem + env(safe-area-inset-top, 0px))',
+            paddingBottom: 'calc(9.25rem + env(safe-area-inset-bottom, 0px))',
           }
         : heroOffsetStyle;
 
@@ -137,7 +137,7 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
           width: '100%',
           transform: 'none',
         }
-      : heroLayout === 'smallPortrait'
+      : heroLayout === 'mobilePortrait'
         ? {
             position: 'relative',
             top: '4vh',
@@ -147,7 +147,11 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
       : undefined;
 
   const heroTitleStyle =
-    heroLayout === 'shortLandscape' ? { marginTop: '1.25rem' } : undefined;
+    heroLayout === 'shortLandscape'
+      ? { marginTop: '1.25rem' }
+      : heroLayout === 'mobilePortrait'
+        ? { fontSize: '1.1rem', marginBottom: '0.75rem' }
+        : undefined;
 
   const heroGridStyle =
     heroLayout === 'shortLandscape'
@@ -159,8 +163,9 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
           paddingLeft: 0,
           paddingRight: 0,
         }
-      : heroLayout === 'smallPortrait'
+      : heroLayout === 'mobilePortrait'
         ? {
+            columnGap: '0.5rem',
             rowGap: '0.4rem',
             marginBottom: '0.55rem',
           }
@@ -169,22 +174,22 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
   const heroCardStyle =
     heroLayout === 'shortLandscape'
       ? { padding: '0.2rem' }
-      : heroLayout === 'smallPortrait'
+      : heroLayout === 'mobilePortrait'
         ? { padding: '0.3rem' }
         : undefined;
 
   const heroIconWrapStyle =
     heroLayout === 'shortLandscape'
       ? { marginBottom: '0.1rem', transform: 'scale(0.78)', transformOrigin: 'center' }
-      : heroLayout === 'smallPortrait'
+      : heroLayout === 'mobilePortrait'
         ? { transform: 'scale(0.78)', transformOrigin: 'center' }
         : undefined;
 
   const heroWhatsappStyle =
     heroLayout === 'shortLandscape'
       ? { padding: '0.5rem 0.9rem', fontSize: '0.62rem', whiteSpace: 'nowrap', lineHeight: '1' }
-      : heroLayout === 'smallPortrait'
-        ? { padding: '0.55rem 0.9rem', fontSize: '0.64rem', whiteSpace: 'nowrap', lineHeight: '1' }
+      : heroLayout === 'mobilePortrait'
+        ? { padding: '0.6rem 1rem', fontSize: '0.72rem', whiteSpace: 'nowrap', lineHeight: '1' }
         : undefined;
 
   const heroWhatsappWrapStyle =
@@ -359,11 +364,6 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
             margin-bottom: 0.1rem !important;
           }
 
-          .hero-service-card img {
-            transform: scale(0.78) !important;
-            transform-origin: center;
-          }
-
           .hero-content h1 {
             margin-bottom: 0.4rem !important;
           }
@@ -396,16 +396,8 @@ const Hero = ({ user, setIsOrderOpen, setIsAuthOpen, onRequireAuthForOrder }) =>
             padding: 0.3rem !important;
           }
 
-          .hero-service-card img {
-            transform: scale(0.78) !important;
-            transform-origin: center;
-          }
-
-          a[href^="https://wa.me/"] {
-            padding: 0.6rem 1rem;
-            font-size: 0.72rem;
-          }
         }
+
       `}</style>
     </header>
   );

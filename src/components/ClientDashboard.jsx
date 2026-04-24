@@ -2,12 +2,11 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { authAPI, chatsAPI, ordersAPI, filesAPI } from '../config/api';
-import ChatWidget from './ChatWidget';
 import { useAvatarUrl } from '../hooks/useAvatarUrl';
 import { 
   User, Mail, Phone, MapPin, LogOut, Edit2, 
   FileText, MessageSquare, Package, CheckCircle, 
-  XCircle, Clock, ArrowLeft, Settings, Trash2, Upload, Image
+  XCircle, Clock, Settings, Trash2, Upload, Image
 } from 'lucide-react';
 
 const ClientDashboard = ({ user: initialUser }) => {
@@ -279,16 +278,18 @@ const ClientDashboard = ({ user: initialUser }) => {
   }
 
   return (
-    <div style={{ 
-      position: 'fixed', 
-      inset: 0, 
-      zIndex: 100, 
-      overflowY: 'auto', 
-      background: theme.bg, 
-      color: theme.textMain, 
-      fontFamily: 'Inter, sans-serif' 
-    }}>
-      <div style={{ position: 'fixed', inset: 0, zIndex: -1, background: '#050505', opacity: 0.95, backdropFilter: 'blur(40px)' }} />
+    <div
+      style={{
+        position: 'relative',
+        minHeight: '100svh',
+        background: theme.bg,
+        color: theme.textMain,
+        fontFamily: 'Inter, sans-serif',
+        paddingTop: 'calc(5rem + env(safe-area-inset-top, 0px) + 1.25rem)',
+        paddingBottom: 'calc(5.25rem + env(safe-area-inset-bottom, 0px) + 1.25rem)',
+      }}
+    >
+      <div style={{ position: 'absolute', inset: 0, zIndex: 0, background: '#050505', opacity: 0.95, backdropFilter: 'blur(40px)' }} />
       
       <style>
         {`
@@ -298,7 +299,7 @@ const ClientDashboard = ({ user: initialUser }) => {
             .header-brand-text { font-size: 11px !important; letter-spacing: 0.15em !important; }
             .header-title { font-size: 14px !important; letter-spacing: 0.1em !important; }
             .back-btn-text { display: none; }
-            .dashboard-container { flex-direction: column !important; padding: 80px 15px 40px !important; gap: 20px !important; }
+            .dashboard-container { flex-direction: column !important; padding: 0 15px !important; gap: 20px !important; }
             .sidebar-area { width: 100% !important; }
             .order-card-header { flex-direction: column !important; align-items: flex-start !important; gap: 15px !important; }
             .order-status-badge { align-self: flex-start !important; }
@@ -311,30 +312,7 @@ const ClientDashboard = ({ user: initialUser }) => {
         `}
       </style>
       
-      <div className="dashboard-header" style={{ 
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        zIndex: 110,
-        background: 'rgba(10, 10, 10, 0.9)', 
-        backdropFilter: 'blur(12px)',
-        borderBottom: `1px solid rgba(56, 189, 248, 0.2)`, 
-        padding: '0 40px', 
-        height: '80px',
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between' 
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <button onClick={() => navigate('/')} style={{ background: 'transparent', border: 'none', color: theme.accent, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <ArrowLeft size={20} />
-            <span className="back-btn-text" style={{ fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('back_to_home')}</span>
-          </button>
-        </div>
-      </div>
-
-      <div className="dashboard-container" style={{ display: 'flex', maxWidth: '1280px', margin: '0 auto', padding: '120px 20px 60px', gap: '30px' }}>
+      <div className="dashboard-container" style={{ position: 'relative', zIndex: 1, display: 'flex', maxWidth: '1280px', margin: '0 auto', padding: '0 20px', gap: '30px' }}>
         <div className="sidebar-area" style={{ width: '320px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="card-padding" style={{ background: theme.card, border: `1px solid ${theme.border}`, borderRadius: '2rem', padding: '30px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
@@ -776,7 +754,6 @@ const ClientDashboard = ({ user: initialUser }) => {
           )}
         </div>
       </div>
-      <ChatWidget user={user} />
 
       {/* Модальное окно для кропа аватара */}
       {avatarModalOpen && (
@@ -784,7 +761,7 @@ const ClientDashboard = ({ user: initialUser }) => {
           style={{
             position: 'fixed',
             inset: 0,
-            zIndex: 1000,
+            zIndex: 99,
             background: 'rgba(0, 0, 0, 0.9)',
             display: 'flex',
             alignItems: 'center',
