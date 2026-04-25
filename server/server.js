@@ -29,6 +29,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', true);
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const server = http.createServer(app);
 

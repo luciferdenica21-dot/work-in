@@ -637,6 +637,19 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [siteStats, setSiteStats] = useState(null);
   const [siteStatsLoading, setSiteStatsLoading] = useState(false);
   const [siteStatsError, setSiteStatsError] = useState(null);
+  const [siteVisitors, setSiteVisitors] = useState([]);
+  const [siteVisitorsTotals, setSiteVisitorsTotals] = useState(null);
+  const [siteVisitorsRangeDays] = useState(90);
+  const [siteVisitorsLimit, setSiteVisitorsLimit] = useState(200);
+  const [siteVisitorsTotalRows, setSiteVisitorsTotalRows] = useState(0);
+  const [siteVisitorsLoading, setSiteVisitorsLoading] = useState(false);
+  const [siteVisitorsError, setSiteVisitorsError] = useState(null);
+  const [expandedVisitorKey, setExpandedVisitorKey] = useState(null);
+  const [visitorHistory, setVisitorHistory] = useState([]);
+  const [visitorHistoryLimit, setVisitorHistoryLimit] = useState(200);
+  const [visitorHistoryTotal, setVisitorHistoryTotal] = useState(0);
+  const [visitorHistoryLoading, setVisitorHistoryLoading] = useState(false);
+  const [visitorHistoryError, setVisitorHistoryError] = useState(null);
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [contextMenuMsg, setContextMenuMsg] = useState(null);
   const [pinnedMessage, setPinnedMessage] = useState(null);
@@ -706,7 +719,7 @@ const getAbsoluteFileUrl = (fileUrl) => {
     if (activeSection !== 'dashboard') return;
     let alive = true;
 
-    const load = async () => {
+    const loadStats = async () => {
       try {
         setSiteStatsError(null);
         setSiteStatsLoading(true);
@@ -721,13 +734,72 @@ const getAbsoluteFileUrl = (fileUrl) => {
       }
     };
 
-    load();
-    const id = setInterval(load, 15000);
+    loadStats();
+    const id = setInterval(loadStats, 15000);
     return () => {
       alive = false;
       clearInterval(id);
     };
   }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== 'dashboard') return;
+    let alive = true;
+
+    const loadVisitors = async () => {
+      try {
+        setSiteVisitorsError(null);
+        setSiteVisitorsLoading(true);
+        const data = await analyticsAPI.getSiteVisitors({ days: siteVisitorsRangeDays, limit: siteVisitorsLimit, offset: 0 });
+        if (!alive) return;
+        const list = Array.isArray(data?.visitors) ? data.visitors : [];
+        setSiteVisitors(list);
+        setSiteVisitorsTotals(data?.totals || null);
+        setSiteVisitorsLimit(Number(data?.limit) || siteVisitorsLimit);
+        setSiteVisitorsTotalRows(Number(data?.totalRows) || 0);
+      } catch (e) {
+        if (!alive) return;
+        setSiteVisitorsError(e?.message || 'Ошибка загрузки');
+      } finally {
+        if (alive) setSiteVisitorsLoading(false);
+      }
+    };
+
+    loadVisitors();
+    return () => { alive = false; };
+  }, [activeSection, siteVisitorsRangeDays, siteVisitorsLimit]);
+
+  useEffect(() => {
+    if (activeSection !== 'dashboard') return;
+    if (!expandedVisitorKey) return;
+    let alive = true;
+
+    const loadHistory = async () => {
+      try {
+        setVisitorHistoryError(null);
+        setVisitorHistoryLoading(true);
+        const data = await analyticsAPI.getSiteVisitorHistory({
+          ip: expandedVisitorKey,
+          days: siteVisitorsRangeDays,
+          limit: visitorHistoryLimit,
+          offset: 0
+        });
+        if (!alive) return;
+        const list = Array.isArray(data?.visits) ? data.visits : [];
+        setVisitorHistory(list);
+        setVisitorHistoryLimit(Number(data?.limit) || visitorHistoryLimit);
+        setVisitorHistoryTotal(Number(data?.totalVisits) || 0);
+      } catch (e) {
+        if (!alive) return;
+        setVisitorHistoryError(e?.message || 'Ошибка загрузки');
+      } finally {
+        if (alive) setVisitorHistoryLoading(false);
+      }
+    };
+
+    loadHistory();
+    return () => { alive = false; };
+  }, [activeSection, expandedVisitorKey, siteVisitorsRangeDays, visitorHistoryLimit]);
   
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -2365,29 +2437,23 @@ const getAbsoluteFileUrl = (fileUrl) => {
                   <>
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
-                        <div className="text-[11px] text-white/50">Посещения</div>
-                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.visits ?? 0}</div>
-                      </div>
-                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
-                        <div className="text-[11px] text-white/50">Устройства</div>
-                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.devices ?? 0}</div>
-                      </div>
-                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
-                        <div className="text-[11px] text-white/50">Уникальные IP</div>
-                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.uniqueIps ?? 0}</div>
+                        <div className="text-[11px] text-white/50">Посетители (IP)</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteVisitorsTotals?.ips ?? siteStats?.totals?.uniqueIps ?? 0}</div>
                         {(siteStats?.totals?.noIpVisits ?? 0) > 0 ? (
                           <div className="text-[10px] text-white/40 mt-0.5">без IP: {siteStats?.totals?.noIpVisits ?? 0}</div>
                         ) : null}
                       </div>
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
-                        <div className="text-[11px] text-white/50">Повторные</div>
-                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.repeatVisits ?? 0}</div>
+                        <div className="text-[11px] text-white/50">Визиты (сессии)</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteVisitorsTotals?.visits ?? siteStats?.totals?.visits ?? 0}</div>
                       </div>
-                    </div>
-                    <div className="mt-2">
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
                         <div className="text-[11px] text-white/50">Среднее время</div>
                         <div className="text-lg sm:text-2xl font-bold text-white">{formatDurationCompact(siteStats?.totals?.avgTimeMs ?? 0)}</div>
+                      </div>
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Общее время</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{formatDurationCompact(siteStats?.totals?.totalTimeMs ?? 0)}</div>
                       </div>
                     </div>
 
@@ -2423,50 +2489,172 @@ const getAbsoluteFileUrl = (fileUrl) => {
                       <div className="mt-2 flex items-center gap-4 text-[11px] text-white/60">
                         <div className="flex items-center gap-2">
                           <span className="inline-block w-3 h-0.5 bg-blue-500/90" />
-                          <span>Посещения</span>
+                          <span>Визиты</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="inline-block w-3 h-0.5 bg-green-500/90" />
-                          <span>Уникальные IP</span>
-                        </div>
-                        <div className="ml-auto text-white/40">
-                          Общее время: {formatDurationCompact(siteStats?.totals?.totalTimeMs ?? 0)}
+                          <span>IP</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="mt-4 bg-black/20 border border-white/10 rounded-lg overflow-hidden">
                       <div className="p-3 flex items-center justify-between">
-                        <div className="text-[11px] text-white/50">Посетители (IP + устройство)</div>
-                        <div className="text-[11px] text-white/40">топ 50</div>
+                        <div className="text-[11px] text-white/50">Список IP</div>
+                        <div className="text-[11px] text-white/40">
+                          {siteVisitorsTotalRows > 0 ? `${siteVisitors.length}/${siteVisitorsTotalRows}` : siteVisitors.length}
+                        </div>
                       </div>
                       <div className="border-t border-white/10">
                         <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[11px] text-white/50">
-                          <div className="col-span-5 sm:col-span-4">IP</div>
-                          <div className="col-span-3 sm:col-span-2 text-right">Визиты</div>
-                          <div className="col-span-4 sm:col-span-3 text-right">Среднее</div>
-                          <div className="hidden sm:block sm:col-span-3 text-right">Последний</div>
+                          <div className="col-span-4">IP</div>
+                          <div className="col-span-1 text-right">Устр.</div>
+                          <div className="col-span-2 text-right">Визиты</div>
+                          <div className="col-span-2 text-right">Среднее</div>
+                          <div className="col-span-2 text-right">Общее</div>
+                          <div className="col-span-1 text-right">Последн.</div>
                         </div>
-                        <div className="max-h-[260px] overflow-y-auto">
-                          {(Array.isArray(siteStats?.visitors) ? siteStats.visitors : []).map((v) => {
-                            const ip = v?.ip ? String(v.ip) : '—';
-                            const ua = v?.ua ? String(v.ua) : '';
+                        <div className="max-h-[340px] overflow-y-auto">
+                          {siteVisitors.map((v) => {
+                            const key = v?.key ? String(v.key) : '';
+                            const ip = v?.ip ? String(v.ip) : key || '—';
                             const visits = Number(v?.visits) || 0;
                             const avg = Number(v?.avgTimeMs) || 0;
+                            const total = Number(v?.totalTimeMs) || 0;
+                            const devices = Number(v?.devices) || 0;
                             const last = v?.lastSeen ? new Date(v.lastSeen).toLocaleString() : '';
+                            const isOpen = expandedVisitorKey && key && expandedVisitorKey === key;
                             return (
-                              <div key={v.key} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/5 text-[12px] text-white/80">
-                                <div className="col-span-5 sm:col-span-4 min-w-0">
-                                  <div className="truncate" title={ua ? `${ip}\n${ua}` : ip}>{ip}</div>
-                                </div>
-                                <div className="col-span-3 sm:col-span-2 text-right tabular-nums">{visits}</div>
-                                <div className="col-span-4 sm:col-span-3 text-right tabular-nums">{formatDurationCompact(avg)}</div>
-                                <div className="hidden sm:block sm:col-span-3 text-right text-white/50">{last}</div>
-                              </div>
+                              <React.Fragment key={key}>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!key) return;
+                                    setExpandedVisitorKey((prev) => prev === key ? null : key);
+                                    setVisitorHistory([]);
+                                    setVisitorHistoryTotal(0);
+                                  }}
+                                  className="w-full text-left"
+                                >
+                                  <div className={`grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/5 text-[12px] ${isOpen ? 'bg-white/5' : 'text-white/80 hover:bg-white/5'}`}>
+                                    <div className="col-span-4 min-w-0">
+                                      <div className="truncate" title={ip}>{ip}</div>
+                                    </div>
+                                    <div className="col-span-1 text-right tabular-nums text-white/70">{devices}</div>
+                                    <div className="col-span-2 text-right tabular-nums">{visits}</div>
+                                    <div className="col-span-2 text-right tabular-nums">{formatDurationCompact(avg)}</div>
+                                    <div className="col-span-2 text-right tabular-nums">{formatDurationCompact(total)}</div>
+                                    <div className="col-span-1 text-right text-white/50 truncate" title={last}>{last}</div>
+                                  </div>
+                                </button>
+                                {isOpen ? (
+                                  <div className="px-3 pb-3 border-t border-white/5">
+                                    <div className="pt-2 flex items-center justify-between text-[11px] text-white/50">
+                                      <div>История визитов</div>
+                                      <div>{visitorHistoryTotal > 0 ? `${visitorHistory.length}/${visitorHistoryTotal}` : visitorHistory.length}</div>
+                                    </div>
+                                    {visitorHistoryLoading ? (
+                                      <div className="py-3 text-sm text-white/50">Загрузка…</div>
+                                    ) : visitorHistoryError ? (
+                                      <div className="py-3 text-sm text-red-300">{visitorHistoryError}</div>
+                                    ) : visitorHistory.length === 0 ? (
+                                      <div className="py-3 text-sm text-white/50">Нет данных</div>
+                                    ) : (
+                                      <div className="mt-2 space-y-1">
+                                        {visitorHistory.map((h) => {
+                                          const sid = String(h?.sessionId || '');
+                                          const start = h?.start ? new Date(h.start).toLocaleString() : '';
+                                          const dur = Number(h?.durationMs) || 0;
+                                          const ua = h?.ua ? String(h.ua) : '';
+                                          const uaShort = ua.length > 80 ? `${ua.slice(0, 80)}…` : ua;
+                                          return (
+                                            <div key={sid} className="grid grid-cols-12 gap-2 text-[12px] text-white/70">
+                                              <div className="col-span-6 truncate" title={start}>{start}</div>
+                                              <div className="col-span-2 text-right tabular-nums">{formatDurationCompact(dur)}</div>
+                                              <div className="col-span-4 truncate text-right" title={ua}>{uaShort}</div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+
+                                    {expandedVisitorKey && !visitorHistoryLoading && visitorHistory.length < visitorHistoryTotal ? (
+                                      <div className="mt-3">
+                                        <button
+                                          type="button"
+                                          onClick={async () => {
+                                            try {
+                                              setVisitorHistoryError(null);
+                                              setVisitorHistoryLoading(true);
+                                              const data = await analyticsAPI.getSiteVisitorHistory({
+                                                ip: expandedVisitorKey,
+                                                days: siteVisitorsRangeDays,
+                                                limit: visitorHistoryLimit,
+                                                offset: visitorHistory.length
+                                              });
+                                              const list = Array.isArray(data?.visits) ? data.visits : [];
+                                              setVisitorHistory((prev) => [...prev, ...list]);
+                                              setVisitorHistoryLimit(Number(data?.limit) || visitorHistoryLimit);
+                                              setVisitorHistoryTotal(Number(data?.totalVisits) || visitorHistoryTotal);
+                                            } catch (e) {
+                                              setVisitorHistoryError(e?.message || 'Ошибка загрузки');
+                                            } finally {
+                                              setVisitorHistoryLoading(false);
+                                            }
+                                          }}
+                                          className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg py-2 text-sm text-white/80"
+                                        >
+                                          Загрузить ещё
+                                        </button>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+                              </React.Fragment>
                             );
                           })}
-                          {(!siteStats?.visitors || siteStats.visitors.length === 0) ? (
-                            <div className="px-3 py-3 text-sm text-white/50">Нет данных</div>
+
+                          {siteVisitorsError ? (
+                            <div className="px-3 py-3 text-sm text-red-300">{siteVisitorsError}</div>
+                          ) : null}
+                          {!siteVisitorsLoading && siteVisitors.length === 0 && !siteVisitorsError ? (
+                            <div className="px-3 py-3 text-sm text-white/50">
+                              Нет IP-данных за период. Обычно это значит, что старые события были записаны без IP — после новых посещений список начнет заполняться.
+                            </div>
+                          ) : null}
+                          {siteVisitorsLoading ? (
+                            <div className="px-3 py-3 text-sm text-white/50">Загрузка…</div>
+                          ) : null}
+
+                          {!siteVisitorsLoading && siteVisitors.length < siteVisitorsTotalRows ? (
+                            <div className="px-3 py-3 border-t border-white/5">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    setSiteVisitorsError(null);
+                                    setSiteVisitorsLoading(true);
+                                    const data = await analyticsAPI.getSiteVisitors({
+                                      days: siteVisitorsRangeDays,
+                                      limit: siteVisitorsLimit,
+                                      offset: siteVisitors.length
+                                    });
+                                    const list = Array.isArray(data?.visitors) ? data.visitors : [];
+                                    setSiteVisitors((prev) => [...prev, ...list]);
+                                    setSiteVisitorsTotals(data?.totals || siteVisitorsTotals);
+                                    setSiteVisitorsLimit(Number(data?.limit) || siteVisitorsLimit);
+                                    setSiteVisitorsTotalRows(Number(data?.totalRows) || siteVisitorsTotalRows);
+                                  } catch (e) {
+                                    setSiteVisitorsError(e?.message || 'Ошибка загрузки');
+                                  } finally {
+                                    setSiteVisitorsLoading(false);
+                                  }
+                                }}
+                                className="w-full bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg py-2 text-sm text-white/80"
+                              >
+                                Загрузить ещё
+                              </button>
+                            </div>
                           ) : null}
                         </div>
                       </div>

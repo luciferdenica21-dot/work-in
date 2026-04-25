@@ -249,6 +249,24 @@ export const analyticsAPI = {
   }),
   getUserStats: (userId) => apiRequest(`/analytics/user/${userId}`),
   getSiteStats: (days = 14) => apiRequest(`/analytics/site-stats?days=${encodeURIComponent(String(days))}`),
+  getSiteVisitors: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.days != null) q.set('days', String(params.days));
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    if (params.includeNoIp) q.set('includeNoIp', '1');
+    const qs = q.toString();
+    return apiRequest(`/analytics/site-visitors${qs ? `?${qs}` : ''}`);
+  },
+  getSiteVisitorHistory: (params = {}) => {
+    const q = new URLSearchParams();
+    if (params.ip != null) q.set('ip', String(params.ip));
+    if (params.days != null) q.set('days', String(params.days));
+    if (params.limit != null) q.set('limit', String(params.limit));
+    if (params.offset != null) q.set('offset', String(params.offset));
+    const qs = q.toString();
+    return apiRequest(`/analytics/site-visitor-history${qs ? `?${qs}` : ''}`);
+  },
   bindSession: (sessionId) => apiRequest('/analytics/bind-session', {
     method: 'POST',
     body: JSON.stringify({ sessionId }),

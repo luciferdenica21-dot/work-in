@@ -12,6 +12,9 @@ const getClientIp = (req) => {
     const cf = req.headers['cf-connecting-ip'];
     if (cf) return String(cf).trim();
 
+    const real = req.headers['x-real-ip'];
+    if (real) return String(real).trim();
+
     const fwd = req.headers['x-forwarded-for'];
     if (fwd) {
       const first = String(fwd).split(',')[0]?.trim();
@@ -21,6 +24,7 @@ const getClientIp = (req) => {
     const raw = req.ip || req.connection?.remoteAddress || '';
     const ip = String(raw).trim();
     if (!ip) return '';
+    if (ip === '::1') return '127.0.0.1';
     return ip.startsWith('::ffff:') ? ip.slice('::ffff:'.length) : ip;
   } catch {
     return '';
@@ -223,6 +227,87 @@ router.get('/user/:userId', protect, async (req, res) => {
 
 let _siteStatsCache = { key: '', ts: 0, data: null };
 
+const _siteCacheGet = (map, key, ttlMs) => {
+  const v = map.get(key);
+  if (!v) return null;
+  if (!v.ts || !v.data) return null;
+  if (Date.now() - v.ts > ttlMs) return null;
+  return v.data;
+};
+
+const _siteCacheSet = (map, key, data) => {
+  map.set(key, { ts: Date.now(), data });
+  try {
+    if (map.size > 50) {
+      const firstKey = map.keys().next().value;
+      if (firstKey) map.delete(firstKey);
+    }
+  } catch { void 0; }
+};
+
+const getRangeStartIso = (days) => {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1), 0, 0, 0, 0));
+  return start.toISOString();
+};
+
+const isAdminPath = (p) => {
+  const s = String(p || '');
+  return s === '/manager' || s.startsWith('/manager/');
+};
+
+const fetchSiteRows = async (startIso) => {
+  const { data, error } = await supabase
+    .from('analytics_events')
+    .select('session_id,action,path,section,duration_ms,timestamp,details')
+    .gte('timestamp', startIso)
+    .in('action', ['visit', 'section_close'])
+    .order('timestamp', { ascending: true })
+    .limit(50000);
+  if (!error) return data || [];
+
+  const { data: data2, error: error2 } = await supabase
+    .from('analytics_events')
+    .select('sessionId,action,path,section,durationMs,timestamp,details')
+    .gte('timestamp', startIso)
+    .in('action', ['visit', 'section_close'])
+    .order('timestamp', { ascending: true })
+    .limit(50000);
+  if (error2) throw error2;
+  return data2 || [];
+};
+
+const buildSessionsFromRows = (rows) => {
+  const sessions = new Map();
+  for (const r of rows || []) {
+    const action = r.action;
+    const path = r.path;
+    if (isAdminPath(path)) continue;
+    const sessionId = r.session_id ?? r.sessionId ?? '';
+    if (!sessionId) continue;
+
+    const ts = r.timestamp ? new Date(r.timestamp).getTime() : 0;
+    if (!Number.isFinite(ts) || ts <= 0) continue;
+
+    const section = r.section || '';
+    const durationMs = Number(r.duration_ms ?? r.durationMs ?? 0) || 0;
+    const details = r.details && typeof r.details === 'object' ? r.details : {};
+    const ip = details?.ip ? String(details.ip) : '';
+    const ua = details?.ua ? String(details.ua) : '';
+
+    const existing = sessions.get(sessionId) || { sessionId, firstTs: ts, lastTs: ts, ip: '', ua: '', totalDurationMs: 0 };
+    existing.firstTs = Math.min(existing.firstTs || ts, ts);
+    existing.lastTs = Math.max(existing.lastTs || ts, ts);
+    if (!existing.ip && ip) existing.ip = ip;
+    if (!existing.ua && ua) existing.ua = ua;
+    if (action === 'section_close' && section === 'site') {
+      existing.totalDurationMs += Math.max(0, durationMs);
+    }
+    sessions.set(sessionId, existing);
+  }
+  return sessions;
+};
+
 router.get('/site-stats', protect, async (req, res) => {
   try {
     if (req.user?.role !== 'admin') return res.status(403).json({ message: 'Access denied' });
@@ -236,30 +321,11 @@ router.get('/site-stats', protect, async (req, res) => {
     }
 
     const now = new Date();
-    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - (days - 1), 0, 0, 0, 0));
-    const startIso = start.toISOString();
+    const startIso = getRangeStartIso(days);
 
     let rows = null;
     {
-      const { data, error } = await supabase
-        .from('analytics_events')
-        .select('session_id,action,path,section,duration_ms,timestamp,details')
-        .gte('timestamp', startIso)
-        .in('action', ['visit', 'section_close'])
-        .order('timestamp', { ascending: true })
-        .limit(50000);
-      if (!error) rows = data || [];
-      if (error) {
-        const { data: data2, error: error2 } = await supabase
-          .from('analytics_events')
-          .select('sessionId,action,path,section,durationMs,timestamp,details')
-          .gte('timestamp', startIso)
-          .in('action', ['visit', 'section_close'])
-          .order('timestamp', { ascending: true })
-          .limit(50000);
-        if (error2) throw error2;
-        rows = data2 || [];
-      }
+      rows = await fetchSiteRows(startIso);
     }
 
     const toDayKey = (d) => {
@@ -275,43 +341,7 @@ router.get('/site-stats', protect, async (req, res) => {
       }
     };
 
-    const isAdminPath = (p) => {
-      const s = String(p || '');
-      return s === '/manager' || s.startsWith('/manager/');
-    };
-
-    const sessions = new Map();
-
-    for (const r of rows || []) {
-      const action = r.action;
-      const path = r.path;
-      if (isAdminPath(path)) continue;
-      const sessionId = r.session_id ?? r.sessionId ?? '';
-      if (!sessionId) continue;
-      const ts = r.timestamp ? new Date(r.timestamp).getTime() : 0;
-      if (!Number.isFinite(ts) || ts <= 0) continue;
-      const durationMs = Number(r.duration_ms ?? r.durationMs ?? 0) || 0;
-      const section = r.section || '';
-      const details = r.details && typeof r.details === 'object' ? r.details : {};
-      const ip = details?.ip ? String(details.ip) : '';
-      const ua = details?.ua ? String(details.ua) : '';
-
-      const existing = sessions.get(sessionId) || { sessionId, firstTs: 0, lastTs: 0, ip: '', ua: '', totalDurationMs: 0 };
-      if (action === 'visit') {
-        if (!existing.firstTs || ts < existing.firstTs) existing.firstTs = ts;
-        if (!existing.lastTs || ts > existing.lastTs) existing.lastTs = ts;
-        if (!existing.ip && ip) existing.ip = ip;
-        if (!existing.ua && ua) existing.ua = ua;
-      }
-      if (action === 'section_close' && section === 'site') {
-        existing.totalDurationMs += Math.max(0, durationMs);
-        if (!existing.firstTs) existing.firstTs = ts;
-        if (!existing.lastTs || ts > existing.lastTs) existing.lastTs = ts;
-        if (!existing.ip && ip) existing.ip = ip;
-        if (!existing.ua && ua) existing.ua = ua;
-      }
-      sessions.set(sessionId, existing);
-    }
+    const sessions = buildSessionsFromRows(rows);
 
     const dayBuckets = new Map();
     const overallIps = new Set();
@@ -398,6 +428,132 @@ router.get('/site-stats', protect, async (req, res) => {
     };
 
     _siteStatsCache = { key: cacheKey, ts: nowTs, data: payload };
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+const _siteVisitorsCache = new Map();
+
+router.get('/site-visitors', protect, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') return res.status(403).json({ message: 'Access denied' });
+
+    const daysRaw = Number(req.query?.days);
+    const days = Number.isFinite(daysRaw) ? Math.min(120, Math.max(1, Math.floor(daysRaw))) : 30;
+    const limitRaw = Number(req.query?.limit);
+    const limit = Number.isFinite(limitRaw) ? Math.min(1000, Math.max(20, Math.floor(limitRaw))) : 200;
+    const offsetRaw = Number(req.query?.offset);
+    const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
+
+    const includeNoIp = String(req.query?.includeNoIp || '') === '1';
+    const cacheKey = `d:${days}|l:${limit}|o:${offset}|n:${includeNoIp ? 1 : 0}`;
+    const cached = _siteCacheGet(_siteVisitorsCache, cacheKey, 15000);
+    if (cached) return res.json(cached);
+
+    const startIso = getRangeStartIso(days);
+    const rows = await fetchSiteRows(startIso);
+    const sessions = buildSessionsFromRows(rows);
+
+    const ipsMap = new Map();
+    let noIpVisits = 0;
+
+    for (const s of sessions.values()) {
+      const ipKey = s.ip || 'NO_IP';
+      if (ipKey === 'NO_IP') noIpVisits += 1;
+      const g = ipsMap.get(ipKey) || { ip: s.ip || '', visits: 0, totalTimeMs: 0, lastSeen: 0, uas: new Set() };
+      g.visits += 1;
+      g.totalTimeMs += Math.max(0, Number(s.totalDurationMs) || 0);
+      g.lastSeen = Math.max(g.lastSeen || 0, Number(s.lastTs) || 0, Number(s.firstTs) || 0);
+      if (s.ua) g.uas.add(s.ua);
+      ipsMap.set(ipKey, g);
+    }
+
+    const all = Array.from(ipsMap.entries())
+      .filter(([k]) => includeNoIp || k !== 'NO_IP')
+      .map(([k, v]) => ({
+        key: k,
+        ip: v.ip,
+        visits: v.visits,
+        totalTimeMs: v.totalTimeMs,
+        avgTimeMs: v.visits ? Math.round(v.totalTimeMs / v.visits) : 0,
+        devices: v.uas.size,
+        lastSeen: v.lastSeen ? new Date(v.lastSeen).toISOString() : null
+      }))
+      .sort((a, b) => (Number(b.lastSeen ? Date.parse(b.lastSeen) : 0) - Number(a.lastSeen ? Date.parse(a.lastSeen) : 0)));
+
+    const totalRows = all.length;
+    const page = all.slice(offset, offset + limit);
+
+    const payload = {
+      rangeDays: days,
+      totals: {
+        ips: all.filter((x) => x.key !== 'NO_IP').length,
+        visits: sessions.size,
+        noIpVisits
+      },
+      offset,
+      limit,
+      totalRows,
+      visitors: page
+    };
+
+    _siteCacheSet(_siteVisitorsCache, cacheKey, payload);
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+const _siteVisitorHistoryCache = new Map();
+
+router.get('/site-visitor-history', protect, async (req, res) => {
+  try {
+    if (req.user?.role !== 'admin') return res.status(403).json({ message: 'Access denied' });
+
+    const ipParam = String(req.query?.ip || '').trim();
+    if (!ipParam) return res.status(400).json({ message: 'ip is required' });
+
+    const daysRaw = Number(req.query?.days);
+    const days = Number.isFinite(daysRaw) ? Math.min(120, Math.max(1, Math.floor(daysRaw))) : 30;
+    const limitRaw = Number(req.query?.limit);
+    const limit = Number.isFinite(limitRaw) ? Math.min(2000, Math.max(20, Math.floor(limitRaw))) : 200;
+    const offsetRaw = Number(req.query?.offset);
+    const offset = Number.isFinite(offsetRaw) ? Math.max(0, Math.floor(offsetRaw)) : 0;
+
+    const cacheKey = `ip:${ipParam}|d:${days}|l:${limit}|o:${offset}`;
+    const cached = _siteCacheGet(_siteVisitorHistoryCache, cacheKey, 15000);
+    if (cached) return res.json(cached);
+
+    const startIso = getRangeStartIso(days);
+    const rows = await fetchSiteRows(startIso);
+    const sessions = buildSessionsFromRows(rows);
+
+    const wantKey = ipParam === 'NO_IP' ? 'NO_IP' : ipParam;
+    const list = Array.from(sessions.values())
+      .filter((s) => (s.ip || 'NO_IP') === wantKey)
+      .sort((a, b) => (Number(b.lastTs) - Number(a.lastTs)));
+
+    const totalVisits = list.length;
+    const page = list.slice(offset, offset + limit).map((s) => ({
+      sessionId: s.sessionId,
+      start: s.firstTs ? new Date(s.firstTs).toISOString() : null,
+      end: s.lastTs ? new Date(s.lastTs).toISOString() : null,
+      durationMs: Math.max(0, Number(s.totalDurationMs) || 0),
+      ua: s.ua || ''
+    }));
+
+    const payload = {
+      ip: wantKey,
+      rangeDays: days,
+      offset,
+      limit,
+      totalVisits,
+      visits: page
+    };
+
+    _siteCacheSet(_siteVisitorHistoryCache, cacheKey, payload);
     res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
