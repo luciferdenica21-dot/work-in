@@ -15,6 +15,7 @@ const genSessionId = () => {
 export const initAnalyticsTracker = () => {
   const sessionId = genSessionId();
   const path = window.location.pathname;
+  if (path === '/manager' || path.startsWith('/manager/')) return null;
 
   const send = (payload) => {
     try {

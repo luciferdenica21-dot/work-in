@@ -634,6 +634,9 @@ const getAbsoluteFileUrl = (fileUrl) => {
   const [mobileChatListOpen, setMobileChatListOpen] = useState(true);
   const [chatActionsOpen, setChatActionsOpen] = useState(false);
   const [systemOverviewOpen, setSystemOverviewOpen] = useState(true);
+  const [siteStats, setSiteStats] = useState(null);
+  const [siteStatsLoading, setSiteStatsLoading] = useState(false);
+  const [siteStatsError, setSiteStatsError] = useState(null);
   const [selectedMessages, setSelectedMessages] = useState(new Set());
   const [contextMenuMsg, setContextMenuMsg] = useState(null);
   const [pinnedMessage, setPinnedMessage] = useState(null);
@@ -687,6 +690,44 @@ const getAbsoluteFileUrl = (fileUrl) => {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     };
   }, [inputText, activeId, activeSection]);
+
+  const formatDurationCompact = (ms) => {
+    const n = Math.max(0, Number(ms) || 0);
+    const sec = Math.floor(n / 1000);
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}ч ${m}м`;
+    if (m > 0) return `${m}м ${s}с`;
+    return `${s}с`;
+  };
+
+  useEffect(() => {
+    if (activeSection !== 'dashboard') return;
+    let alive = true;
+
+    const load = async () => {
+      try {
+        setSiteStatsError(null);
+        setSiteStatsLoading(true);
+        const data = await analyticsAPI.getSiteStats(14);
+        if (!alive) return;
+        setSiteStats(data || null);
+      } catch (e) {
+        if (!alive) return;
+        setSiteStatsError(e?.message || 'Ошибка загрузки');
+      } finally {
+        if (alive) setSiteStatsLoading(false);
+      }
+    };
+
+    load();
+    const id = setInterval(load, 15000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [activeSection]);
   
   // Управление сайтом
   const [siteContent, setSiteContent] = useState({
@@ -2305,6 +2346,87 @@ const getAbsoluteFileUrl = (fileUrl) => {
                     <div className="text-[10px] text-purple-400">быстрых ответов</div>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="text-sm sm:text-base font-semibold text-white truncate">Посещения сайта</div>
+                    <div className="text-[11px] text-white/50">Не учитывает админ панель</div>
+                  </div>
+                  <div className="shrink-0 text-[11px] text-white/50">
+                    {siteStatsLoading ? 'Загрузка…' : siteStatsError ? 'Ошибка' : `Обновлено`}
+                  </div>
+                </div>
+
+                {siteStatsError ? (
+                  <div className="mt-3 text-sm text-red-300">{siteStatsError}</div>
+                ) : (
+                  <>
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Посещения</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.visits ?? 0}</div>
+                      </div>
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Уникальные IP</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.uniqueIps ?? 0}</div>
+                      </div>
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Повторные</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.repeatVisits ?? 0}</div>
+                      </div>
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Среднее время</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{formatDurationCompact(siteStats?.totals?.avgTimeMs ?? 0)}</div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 bg-black/20 border border-white/10 rounded-lg p-3">
+                      <div className="text-[11px] text-white/50 mb-2">14 дней</div>
+                      <div className="w-full overflow-hidden">
+                        <svg viewBox="0 0 300 90" className="w-full h-[90px]">
+                          {(() => {
+                            const s = Array.isArray(siteStats?.series) ? siteStats.series : [];
+                            const visits = s.map((x) => Number(x?.visits) || 0);
+                            const uniq = s.map((x) => Number(x?.uniqueIps) || 0);
+                            const max = Math.max(1, ...visits, ...uniq);
+                            const w = 300;
+                            const h = 90;
+                            const padX = 6;
+                            const padY = 10;
+                            const innerW = w - padX * 2;
+                            const innerH = h - padY * 2;
+                            const toX = (i, n) => padX + (n <= 1 ? innerW / 2 : (innerW * i) / (n - 1));
+                            const toY = (v) => padY + innerH - (innerH * Math.max(0, v)) / max;
+                            const build = (arr) => arr.map((v, i) => `${toX(i, arr.length)},${toY(v)}`).join(' ');
+                            const p1 = build(visits);
+                            const p2 = build(uniq);
+                            return (
+                              <>
+                                <polyline points={p1} fill="none" stroke="rgba(59,130,246,0.9)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                                <polyline points={p2} fill="none" stroke="rgba(34,197,94,0.9)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+                              </>
+                            );
+                          })()}
+                        </svg>
+                      </div>
+                      <div className="mt-2 flex items-center gap-4 text-[11px] text-white/60">
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block w-3 h-0.5 bg-blue-500/90" />
+                          <span>Посещения</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="inline-block w-3 h-0.5 bg-green-500/90" />
+                          <span>Уникальные IP</span>
+                        </div>
+                        <div className="ml-auto text-white/40">
+                          Общее время: {formatDurationCompact(siteStats?.totals?.totalTimeMs ?? 0)}
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}

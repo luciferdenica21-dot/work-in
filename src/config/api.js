@@ -244,9 +244,11 @@ export const aiAPI = {
 export const analyticsAPI = {
   sendEvent: (payload) => apiRequest('/analytics/events', {
     method: 'POST',
+    keepalive: true,
     body: JSON.stringify(payload),
   }),
   getUserStats: (userId) => apiRequest(`/analytics/user/${userId}`),
+  getSiteStats: (days = 14) => apiRequest(`/analytics/site-stats?days=${encodeURIComponent(String(days))}`),
   bindSession: (sessionId) => apiRequest('/analytics/bind-session', {
     method: 'POST',
     body: JSON.stringify({ sessionId }),
