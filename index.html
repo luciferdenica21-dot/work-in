@@ -1,42 +1,46 @@
 <!doctype html>
-<html lang="en" translate="no">
+<html lang="en">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-  <link rel="shortcut icon" href="/favicon.ico" />
-  <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#2563eb" />
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
-  <link rel="icon" href="/favicon-32x32.png" type="image/png" sizes="32x32" />
-  <link rel="icon" href="/favicon-16x16.png" type="image/png" sizes="16x16" />
-  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico?v=2" />
+  <link rel="shortcut icon" href="/favicon.ico?v=2" />
+  <link rel="icon" href="/favicon.svg?v=2" type="image/svg+xml" />
+  <link rel="mask-icon" href="/safari-pinned-tab.svg?v=2" color="#2563eb" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180" />
+  <link rel="icon" href="/favicon-32x32.png?v=2" type="image/png" sizes="32x32" />
+  <link rel="icon" href="/favicon-16x16.png?v=2" type="image/png" sizes="16x16" />
+  <link rel="manifest" href="/site.webmanifest?v=2" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <meta name="google" content="notranslate">
+  <meta name="theme-color" content="#050a18" />
   <meta name="robots" content="index,follow" />
-  <meta name="description"
-    content="CONNECTOR — услуги: лазерная резка, гравировка, гибка металла, сварка, порошковая окраска, токарные работы, продажа материалов. Быстро, качественно, по договоренности." />
-  <meta name="keywords"
-    content="лазерная резка, гравировка, гибка металла, сварка, порошковая окраска, токарные работы, продажа материалов, услуги производство, CONNECTOR Грузия" />
+  <meta name="geo.region" content="GE-TB" />
+  <meta name="geo.placename" content="Tbilisi" />
+  <meta name="geo.position" content="41.7151;44.8271" />
+  <meta name="ICBM" content="41.7151, 44.8271" />
+  <meta name="description" content="CONNECTOR — manufacturing services in Tbilisi, Georgia: laser cutting & engraving, CNC milling, turning, bending, welding, powder coating." />
+  <meta name="keywords" content="laser cutting Tbilisi, CNC milling Tbilisi, engraving Georgia, turning services, welding, metal bending, powder coating, manufacturing services" />
   <link rel="canonical" href="https://www.connector.ge/" />
   <link rel="alternate" href="https://www.connector.ge/?lang=ka" hreflang="ka" />
   <link rel="alternate" href="https://www.connector.ge/?lang=ru" hreflang="ru" />
   <link rel="alternate" href="https://www.connector.ge/?lang=en" hreflang="en" />
   <link rel="alternate" href="https://www.connector.ge/" hreflang="x-default" />
-  <meta property="og:title" content="CONNECTOR — производство и услуги" />
-  <meta property="og:description"
-    content="Лазерная резка и гравировка, гибка металла, сварка, порошковая окраска, токарные работы и продажа материалов." />
+  <meta property="og:locale" content="ka_GE" />
+  <meta property="og:locale:alternate" content="ru_RU" />
+  <meta property="og:locale:alternate" content="en_US" />
+  <meta property="og:title" content="CONNECTOR — manufacturing services in Tbilisi" />
+  <meta property="og:description" content="Laser cutting & engraving, CNC milling, turning, bending, welding and coating services in Tbilisi, Georgia." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://www.connector.ge/" />
-  <meta property="og:image" content="/img/logo.png" />
+  <meta property="og:image" content="https://www.connector.ge/img/logo.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="CONNECTOR — производство и услуги" />
-  <meta name="twitter:description"
-    content="Лазерная резка, гравировка, гибка металла, сварка, порошковая окраска, токарные работы, продажа материалов." />
-  <meta name="twitter:image" content="/img/logo.png" />
+  <meta name="twitter:title" content="CONNECTOR — manufacturing services in Tbilisi" />
+  <meta name="twitter:description" content="Laser cutting & engraving, CNC milling, turning, bending, welding and coating services in Tbilisi, Georgia." />
+  <meta name="twitter:image" content="https://www.connector.ge/img/logo.png" />
   <title>CONNECTOR</title>
   <style>
     #app-loader {
@@ -56,6 +60,67 @@
       filter: drop-shadow(0 6px 20px rgba(0, 0, 0, .35))
     }
   </style>
+  <script>
+    (function () {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const p = (params.get('lang') || '').toLowerCase();
+        const primary = (((navigator.languages && navigator.languages[0]) || navigator.language || '') + '').toLowerCase();
+        const lang = (p === 'ru' || p === 'en' || p === 'ka')
+          ? p
+          : primary.startsWith('ka')
+            ? 'ka'
+            : primary.startsWith('ru')
+              ? 'ru'
+              : 'en';
+
+        const dict = {
+          ka: {
+            title: 'CONNECTOR — სერვისები თბილისში',
+            description: 'CONNECTOR — წარმოების სერვისები თბილისში, საქართველოში: ლაზერული ჭრა და გრავირება, CNC ფრეზირება, ტოკარული სამუშაოები, მეტალის მოხრა, შედუღება, ფხვნილისებრი შეღებვა.',
+            keywords: 'ლაზერული ჭრა თბილისი, CNC ფრეზირება თბილისი, ლაზერული გრავირება საქართველო, ტოკარული სამუშაოები, შედუღება, მეტალის მოხრა, ფხვნილისებრი შეღებვა, წარმოების სერვისები თბილისი',
+            ogTitle: 'CONNECTOR — სერვისები თბილისში',
+            locale: 'ka_GE'
+          },
+          ru: {
+            title: 'CONNECTOR — услуги производства в Тбилиси',
+            description: 'CONNECTOR — производственные услуги в Тбилиси (Грузия): лазерная резка и гравировка, ЧПУ фрезеровка, токарные работы, гибка металла, сварка, порошковая окраска.',
+            keywords: 'лазерная резка Тбилиси, гравировка Грузия, ЧПУ фрезеровка Тбилиси, токарные работы, сварка, гибка металла, порошковая окраска, производственные услуги',
+            ogTitle: 'CONNECTOR — услуги производства в Тбилиси',
+            locale: 'ru_RU'
+          },
+          en: {
+            title: 'CONNECTOR — manufacturing services in Tbilisi',
+            description: 'CONNECTOR — manufacturing services in Tbilisi, Georgia: laser cutting & engraving, CNC milling, turning, metal bending, welding, powder coating.',
+            keywords: 'laser cutting Tbilisi, engraving Georgia, CNC milling Tbilisi, turning services, metal bending, welding, powder coating, manufacturing services',
+            ogTitle: 'CONNECTOR — manufacturing services in Tbilisi',
+            locale: 'en_US'
+          }
+        };
+
+        const t = dict[lang] || dict.en;
+        document.documentElement.lang = lang;
+        document.title = t.title;
+
+        const setMetaByName = (name, content) => {
+          const el = document.querySelector('meta[name="' + name + '"]');
+          if (el) el.setAttribute('content', content);
+        };
+        const setMetaByProp = (prop, content) => {
+          const el = document.querySelector('meta[property="' + prop + '"]');
+          if (el) el.setAttribute('content', content);
+        };
+
+        setMetaByName('description', t.description);
+        setMetaByName('keywords', t.keywords);
+        setMetaByProp('og:locale', t.locale);
+        setMetaByProp('og:title', t.ogTitle);
+        setMetaByProp('og:description', t.description);
+        setMetaByName('twitter:title', t.ogTitle);
+        setMetaByName('twitter:description', t.description);
+      } catch { void 0; }
+    })();
+  </script>
   <script type="application/ld+json">
   {"@context":"https://schema.org","@type":"Organization","name":"CONNECTOR","url":"https://www.connector.ge/","logo":"https://www.connector.ge/img/logo.png","sameAs":["https://t.me/ConnectorGe","https://wa.me/+995591160685","mailto:useconnector@gmail.com"]}
   </script>
@@ -63,7 +128,7 @@
   {"@context":"https://schema.org","@type":"WebSite","name":"CONNECTOR","url":"https://www.connector.ge/","inLanguage":["ru","en","ka"]}
   </script>
   <script type="application/ld+json">
-  {"@context":"https://schema.org","@type":"ItemList","itemListElement":[{"@type":"Service","name":"Гибочные работы по металлам"},{"@type":"Service","name":"Жидкостная окраска"},{"@type":"Service","name":"Лазерная гравировка"},{"@type":"Service","name":"Лазерная резка металлов"},{"@type":"Service","name":"Лазерная резка неметаллических материалов"},{"@type":"Service","name":"Порошковая окраска"},{"@type":"Service","name":"Продажа материалов"},{"@type":"Service","name":"Сварка"},{"@type":"Service","name":"Токарные работы"},{"@type":"Service","name":"ЧПУ фрезеровка и раскрой листовых материалов"}]}
+  {"@context":"https://schema.org","@type":"LocalBusiness","name":"CONNECTOR","url":"https://www.connector.ge/","image":"https://www.connector.ge/img/logo.png","telephone":"+995591160685","email":"useconnector@gmail.com","address":{"@type":"PostalAddress","addressLocality":"Tbilisi","addressCountry":"GE"},"areaServed":[{"@type":"City","name":"Tbilisi"},{"@type":"Country","name":"Georgia"}],"knowsLanguage":["ka","ru","en"],"hasOfferCatalog":{"@type":"OfferCatalog","name":"Manufacturing services","itemListElement":[{"@type":"Offer","itemOffered":{"@type":"Service","name":"Laser cutting"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Laser engraving"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"CNC milling"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Turning services"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Metal bending"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Welding"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Powder coating"}},{"@type":"Offer","itemOffered":{"@type":"Service","name":"Liquid painting"}}]}}
   </script>
 </head>
 

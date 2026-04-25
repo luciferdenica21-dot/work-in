@@ -1,6 +1,8 @@
 {
   "name": "CONNECTOR",
   "short_name": "CONNECTOR",
+  "start_url": "/",
+  "scope": "/",
   "icons": [
     {
       "src": "/android-chrome-192x192.png",
@@ -21,7 +23,7 @@
       "purpose": "any"
     }
   ],
-  "theme_color": "#ffffff",
-  "background_color": "#ffffff",
+  "theme_color": "#050a18",
+  "background_color": "#050a18",
   "display": "standalone"
 }
