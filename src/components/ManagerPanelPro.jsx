@@ -2369,13 +2369,22 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.visits ?? 0}</div>
                       </div>
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
+                        <div className="text-[11px] text-white/50">Устройства</div>
+                        <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.devices ?? 0}</div>
+                      </div>
+                      <div className="bg-black/20 border border-white/10 rounded-lg p-3">
                         <div className="text-[11px] text-white/50">Уникальные IP</div>
                         <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.uniqueIps ?? 0}</div>
+                        {(siteStats?.totals?.noIpVisits ?? 0) > 0 ? (
+                          <div className="text-[10px] text-white/40 mt-0.5">без IP: {siteStats?.totals?.noIpVisits ?? 0}</div>
+                        ) : null}
                       </div>
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
                         <div className="text-[11px] text-white/50">Повторные</div>
                         <div className="text-lg sm:text-2xl font-bold text-white">{siteStats?.totals?.repeatVisits ?? 0}</div>
                       </div>
+                    </div>
+                    <div className="mt-2">
                       <div className="bg-black/20 border border-white/10 rounded-lg p-3">
                         <div className="text-[11px] text-white/50">Среднее время</div>
                         <div className="text-lg sm:text-2xl font-bold text-white">{formatDurationCompact(siteStats?.totals?.avgTimeMs ?? 0)}</div>
@@ -2422,6 +2431,43 @@ const getAbsoluteFileUrl = (fileUrl) => {
                         </div>
                         <div className="ml-auto text-white/40">
                           Общее время: {formatDurationCompact(siteStats?.totals?.totalTimeMs ?? 0)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 bg-black/20 border border-white/10 rounded-lg overflow-hidden">
+                      <div className="p-3 flex items-center justify-between">
+                        <div className="text-[11px] text-white/50">Посетители (IP + устройство)</div>
+                        <div className="text-[11px] text-white/40">топ 50</div>
+                      </div>
+                      <div className="border-t border-white/10">
+                        <div className="grid grid-cols-12 gap-2 px-3 py-2 text-[11px] text-white/50">
+                          <div className="col-span-5 sm:col-span-4">IP</div>
+                          <div className="col-span-3 sm:col-span-2 text-right">Визиты</div>
+                          <div className="col-span-4 sm:col-span-3 text-right">Среднее</div>
+                          <div className="hidden sm:block sm:col-span-3 text-right">Последний</div>
+                        </div>
+                        <div className="max-h-[260px] overflow-y-auto">
+                          {(Array.isArray(siteStats?.visitors) ? siteStats.visitors : []).map((v) => {
+                            const ip = v?.ip ? String(v.ip) : '—';
+                            const ua = v?.ua ? String(v.ua) : '';
+                            const visits = Number(v?.visits) || 0;
+                            const avg = Number(v?.avgTimeMs) || 0;
+                            const last = v?.lastSeen ? new Date(v.lastSeen).toLocaleString() : '';
+                            return (
+                              <div key={v.key} className="grid grid-cols-12 gap-2 px-3 py-2 border-t border-white/5 text-[12px] text-white/80">
+                                <div className="col-span-5 sm:col-span-4 min-w-0">
+                                  <div className="truncate" title={ua ? `${ip}\n${ua}` : ip}>{ip}</div>
+                                </div>
+                                <div className="col-span-3 sm:col-span-2 text-right tabular-nums">{visits}</div>
+                                <div className="col-span-4 sm:col-span-3 text-right tabular-nums">{formatDurationCompact(avg)}</div>
+                                <div className="hidden sm:block sm:col-span-3 text-right text-white/50">{last}</div>
+                              </div>
+                            );
+                          })}
+                          {(!siteStats?.visitors || siteStats.visitors.length === 0) ? (
+                            <div className="px-3 py-3 text-sm text-white/50">Нет данных</div>
+                          ) : null}
                         </div>
                       </div>
                     </div>

@@ -294,16 +294,21 @@ router.get('/site-stats', protect, async (req, res) => {
       const section = r.section || '';
       const details = r.details && typeof r.details === 'object' ? r.details : {};
       const ip = details?.ip ? String(details.ip) : '';
+      const ua = details?.ua ? String(details.ua) : '';
 
-      const existing = sessions.get(sessionId) || { sessionId, firstTs: 0, ip: '', totalDurationMs: 0 };
+      const existing = sessions.get(sessionId) || { sessionId, firstTs: 0, lastTs: 0, ip: '', ua: '', totalDurationMs: 0 };
       if (action === 'visit') {
         if (!existing.firstTs || ts < existing.firstTs) existing.firstTs = ts;
+        if (!existing.lastTs || ts > existing.lastTs) existing.lastTs = ts;
         if (!existing.ip && ip) existing.ip = ip;
+        if (!existing.ua && ua) existing.ua = ua;
       }
       if (action === 'section_close' && section === 'site') {
         existing.totalDurationMs += Math.max(0, durationMs);
         if (!existing.firstTs) existing.firstTs = ts;
+        if (!existing.lastTs || ts > existing.lastTs) existing.lastTs = ts;
         if (!existing.ip && ip) existing.ip = ip;
+        if (!existing.ua && ua) existing.ua = ua;
       }
       sessions.set(sessionId, existing);
     }
@@ -312,6 +317,9 @@ router.get('/site-stats', protect, async (req, res) => {
     const overallIps = new Set();
     let totalVisits = 0;
     let totalTimeMs = 0;
+    let noIpVisits = 0;
+
+    const visitors = new Map();
 
     for (const s of sessions.values()) {
       const dayKey = toDayKey(new Date(s.firstTs));
@@ -325,6 +333,21 @@ router.get('/site-stats', protect, async (req, res) => {
       totalVisits += 1;
       totalTimeMs += Math.max(0, Number(s.totalDurationMs) || 0);
       if (s.ip) overallIps.add(s.ip);
+      else noIpVisits += 1;
+
+      const visitorKey = `${s.ip || 'no_ip'}|${s.ua || ''}`;
+      const v = visitors.get(visitorKey) || {
+        key: visitorKey,
+        ip: s.ip || '',
+        ua: s.ua || '',
+        visits: 0,
+        totalTimeMs: 0,
+        lastSeen: 0
+      };
+      v.visits += 1;
+      v.totalTimeMs += Math.max(0, Number(s.totalDurationMs) || 0);
+      v.lastSeen = Math.max(v.lastSeen || 0, Number(s.lastTs) || 0, Number(s.firstTs) || 0);
+      visitors.set(visitorKey, v);
     }
 
     const series = [];
@@ -344,17 +367,34 @@ router.get('/site-stats', protect, async (req, res) => {
     const uniqueIps = overallIps.size;
     const repeatVisits = Math.max(0, totalVisits - uniqueIps);
     const avgTimeMs = totalVisits ? Math.round(totalTimeMs / totalVisits) : 0;
+    const devices = visitors.size;
+
+    const topVisitors = Array.from(visitors.values())
+      .map((v) => ({
+        key: v.key,
+        ip: v.ip,
+        ua: v.ua,
+        visits: v.visits,
+        totalTimeMs: v.totalTimeMs,
+        avgTimeMs: v.visits ? Math.round(v.totalTimeMs / v.visits) : 0,
+        lastSeen: v.lastSeen ? new Date(v.lastSeen).toISOString() : null
+      }))
+      .sort((a, b) => (b.visits - a.visits) || (b.totalTimeMs - a.totalTimeMs))
+      .slice(0, 50);
 
     const payload = {
       rangeDays: days,
       totals: {
         visits: totalVisits,
+        devices,
         uniqueIps,
         repeatVisits,
+        noIpVisits,
         totalTimeMs,
         avgTimeMs
       },
-      series
+      series,
+      visitors: topVisitors
     };
 
     _siteStatsCache = { key: cacheKey, ts: nowTs, data: payload };
