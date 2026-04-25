@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useParams, Link } from 'react-router-dom';
 import OrderButton from './OrderButton';
 
 const LOCKED_KEYS = ['S2', 'S7'];
@@ -20,9 +20,129 @@ const SERVICES_IMGS = {
 
 const KEYS = ['S1','S2','S3','S4','S5','S6','S7','S8','S9','S10'];
 
+const SEO_SERVICE_KEYS = ['S1','S2','S3','S4','S5','S6','S8','S9','S10'];
+
+const SERVICE_SLUG_BY_KEY = {
+  S1: 'metal-bending',
+  S2: 'liquid-coating',
+  S3: 'laser-engraving',
+  S4: 'laser-cutting-metals',
+  S5: 'laser-cutting-nonmetals',
+  S6: 'powder-coating',
+  S8: 'welding',
+  S9: 'turning',
+  S10: 'cnc-milling',
+};
+
+const SERVICE_KEY_BY_SLUG = Object.entries(SERVICE_SLUG_BY_KEY).reduce((acc, [k, v]) => {
+  acc[v] = k;
+  return acc;
+}, {});
+
+const pickLang = (langRaw) => {
+  const lang = String(langRaw || '').toLowerCase();
+  if (lang.startsWith('ka')) return 'ka';
+  if (lang.startsWith('ru')) return 'ru';
+  if (lang.startsWith('en')) return 'en';
+  return 'en';
+};
+
+const upsertMeta = (selector, attrs) => {
+  try {
+    let el = document.head.querySelector(selector);
+    if (!el) {
+      el = document.createElement('meta');
+      if (selector.startsWith('meta[')) {
+        const mName = selector.match(/name="([^"]+)"/);
+        const mProp = selector.match(/property="([^"]+)"/);
+        if (mName?.[1]) el.setAttribute('name', mName[1]);
+        if (mProp?.[1]) el.setAttribute('property', mProp[1]);
+      }
+      document.head.appendChild(el);
+    }
+    Object.entries(attrs || {}).forEach(([k, v]) => el.setAttribute(k, String(v)));
+  } catch { void 0; }
+};
+
+const upsertLink = (rel, hreflang, href) => {
+  try {
+    const q = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]`;
+    let el = document.head.querySelector(q);
+    if (!el) {
+      el = document.createElement('link');
+      el.setAttribute('rel', rel);
+      if (hreflang) el.setAttribute('hreflang', hreflang);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('href', href);
+  } catch { void 0; }
+};
+
+const upsertJsonLd = (id, obj) => {
+  try {
+    let el = document.getElementById(id);
+    if (!el) {
+      el = document.createElement('script');
+      el.type = 'application/ld+json';
+      el.id = id;
+      document.head.appendChild(el);
+    }
+    el.textContent = JSON.stringify(obj);
+  } catch { void 0; }
+};
+
+const buildServiceSeo = ({ lang, serviceName }) => {
+  if (lang === 'ka') {
+    const title = `${serviceName} თბილისში — CONNECTOR`;
+    const description = `${serviceName} თბილისში, საქართველოში. წარმოების სერვისები: ნახაზების მიღება, სწრაფი შეთავაზება, ხარისხიანი შესრულება.`;
+    const keywords = `${serviceName}, თბილისი, საქართველო, წარმოება, სერვისები, ლაზერული ჭრა, CNC, შედუღება, შეღებვა`;
+    return { title, description, keywords, ogTitle: title, locale: 'ka_GE' };
+  }
+  if (lang === 'ru') {
+    const title = `${serviceName} в Тбилиси — CONNECTOR`;
+    const description = `${serviceName} в Тбилиси, Грузия. Производственные услуги: принимаем чертежи, быстрый расчет, качественное изготовление.`;
+    const keywords = `${serviceName}, Тбилиси, Грузия, производство, услуги, лазерная резка, ЧПУ, сварка, окраска`;
+    return { title, description, keywords, ogTitle: title, locale: 'ru_RU' };
+  }
+  const title = `${serviceName} in Tbilisi — CONNECTOR`;
+  const description = `${serviceName} in Tbilisi, Georgia. Manufacturing services: drawings accepted, fast quote, reliable quality.`;
+  const keywords = `${serviceName}, Tbilisi, Georgia, manufacturing, services, laser cutting, CNC, welding, coating`;
+  return { title, description, keywords, ogTitle: title, locale: 'en_US' };
+};
+
+const buildServicesSeo = ({ lang }) => {
+  if (lang === 'ka') {
+    return {
+      title: 'CONNECTOR — სერვისები თბილისში',
+      description: 'CONNECTOR — წარმოების სერვისები თბილისში, საქართველოში: ლაზერული ჭრა და გრავირება, CNC ფრეზირება, ტოკარული სამუშაოები, მეტალის მოხრა, შედუღება, ფხვნილისებრი შეღებვა.',
+      keywords: 'ლაზერული ჭრა თბილისი, CNC ფრეზირება თბილისი, ლაზერული გრავირება საქართველო, ტოკარული სამუშაოები, შედუღება, მეტალის მოხრა, ფხვნილისებრი შეღებვა, წარმოების სერვისები თბილისი',
+      ogTitle: 'CONNECTOR — სერვისები თბილისში',
+      locale: 'ka_GE'
+    };
+  }
+  if (lang === 'ru') {
+    return {
+      title: 'CONNECTOR — услуги производства в Тбилиси',
+      description: 'CONNECTOR — производственные услуги в Тбилиси (Грузия): лазерная резка и гравировка, ЧПУ фрезеровка, токарные работы, гибка металла, сварка, порошковая окраска.',
+      keywords: 'лазерная резка Тбилиси, гравировка Грузия, ЧПУ фрезеровка Тбилиси, токарные работы, сварка, гибка металла, порошковая окраска, производственные услуги',
+      ogTitle: 'CONNECTOR — услуги производства в Тбилиси',
+      locale: 'ru_RU'
+    };
+  }
+  return {
+    title: 'CONNECTOR — manufacturing services in Tbilisi',
+    description: 'CONNECTOR — manufacturing services in Tbilisi, Georgia: laser cutting & engraving, CNC milling, turning, metal bending, welding, powder coating.',
+    keywords: 'laser cutting Tbilisi, engraving Georgia, CNC milling Tbilisi, turning services, metal bending, welding, powder coating, manufacturing services',
+    ogTitle: 'CONNECTOR — manufacturing services in Tbilisi',
+    locale: 'en_US'
+  };
+};
+
 const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
+  const lang = pickLang(i18n?.language);
+  const langQuery = lang ? `?lang=${encodeURIComponent(lang)}` : '';
 
   const [selectedKey, setSelectedKey] = useState(null);
   const pushedRef = React.useRef(false);
@@ -36,6 +156,27 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
     }
     if (typeof setIsAuthOpen === 'function') setIsAuthOpen(true);
   };
+
+  useEffect(() => {
+    const seo = buildServicesSeo({ lang });
+    const origin = 'https://www.connector.ge';
+    const url = `${origin}/services?lang=${encodeURIComponent(lang)}`;
+    document.documentElement.lang = lang;
+    document.title = seo.title;
+    upsertMeta('meta[name="description"]', { content: seo.description });
+    upsertMeta('meta[name="keywords"]', { content: seo.keywords });
+    upsertMeta('meta[property="og:title"]', { content: seo.ogTitle });
+    upsertMeta('meta[property="og:description"]', { content: seo.description });
+    upsertMeta('meta[property="og:url"]', { content: url });
+    upsertMeta('meta[property="og:locale"]', { content: seo.locale });
+    upsertMeta('meta[name="twitter:title"]', { content: seo.ogTitle });
+    upsertMeta('meta[name="twitter:description"]', { content: seo.description });
+    upsertLink('canonical', null, url);
+    upsertLink('alternate', 'ka', `${origin}/services?lang=ka`);
+    upsertLink('alternate', 'ru', `${origin}/services?lang=ru`);
+    upsertLink('alternate', 'en', `${origin}/services?lang=en`);
+    upsertLink('alternate', 'x-default', `${origin}/services`);
+  }, [lang]);
 
   useEffect(() => {
     const fromState = location?.state?.serviceKey;
@@ -95,7 +236,7 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
     };
     window.addEventListener('services:close', onServicesClose);
     return () => window.removeEventListener('services:close', onServicesClose);
-  }, []);
+  }, [setIsAuthOpen, setIsOrderOpen]);
 
   useEffect(() => {
     try {
@@ -117,6 +258,8 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
       <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 md:gap-6 lg:gap-3 max-w-7xl mx-auto tablet-grid-services">
         {KEYS.map((key) => {
           const locked = LOCKED_KEYS.includes(key);
+          const slug = SERVICE_SLUG_BY_KEY[key] || '';
+          const href = slug ? `/services/${slug}${langQuery}` : `/services${langQuery}`;
 
           return (
             <div
@@ -125,6 +268,14 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
               onClick={() => { if (!locked) setSelectedKey(key); }}
               className={`group relative overflow-hidden rounded-[2rem] bg-[#0a0a0a] border border-white/10 transition-all duration-500 hover:border-cyan-500/50 hover:shadow-[0_0_20px_rgba(6,182,212,0.2)] ${locked ? 'cursor-default' : 'cursor-pointer'}`}
             >
+              {!locked && slug ? (
+                <a
+                  href={href}
+                  onClick={(e) => { e.preventDefault(); setSelectedKey(key); }}
+                  className="absolute inset-0 z-[1]"
+                  aria-label={t(`${key}_T`)}
+                />
+              ) : null}
               <div className="h-[320px] lg:h-[260px] relative">
                 <img
                   src={SERVICES_IMGS[key]}
@@ -217,6 +368,159 @@ const Services = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }
           </div>
         </div>
       )}
+    </section>
+  );
+};
+
+export const ServiceSeoPage = ({ user, setIsAuthOpen, setIsOrderOpen, onRequireAuthForOrder }) => {
+  const { slug = '' } = useParams();
+  const { t, i18n } = useTranslation();
+  const lang = pickLang(i18n?.language);
+  const serviceKey = SERVICE_KEY_BY_SLUG[String(slug || '').toLowerCase()] || '';
+  const serviceName = serviceKey ? String(t(`${serviceKey}_T`)) : '';
+  const isLocked = serviceKey ? LOCKED_KEYS.includes(serviceKey) : false;
+
+  useEffect(() => {
+    if (!serviceKey) return;
+    const seo = buildServiceSeo({ lang, serviceName });
+    const origin = 'https://www.connector.ge';
+    const url = `${origin}/services/${encodeURIComponent(String(slug))}?lang=${encodeURIComponent(lang)}`;
+
+    document.documentElement.lang = lang;
+    document.title = seo.title;
+    upsertMeta('meta[name="description"]', { content: seo.description });
+    upsertMeta('meta[name="keywords"]', { content: seo.keywords });
+    upsertMeta('meta[property="og:title"]', { content: seo.ogTitle });
+    upsertMeta('meta[property="og:description"]', { content: seo.description });
+    upsertMeta('meta[property="og:url"]', { content: url });
+    upsertMeta('meta[property="og:locale"]', { content: seo.locale });
+    upsertMeta('meta[name="twitter:title"]', { content: seo.ogTitle });
+    upsertMeta('meta[name="twitter:description"]', { content: seo.description });
+
+    upsertLink('canonical', null, url);
+    upsertLink('alternate', 'ka', `${origin}/services/${encodeURIComponent(String(slug))}?lang=ka`);
+    upsertLink('alternate', 'ru', `${origin}/services/${encodeURIComponent(String(slug))}?lang=ru`);
+    upsertLink('alternate', 'en', `${origin}/services/${encodeURIComponent(String(slug))}?lang=en`);
+    upsertLink('alternate', 'x-default', `${origin}/services/${encodeURIComponent(String(slug))}`);
+
+    upsertJsonLd('ld-service', {
+      '@context': 'https://schema.org',
+      '@type': 'Service',
+      name: serviceName,
+      areaServed: [
+        { '@type': 'City', name: 'Tbilisi' },
+        { '@type': 'Country', name: 'Georgia' }
+      ],
+      provider: {
+        '@type': 'LocalBusiness',
+        name: 'CONNECTOR',
+        url: origin,
+        telephone: '+995591160685',
+        email: 'useconnector@gmail.com',
+        address: { '@type': 'PostalAddress', addressLocality: 'Tbilisi', addressCountry: 'GE' }
+      }
+    });
+  }, [lang, serviceKey, serviceName, slug]);
+
+  if (!serviceKey || !SEO_SERVICE_KEYS.includes(serviceKey)) {
+    const homeHref = `/?lang=${encodeURIComponent(lang)}`;
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-6">
+        <div className="text-white/70 text-center">
+          <div className="text-xl font-semibold text-white">{t('not_found')}</div>
+          <div className="mt-3">
+            <Link to={homeHref} className="text-blue-400 hover:text-blue-300 underline underline-offset-4">
+              {t('back_to_home')}
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const requestOrder = () => {
+    if (typeof onRequireAuthForOrder === 'function' && !user) {
+      onRequireAuthForOrder({ serviceKey });
+      return;
+    }
+    if (!user && typeof setIsAuthOpen === 'function') {
+      setIsAuthOpen(true);
+      return;
+    }
+    if (typeof setIsOrderOpen === 'function') setIsOrderOpen(true);
+    try {
+      window.dispatchEvent(new CustomEvent('order:prefill', { detail: { serviceKey } }));
+    } catch { void 0; }
+  };
+
+  const origin = 'https://www.connector.ge';
+  const serviceUrl = `${origin}/services/${encodeURIComponent(String(slug))}?lang=${encodeURIComponent(lang)}`;
+  const homeHref = `/?lang=${encodeURIComponent(lang)}`;
+  const servicesHref = `/services?lang=${encodeURIComponent(lang)}`;
+
+  return (
+    <section className="relative pt-20 pb-20 px-4 bg-[#050505]">
+      <div className="max-w-5xl mx-auto">
+        <div className="text-white/60 text-sm">
+          <Link to={homeHref} className="hover:text-white">{t('ГЛАВНАЯ')}</Link>
+          <span className="mx-2">/</span>
+          <Link to={servicesHref} className="hover:text-white">{t('УСЛУГИ')}</Link>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+          <div className="rounded-3xl overflow-hidden border border-white/10">
+            <img
+              src={SERVICES_IMGS[serviceKey]}
+              alt={serviceName}
+              className={`w-full h-[260px] md:h-[360px] object-cover${isLocked ? ' filter blur-md' : ''}`}
+            />
+          </div>
+          <div>
+            <h1 className="text-white text-3xl md:text-4xl font-semibold leading-tight">{serviceName}</h1>
+            <div className="mt-4 text-white/80 text-sm md:text-base leading-relaxed whitespace-pre-line">
+              {t(`${serviceKey}_D`)}
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={requestOrder}
+                disabled={isLocked}
+                className={`px-5 py-3 rounded-2xl font-semibold ${isLocked ? 'bg-white/10 text-white/40 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+              >
+                {t('Оформить заказ')}
+              </button>
+              <a
+                href={serviceUrl}
+                className="text-white/50 hover:text-white/70 text-sm underline underline-offset-4"
+              >
+                {serviceUrl}
+              </a>
+            </div>
+            {isLocked ? (
+              <div className="mt-3 text-white/50 text-sm">{t('service_soon')}</div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="mt-10">
+          <div className="text-white/70 text-sm mb-3">{t('УСЛУГИ')}</div>
+          <div className="flex flex-wrap gap-2">
+            {SEO_SERVICE_KEYS.map((k) => {
+              const s = SERVICE_SLUG_BY_KEY[k];
+              const name = String(t(`${k}_T`));
+              return (
+                <Link
+                  key={k}
+                  to={`/services/${s}?lang=${encodeURIComponent(lang)}`}
+                  className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:bg-white/10 text-sm"
+                >
+                  {name}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </section>
   );
 };

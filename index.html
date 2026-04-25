@@ -11,6 +11,8 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" sizes="180x180" />
   <link rel="icon" href="/favicon-32x32.png?v=2" type="image/png" sizes="32x32" />
   <link rel="icon" href="/favicon-16x16.png?v=2" type="image/png" sizes="16x16" />
+  <link rel="icon" href="/android-chrome-192x192.png?v=2" type="image/png" sizes="192x192" />
+  <link rel="icon" href="/android-chrome-512x512.png?v=2" type="image/png" sizes="512x512" />
   <link rel="manifest" href="/site.webmanifest?v=2" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -102,6 +104,11 @@
         document.documentElement.lang = lang;
         document.title = t.title;
 
+        const origin = 'https://www.connector.ge';
+        const path = window.location.pathname || '/';
+        const qLang = (p === 'ru' || p === 'en' || p === 'ka') ? p : '';
+        const canonicalUrl = qLang ? `${origin}${path}?lang=${qLang}` : `${origin}${path}`;
+
         const setMetaByName = (name, content) => {
           const el = document.querySelector('meta[name="' + name + '"]');
           if (el) el.setAttribute('content', content);
@@ -110,14 +117,25 @@
           const el = document.querySelector('meta[property="' + prop + '"]');
           if (el) el.setAttribute('content', content);
         };
+        const setLink = (rel, selector, href) => {
+          const el = document.querySelector('link[rel="' + rel + '"]' + selector);
+          if (el) el.setAttribute('href', href);
+        };
 
         setMetaByName('description', t.description);
         setMetaByName('keywords', t.keywords);
         setMetaByProp('og:locale', t.locale);
         setMetaByProp('og:title', t.ogTitle);
         setMetaByProp('og:description', t.description);
+        setMetaByProp('og:url', canonicalUrl);
         setMetaByName('twitter:title', t.ogTitle);
         setMetaByName('twitter:description', t.description);
+
+        setLink('canonical', '', canonicalUrl);
+        setLink('alternate', '[hreflang="ka"]', `${origin}${path}?lang=ka`);
+        setLink('alternate', '[hreflang="ru"]', `${origin}${path}?lang=ru`);
+        setLink('alternate', '[hreflang="en"]', `${origin}${path}?lang=en`);
+        setLink('alternate', '[hreflang="x-default"]', `${origin}${path}`);
       } catch { void 0; }
     })();
   </script>

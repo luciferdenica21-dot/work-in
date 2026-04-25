@@ -6,7 +6,7 @@ import { useRef } from 'react';
 import './App.css'
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import Services from './components/Services';
+import Services, { ServiceSeoPage } from './components/Services';
 import OrderSidebar from './components/OrderSidebar';
 import AuthModal from './components/AuthModal';
 import ChatWidget from './components/ChatWidget';
@@ -274,6 +274,23 @@ function App() {
               : (
                   <MainLayout>
                     <Services
+                      user={user}
+                      setIsAuthOpen={setIsAuthOpen}
+                      setIsOrderOpen={setIsOrderOpen}
+                      onRequireAuthForOrder={handleRequireAuthForOrder}
+                    />
+                  </MainLayout>
+                )
+          }
+        />
+        <Route
+          path="/services/:slug"
+          element={
+            user && userRole === 'admin'
+              ? <Navigate to="/manager" replace />
+              : (
+                  <MainLayout>
+                    <ServiceSeoPage
                       user={user}
                       setIsAuthOpen={setIsAuthOpen}
                       setIsOrderOpen={setIsOrderOpen}

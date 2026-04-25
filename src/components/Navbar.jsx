@@ -9,6 +9,7 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   const [_isServicesOpen, setIsServicesOpen] = useState(false);
   const [_isContactOpen, setIsContactOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const contactLinks = [
     { name: 'Telegram', url: 'https://t.me/ConnectorGe', icon: <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 10l-4 4l6 6l4 -16l-18 7l4 2l2 6l3 -4" /></svg> },
@@ -20,8 +21,27 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
   ];
 
   const changeLanguage = (e) => {
-    i18n.changeLanguage(e.target.value);
+    const next = String(e?.target?.value || '').toLowerCase();
+    if (!next) return;
+    i18n.changeLanguage(next);
+    try {
+      const params = new URLSearchParams(location.search || '');
+      params.set('lang', next);
+      navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+    } catch { void 0; }
   };
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(location.search || '');
+      const q = (params.get('lang') || '').toLowerCase();
+      const current = String(i18n.language || '').toLowerCase();
+      if (!q && current) {
+        params.set('lang', current);
+        navigate({ pathname: location.pathname, search: `?${params.toString()}` }, { replace: true });
+      }
+    } catch { void 0; }
+  }, [location.pathname, location.search, i18n.language, navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -54,7 +74,6 @@ const Navbar = ({ setIsOrderOpen, setIsAuthOpen, user, onLogout }) => {
     }
   };
 
-  const navigate = useNavigate();
   const avatarUrl = useAvatarUrl(user?.email, null, user?.avatarType, user?.customAvatarUrl);
   
   const handleLogout = () => {
