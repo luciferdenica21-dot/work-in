@@ -243,7 +243,7 @@ router.get('/site-stats', protect, async (req, res) => {
     {
       const { data, error } = await supabase
         .from('analytics_events')
-        .select('session_id,sessionId,action,path,section,duration_ms,durationMs,timestamp,details')
+        .select('session_id,action,path,section,duration_ms,timestamp,details')
         .gte('timestamp', startIso)
         .in('action', ['visit', 'section_close'])
         .order('timestamp', { ascending: true })
@@ -252,7 +252,7 @@ router.get('/site-stats', protect, async (req, res) => {
       if (error) {
         const { data: data2, error: error2 } = await supabase
           .from('analytics_events')
-          .select('session_id,sessionId,action,path,section,duration_ms,durationMs,timestamp,details')
+          .select('sessionId,action,path,section,durationMs,timestamp,details')
           .gte('timestamp', startIso)
           .in('action', ['visit', 'section_close'])
           .order('timestamp', { ascending: true })
